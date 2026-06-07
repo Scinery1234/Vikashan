@@ -1,5 +1,6 @@
 import { supabase } from '../../lib/supabase.js'
 import { sendReminder24h, sendReminder1h, sendFollowUp, sendPaymentPlanReceipt } from '../../lib/resend.js'
+import { syncCalendarAvailability } from '../../lib/calendar-sync.js'
 import Stripe from 'stripe'
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -105,5 +106,8 @@ export default async function handler(req, res) {
     }
   }
 
-  res.json({ success: true, sent, plansSent, checked: bookings?.length ?? 0 })
+  // Sync Google + Outlook calendar availability
+  const calSync = await syncCalendarAvailability().catch(e => ({ error: e.message }))
+
+  res.json({ success: true, sent, plansSent, calSync, checked: bookings?.length ?? 0 })
 }
