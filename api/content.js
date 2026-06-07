@@ -8,9 +8,12 @@ export default async function handler(req, res) {
     const { data, error } = await supabase
       .from('site_content')
       .select('key, value')
-    if (error) return res.status(500).json({ error: error.message })
+    if (error) {
+      console.error('site_content GET error:', error.message)
+      return res.json({ content: {} }) // return empty rather than 500 so page still loads
+    }
     const content = {}
-    for (const row of data) content[row.key] = row.value
+    for (const row of (data || [])) content[row.key] = row.value
     return res.json({ content })
   }
 
