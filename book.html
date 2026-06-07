@@ -114,8 +114,8 @@
     <div class="tier-opts" id="tier-opts"></div>
     <div class="slider-wrap">
       <div class="slider-label"><span id="slider-min">$150</span><span id="slider-max">$220</span></div>
-      <input type="range" class="price-slider" id="price-slider" min="150" max="220" value="185" oninput="updatePrice()">
-      <div class="selected-price" id="selected-price">$185 <span>/ session</span></div>
+      <input type="range" class="price-slider" id="price-slider" min="165" max="242" value="204" oninput="updatePrice()">
+      <div class="selected-price" id="selected-price">$204 <span>/ session</span></div>
     </div>
     <div class="field"><label>Number of sessions</label>
       <div class="pkg-opts">
@@ -277,9 +277,9 @@
 <script>
 const API_BASE = ''
 const TIERS = {
-  sustaining:  { min: 150, max: 220, default: 185 },
-  standard:    { min: 75,  max: 150, default: 110 },
-  concession:  { min: 20,  max: 75,  default: 50  }
+  sustaining:  { min: 165, max: 242, default: 204 },
+  standard:    { min: 83,  max: 165, default: 124 },
+  concession:  { min: 22,  max: 83,  default: 55  }
 }
 
 // Detect concession link (?tier=concession)
@@ -303,17 +303,17 @@ function initTierUI() {
     container.innerHTML = `
       <label class="tier-opt selected" id="tier-concession">
         <input type="radio" name="tier" value="concession" checked onchange="updateSlider()">
-        <div><div class="tier-opt-name">Concession — $20–$75 / hr</div><div class="tier-opt-price">Approved concession rate — thank you for being here</div></div>
+        <div><div class="tier-opt-name">Concession — $22–$83 / hr</div><div class="tier-opt-price">Approved concession rate — thank you for being here</div></div>
       </label>`
   } else {
     container.innerHTML = `
       <label class="tier-opt selected" id="tier-sustaining">
         <input type="radio" name="tier" value="sustaining" checked onchange="updateSlider()">
-        <div><div class="tier-opt-name">Sustaining — $150–$220 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div>
+        <div><div class="tier-opt-name">Sustaining — $165–$242 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div>
       </label>
       <label class="tier-opt" id="tier-standard">
         <input type="radio" name="tier" value="standard" onchange="updateSlider()">
-        <div><div class="tier-opt-name">Accessible Rate — $75–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div>
+        <div><div class="tier-opt-name">Accessible Rate — $83–$165 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div>
       </label>`
   }
   updateSlider()
@@ -402,34 +402,46 @@ function calcPlan() {
   const el = document.getElementById('plan-calc')
 
   if (amtInput < 50) {
-    el.textContent = amtInput > 0 ? 'Minimum payment is $50.' : ''
+    el.innerHTML = amtInput > 0 ? '<span style="color:#e53e3e">Minimum payment is $50.</span>' : ''
     B.planAmount = 0
     return
   }
-  if (amtInput >= total) {
-    el.innerHTML = `✓ That covers the full amount in one payment.`
-    B.planAmount = amtInput; B.planFreq = freq
-    return
-  }
+
+  B.planAmount = amtInput
+  B.planFreq = freq
 
   const freqDays = { weekly: 7, fortnightly: 14, monthly: 30 }
   const freqLabel = { weekly: 'week', fortnightly: 'fortnight', monthly: 'month' }
-  const payments = Math.ceil(total / amtInput)
-  const days = payments * freqDays[freq]
-  const months = days / 30
+  const today = new Date()
 
-  B.planAmount = amtInput; B.planFreq = freq
+  // Build schedule
+  let balance = total
+  let date = new Date(today)
+  const rows = []
 
-  if (months > 6) {
-    const minPayment = Math.ceil(total / (6 * 30 / freqDays[freq]))
-    el.innerHTML = `⚠️ At $${amtInput}/${freqLabel[freq]} this would take ${Math.round(months)} months — over the 6-month maximum.<br>
-      Minimum payment at this frequency: <strong>$${minPayment}</strong>.`
-    B.planAmount = 0
-  } else {
-    const lastPayment = total - (amtInput * (payments - 1))
-    el.innerHTML = `✓ ${payments} payments of $${amtInput} ${freq === 'monthly' ? 'per month' : 'per ' + freqLabel[freq]}
-      ${lastPayment !== amtInput ? ` (last payment $${lastPayment})` : ''} — paid off in <strong>${Math.round(months)} month${Math.round(months) === 1 ? '' : 's'}</strong>.`
+  while (balance > 0) {
+    const payment = Math.min(amtInput, balance)
+    balance = Math.round((balance - payment) * 100) / 100
+    rows.push({ date: new Date(date), payment, balance })
+    date = new Date(date)
+    date.setDate(date.getDate() + freqDays[freq])
   }
+
+  const months = (rows.length * freqDays[freq] / 30).toFixed(1)
+  const lastDate = rows[rows.length - 1].date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+
+  const tableRows = rows.map((r, i) => `
+    <tr style="border-bottom:1px solid #ede">
+      <td style="padding:4px 8px 4px 0;font-size:.78rem;color:var(--ink-soft)">${r.date.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}</td>
+      <td style="padding:4px 8px;font-size:.78rem;font-weight:600">$${r.payment.toLocaleString()}</td>
+      <td style="padding:4px 0;font-size:.78rem;color:var(--ink-soft)">$${r.balance.toLocaleString()} remaining</td>
+    </tr>`).join('')
+
+  el.innerHTML = `
+    <div style="margin-bottom:.5rem;font-size:.82rem">✓ <strong>${rows.length} payment${rows.length > 1 ? 's' : ''}</strong> of $${amtInput} ${freq === 'monthly' ? 'per month' : 'per ' + freqLabel[freq]} — fully paid by <strong>${lastDate}</strong></div>
+    <div style="max-height:180px;overflow-y:auto;border:1px solid var(--border);border-radius:6px;padding:.5rem .75rem;background:var(--white)">
+      <table style="width:100%;border-collapse:collapse">${tableRows}</table>
+    </div>`
 }
 
 function selectPkg(el, n) {

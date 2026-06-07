@@ -1001,18 +1001,18 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   <div class="inner">
     <span class="label">Pricing</span>
     <h2 class="title" data-edit="price-title">Sessions from $150 per hour.</h2>
-    <p class="sub" data-edit="price-sub">The full rate is $150–$220 per hour. An accessible rate ($75–$150) is available for those who need it, and concession rates (under $75) by application. Choose based on your honest financial situation.</p>
+    <p class="sub" data-edit="price-sub">The full rate is $165–$242 per hour. An accessible rate ($83–$165) is available for those who need it, and concession rates (under $83) by application. Choose based on your honest financial situation.</p>
     <div class="price-grid">
       <div class="price-card featured">
         <div class="price-tag-label sustaining">Full Rate</div>
-        <div class="price-amount" id="disp-sus">$150–$220</div>
+        <div class="price-amount" id="disp-sus">$165–$242</div>
         <div class="price-unit">per hour</div>
         <div class="price-desc" data-edit="price-sus-desc">For those with financial stability. This is the full rate and the preferred tier — choosing it helps sustain the practice and subsidise access for others.</div>
         <div class="price-cta"><button class="btn btn-primary" onclick="openBooking()">Book now</button></div>
       </div>
       <div class="price-card">
         <div class="price-tag-label standard">Accessible Rate</div>
-        <div class="price-amount" id="disp-std">$75–$150</div>
+        <div class="price-amount" id="disp-std">$83–$165</div>
         <div class="price-unit">per hour</div>
         <div class="price-desc" data-edit="price-std-desc">For those who need a lower rate to access support. Pay anywhere in this range. Choosing a higher amount within the band helps preserve capacity for others.</div>
         <div class="price-cta"><button class="btn btn-primary" onclick="openBooking()">Book now</button></div>
@@ -1206,8 +1206,8 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       <span class="step-label">Choose your rate (for future sessions)</span>
       <p style="font-size:.8rem;color:var(--ink-soft);font-weight:300;margin-bottom:1rem;line-height:1.7">The discovery call is free. For ongoing sessions, choose the tier that reflects your financial situation. All rates are per hour.</p>
       <div class="tier-opts">
-        <label class="tier-opt"><input type="radio" name="tier" value="sustaining" checked onchange="updateTierUI()"><div><div class="tier-opt-name">Sustaining — $150–$220 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div></label>
-        <label class="tier-opt"><input type="radio" name="tier" value="standard" onchange="updateTierUI()"><div><div class="tier-opt-name">Accessible Rate — $75–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div></label>
+        <label class="tier-opt"><input type="radio" name="tier" value="sustaining" checked onchange="updateTierUI()"><div><div class="tier-opt-name">Sustaining — $165–$242 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div></label>
+        <label class="tier-opt"><input type="radio" name="tier" value="standard" onchange="updateTierUI()"><div><div class="tier-opt-name">Accessible Rate — $83–$165 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div></label>
         <label class="tier-opt"><input type="radio" name="tier" value="concession" onchange="updateTierUI()"><div><div class="tier-opt-name">Concession — Under $75 / hr</div><div class="tier-opt-price">Financial hardship — application required after call</div></div></label>
       </div>
       <p style="font-size:.76rem;color:var(--ink-soft);font-weight:300;margin-top:-.5rem;margin-bottom:1rem">No credit card required at this stage — payment is arranged after your discovery call.</p>
@@ -1588,7 +1588,7 @@ function buildConfirm() {
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dp = B.date ? B.date.split('-') : null;
   const dateStr = dp ? parseInt(dp[2])+' '+months[parseInt(dp[1])-1]+' '+dp[0] : '—';
-  const tierLabel = {standard:'Accessible Rate ($75–$150/hr)',sustaining:'Sustaining ($150–$220/hr)',concession:'Concession (application after call)'};
+  const tierLabel = {standard:'Accessible Rate ($83–$165/hr)',sustaining:'Sustaining ($165–$242/hr)',concession:'Concession (application after call)'};
   const rows = [
     ['Service','Career & Wellness Coaching — Discovery Call'],
     ['Format','Online (Google Meet)'],
