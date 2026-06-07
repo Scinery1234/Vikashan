@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="apple-touch-icon" href="/favicon.png">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Schedule a Session — Vikashan</title>
+<style>
+  :root{--clay:#C4724E;--clay-mid:#b5623f;--clay-pale:#fdf4ef;--ink:#141414;--ink-mid:#3a3a3a;--ink-soft:#7a7a7a;--border:#e4e3df;--bg:#f7f6f3;--white:#fff;--sans:'Inter',system-ui,sans-serif;--serif:'Georgia',serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem}
+  .logo{font-family:var(--serif);font-style:italic;font-size:1.4rem;color:var(--ink);margin-bottom:2rem;display:flex;align-items:center;gap:.5rem}
+  .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--clay);display:inline-block}
+  .card{background:var(--white);border-radius:12px;padding:2rem;width:100%;max-width:520px;box-shadow:0 2px 16px rgba(0,0,0,.06)}
+  h2{font-family:var(--serif);font-weight:400;font-size:1.35rem;margin-bottom:.4rem}
+  .sub{color:var(--ink-soft);font-size:.83rem;font-weight:300;line-height:1.6;margin-bottom:1.5rem}
+  .step{display:none}
+  .step.active{display:block}
+  .step-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--clay);margin-bottom:1.25rem}
+  label{display:block;font-size:.82rem;font-weight:500;margin-bottom:.35rem;color:var(--ink-mid)}
+  input,select{width:100%;padding:.65rem .85rem;border:1.5px solid var(--border);border-radius:7px;font-family:var(--sans);font-size:.88rem;color:var(--ink);background:var(--white);outline:none;transition:border-color .15s}
+  input:focus,select:focus{border-color:var(--clay)}
+  .field{margin-bottom:1rem}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+  .btn{display:inline-block;padding:.7rem 1.5rem;border-radius:7px;font-family:var(--sans);font-size:.88rem;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+  .btn-primary{background:var(--clay);color:#fff}
+  .btn-primary:hover{background:var(--clay-mid)}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1.5px solid var(--border)}
+  .btn-ghost:hover{border-color:var(--ink-soft)}
+  .btn-row{display:flex;gap:.75rem;margin-top:1.25rem;align-items:center}
+  .session-opts{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.25rem}
+  .session-opt{display:flex;align-items:flex-start;gap:.75rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s}
+  .session-opt:hover,.session-opt.selected{border-color:var(--clay)}
+  .session-opt input{accent-color:var(--clay);margin-top:3px;cursor:pointer;width:auto}
+  .session-opt-name{font-size:.87rem;font-weight:500}
+  .session-opt-desc{font-size:.75rem;color:var(--ink-soft);margin-top:.15rem}
+  .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin-bottom:1rem}
+  .cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin-bottom:.4rem}
+  .cal-day-name{text-align:center;font-size:.65rem;color:var(--ink-soft);font-weight:600;text-transform:uppercase}
+  .cal-day{text-align:center;padding:.45rem .2rem;border-radius:6px;font-size:.82rem;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+  .cal-day.empty{pointer-events:none}
+  .cal-day.past{color:var(--border);pointer-events:none}
+  .cal-day.available:hover{border-color:var(--clay);color:var(--clay)}
+  .cal-day.selected{background:var(--clay);color:#fff;border-color:var(--clay)}
+  .cal-day.unavailable{color:var(--border);pointer-events:none}
+  .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+  .cal-nav button{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink-soft);padding:.2rem .5rem}
+  .cal-month{font-size:.9rem;font-weight:600}
+  .time-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
+  .time-slot{padding:.55rem;text-align:center;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;cursor:pointer;transition:all .15s}
+  .time-slot:hover{border-color:var(--clay)}
+  .time-slot.selected{background:var(--clay);color:#fff;border-color:var(--clay)}
+  .summary-table{width:100%;border-collapse:collapse;margin-bottom:1.25rem}
+  .summary-table td{padding:.4rem 0;font-size:.85rem}
+  .summary-table td:first-child{color:var(--ink-soft)}
+  .summary-table td:last-child{text-align:right;font-weight:500}
+  .note{font-size:.75rem;color:var(--ink-soft);font-weight:300;line-height:1.6;margin-bottom:1rem}
+  .back-link{font-size:.8rem;color:var(--ink-soft);text-decoration:none;cursor:pointer}
+  .back-link:hover{color:var(--clay)}
+  .loading-slots{color:var(--ink-soft);font-size:.83rem;padding:.5rem 0}
+  .success-icon{font-size:2.5rem;margin-bottom:1rem;text-align:center}
+  .success-links{display:flex;flex-direction:column;gap:.5rem;margin-top:1.25rem}
+  .success-links a{display:block;text-align:center;padding:.65rem;border:1.5px solid var(--border);border-radius:7px;font-size:.83rem;color:var(--ink);text-decoration:none}
+  .success-links a:hover{border-color:var(--clay)}
+  @media(max-width:480px){.field-row{grid-template-columns:1fr}.time-slots{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<a href="index.html" style="text-decoration:none">
+  <div class="logo"><span class="logo-dot"></span> Vikashan</div>
+</a>
+
+<div class="card">
+
+  <!-- STEP 1: Session type -->
+  <div class="step active" id="s1">
+    <div class="step-label">Step 1 of 3 — Session type</div>
+    <h2>Schedule your next session</h2>
+    <p class="sub">Pick the type of session, then choose a time that works for you.</p>
+    <div class="session-opts" id="session-opts">
+      <div class="loading-slots">Loading sessions…</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(2)">Choose a time →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Date + time -->
+  <div class="step" id="s2">
+    <div class="step-label">Step 2 of 3 — Choose a time</div>
+    <h2>When works for you?</h2>
+    <p class="sub">All times shown in your local timezone. Sessions are online via Google Meet.</p>
+    <div class="cal-nav">
+      <button onclick="prevMonth()">‹</button>
+      <div class="cal-month" id="cal-month"></div>
+      <button onclick="nextMonth()">›</button>
+    </div>
+    <div class="cal-header">
+      <div class="cal-day-name">Sun</div><div class="cal-day-name">Mon</div>
+      <div class="cal-day-name">Tue</div><div class="cal-day-name">Wed</div>
+      <div class="cal-day-name">Thu</div><div class="cal-day-name">Fri</div>
+      <div class="cal-day-name">Sat</div>
+    </div>
+    <div class="calendar-grid" id="cal-grid"></div>
+    <div id="time-section" style="display:none">
+      <label style="margin-bottom:.5rem">Available times</label>
+      <div class="time-slots" id="time-slots"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-time-next" onclick="goStep(3)" disabled>Continue →</button>
+      <span class="back-link" onclick="goStep(1)">← Back</span>
+    </div>
+  </div>
+
+  <!-- STEP 3: Details + confirm -->
+  <div class="step" id="s3">
+    <div class="step-label">Step 3 of 3 — Your details</div>
+    <h2>Confirm your booking</h2>
+    <p class="sub">We'll send a Google Meet link to your email.</p>
+    <div class="field-row">
+      <div class="field"><label>First name</label><input id="fname" placeholder="First name"></div>
+      <div class="field"><label>Last name</label><input id="lname" placeholder="Last name"></div>
+    </div>
+    <div class="field"><label>Email</label><input type="email" id="email" placeholder="you@email.com"></div>
+    <div class="field"><label>Anything you'd like Vik to know? <span style="font-weight:300;color:var(--ink-soft)">(optional)</span></label>
+      <input id="notes" placeholder="Context, questions, intentions…">
+    </div>
+    <div style="margin-bottom:1.25rem">
+      <table class="summary-table">
+        <tr><td>Session</td><td id="sum-session">—</td></tr>
+        <tr><td>Date</td><td id="sum-date">—</td></tr>
+        <tr><td>Time</td><td id="sum-time">—</td></tr>
+        <tr><td>Duration</td><td id="sum-dur">—</td></tr>
+        <tr><td>Format</td><td>Online (Google Meet)</td></tr>
+      </table>
+    </div>
+    <p class="note">A confirmation email with your Google Meet link will be sent once you confirm. No payment is taken via this link.</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-confirm" onclick="confirmBooking()">Confirm booking</button>
+      <span class="back-link" onclick="goStep(2)">← Back</span>
+    </div>
+    <div id="confirm-error" style="color:#e53e3e;font-size:.8rem;margin-top:.75rem;display:none"></div>
+  </div>
+
+  <!-- SUCCESS -->
+  <div class="step" id="s-success">
+    <div class="success-icon">✓</div>
+    <h2 style="text-align:center;margin-bottom:.5rem">You're booked in</h2>
+    <p class="sub" style="text-align:center">Check your inbox for a confirmation with your Google Meet link.</p>
+    <div class="success-links" id="success-links"></div>
+  </div>
+
+</div>
+
+<script>
+const API_BASE = ''
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+// State
+const S = {
+  sessionTypeId: null,
+  sessionName: '',
+  durationMins: 60,
+  date: null,
+  time: null,
+  fname: '', lname: '', email: '', notes: ''
+}
+
+// Pre-fill from URL params (e.g. ?name=Jane&email=jane@email.com)
+const params = new URLSearchParams(location.search)
+if (params.get('name')) document.addEventListener('DOMContentLoaded', () => {
+  const parts = (params.get('name') || '').split(' ')
+  document.getElementById('fname').value = parts[0] || ''
+  document.getElementById('lname').value = parts.slice(1).join(' ') || ''
+})
+if (params.get('email')) document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('email').value = params.get('email')
+})
+
+// ── Steps ────────────────────────────────────────────────────────
+function goStep(n) {
+  if (n === 2 && !S.sessionTypeId) { alert('Please select a session type.'); return }
+  if (n === 3 && (!S.date || !S.time)) { alert('Please choose a date and time.'); return }
+  document.querySelectorAll('.step').forEach(el => el.classList.remove('active'))
+  document.getElementById(n === 'success' ? 's-success' : 's' + n).classList.add('active')
+  if (n === 3) fillSummary()
+}
+
+// ── Session types ────────────────────────────────────────────────
+async function loadSessionTypes() {
+  const r = await fetch(`${API_BASE}/api/session-types`)
+  const { sessionTypes } = await r.json()
+  const paid = sessionTypes.filter(s => !s.is_free)
+  const defIdx = paid.findIndex(s => s.duration_mins === 60 && s.name.toLowerCase().includes('career'))
+  const di = defIdx >= 0 ? defIdx : 0
+  const container = document.getElementById('session-opts')
+  container.innerHTML = paid.map((s, i) => `
+    <label class="session-opt${i===di?' selected':''}" onclick="selectSession(this,'${s.id}','${s.name.replace(/'/g,"\\'")}',${s.duration_mins})">
+      <input type="radio" name="session" value="${s.id}"${i===di?' checked':''}>
+      <div style="flex:1">
+        <div style="display:flex;align-items:baseline;gap:.5rem">
+          <div class="session-opt-name">${s.name}</div>
+          <div style="font-size:.72rem;font-weight:600;color:var(--clay);white-space:nowrap">${s.duration_mins} min</div>
+        </div>
+        <div class="session-opt-desc">${s.description || ''}</div>
+      </div>
+    </label>`).join('')
+  if (paid.length) {
+    S.sessionTypeId = paid[di].id
+    S.sessionName = paid[di].name
+    S.durationMins = paid[di].duration_mins
+  }
+}
+
+function selectSession(el, id, name, dur) {
+  document.querySelectorAll('.session-opt').forEach(o => o.classList.remove('selected'))
+  el.classList.add('selected')
+  S.sessionTypeId = id; S.sessionName = name; S.durationMins = dur
+}
+
+// ── Calendar ─────────────────────────────────────────────────────
+let calYear = new Date().getFullYear()
+let calMonth = new Date().getMonth()
+let availData = {}
+
+async function renderCal() {
+  document.getElementById('cal-month').textContent = `${MONTHS[calMonth]} ${calYear}`
+  const today = new Date(); today.setHours(0,0,0,0)
+  const firstDay = new Date(calYear, calMonth, 1).getDay()
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
+
+  // Fetch availability for this month
+  const from = `${calYear}-${String(calMonth+1).padStart(2,'0')}-01`
+  const toDate = new Date(calYear, calMonth + 1, 0)
+  const to = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(toDate.getDate()).padStart(2,'0')}`
+  try {
+    const r = await fetch(`${API_BASE}/api/availability?from=${from}&to=${to}`)
+    if (r.ok) availData = (await r.json()).available || {}
+  } catch(e) { availData = {} }
+
+  let html = ''
+  for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>'
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const date = new Date(calYear, calMonth, d)
+    const isPast = date < today
+    const hasSlots = availData[dateStr] && availData[dateStr].length > 0
+    let cls = 'cal-day'
+    if (isPast) cls += ' past'
+    else if (hasSlots) cls += ' available'
+    else cls += ' unavailable'
+    if (S.date === dateStr) cls += ' selected'
+    html += `<div class="${cls}" onclick="selectDate('${dateStr}')">${d}</div>`
+  }
+  document.getElementById('cal-grid').innerHTML = html
+}
+
+function prevMonth() {
+  calMonth--; if (calMonth < 0) { calMonth = 11; calYear-- }
+  renderCal()
+}
+function nextMonth() {
+  calMonth++; if (calMonth > 11) { calMonth = 0; calYear++ }
+  renderCal()
+}
+
+function selectDate(dateStr) {
+  S.date = dateStr; S.time = null
+  document.getElementById('btn-time-next').disabled = true
+  renderCal()
+  const slots = availData[dateStr] || []
+  const tsEl = document.getElementById('time-slots')
+  tsEl.innerHTML = slots.map(h => {
+    const ampm = h >= 12 ? 'pm' : 'am'
+    const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h)
+    const label = `${h12}:00 ${ampm}`
+    return `<div class="time-slot" onclick="selectTime(this,'${h}:00')">${label}</div>`
+  }).join('')
+  document.getElementById('time-section').style.display = slots.length ? 'block' : 'none'
+  if (!slots.length) tsEl.innerHTML = '<div class="loading-slots">No times available on this day.</div>'
+}
+
+function selectTime(el, time) {
+  document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'))
+  el.classList.add('selected')
+  S.time = time
+  document.getElementById('btn-time-next').disabled = false
+}
+
+// ── Summary ──────────────────────────────────────────────────────
+function fillSummary() {
+  document.getElementById('sum-session').textContent = S.sessionName
+  document.getElementById('sum-date').textContent = new Date(S.date).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'})
+  const [h] = S.time.split(':')
+  const hour = parseInt(h)
+  const ampm = hour >= 12 ? 'pm' : 'am'
+  const h12 = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour)
+  document.getElementById('sum-time').textContent = `${h12}:00 ${ampm}`
+  document.getElementById('sum-dur').textContent = `${S.durationMins} minutes`
+}
+
+// ── Confirm ──────────────────────────────────────────────────────
+async function confirmBooking() {
+  S.fname = document.getElementById('fname').value.trim()
+  S.lname = document.getElementById('lname').value.trim()
+  S.email = document.getElementById('email').value.trim()
+  S.notes = document.getElementById('notes').value.trim()
+
+  const errEl = document.getElementById('confirm-error')
+  errEl.style.display = 'none'
+
+  if (!S.fname || !S.email) {
+    if (!S.fname) document.getElementById('fname').style.borderColor = '#e53e3e'
+    if (!S.email) document.getElementById('email').style.borderColor = '#e53e3e'
+    return
+  }
+
+  const btn = document.getElementById('btn-confirm')
+  btn.disabled = true; btn.textContent = 'Confirming…'
+
+  try {
+    const res = await fetch(`${API_BASE}/api/bookings/schedule`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        clientName: `${S.fname} ${S.lname}`.trim(),
+        clientEmail: S.email,
+        sessionTypeId: S.sessionTypeId,
+        sessionName: S.sessionName,
+        durationMins: S.durationMins,
+        date: S.date,
+        time: S.time,
+        notes: S.notes,
+        packageId: params.get('package') || null
+      })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Booking failed')
+
+    // Success
+    const dateLabel = new Date(S.date).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'})
+    const [h] = S.time.split(':')
+    const hour = parseInt(h)
+    const ampm = hour >= 12 ? 'pm' : 'am'
+    const h12 = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour)
+    const timeLabel = `${h12}:00 ${ampm}`
+    const gcalStart = S.date.replace(/-/g,'') + 'T' + String(hour).padStart(2,'0') + '0000'
+    const endHour = hour + Math.floor(S.durationMins/60)
+    const gcalEnd = S.date.replace(/-/g,'') + 'T' + String(endHour).padStart(2,'0') + '0000'
+    const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Session with Vikashan')}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Online via Google Meet')}`
+
+    document.getElementById('success-links').innerHTML = `
+      <a href="${gcalUrl}" target="_blank">+ Add to Google Calendar</a>
+      <a href="index.html">Return to vikashan.org</a>`
+
+    goStep('success')
+  } catch(e) {
+    errEl.textContent = e.message
+    errEl.style.display = 'block'
+    btn.disabled = false; btn.textContent = 'Confirm booking'
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+loadSessionTypes()
+renderCal()
+</script>
+</body>
+</html>
