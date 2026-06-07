@@ -1325,12 +1325,25 @@ function saveAll() {
 }
 
 function enterAdmin() {
-  adminMode = true;
-  document.getElementById('admin-bar').classList.add('show');
-  document.getElementById('main-nav').classList.add('admin-offset');
-  document.body.classList.add('admin-mode');
-  document.querySelectorAll('[data-edit]').forEach(el => el.contentEditable = 'true');
-  window.scrollTo(0, 0);
+  const pwd = prompt('Enter admin password:');
+  if (!pwd) return;
+  fetch('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: 'admin@vikashan.org', password: pwd })
+  }).then(r => {
+    if (!r.ok) { alert('Incorrect password.'); return; }
+    return r.json();
+  }).then(data => {
+    if (!data) return;
+    sessionStorage.setItem('admin_token', data.token);
+    adminMode = true;
+    document.getElementById('admin-bar').classList.add('show');
+    document.getElementById('main-nav').classList.add('admin-offset');
+    document.body.classList.add('admin-mode');
+    document.querySelectorAll('[data-edit]').forEach(el => el.contentEditable = 'true');
+    window.scrollTo(0, 0);
+  }).catch(() => alert('Could not connect. Please try again.'));
 }
 
 function exitAdmin() {
