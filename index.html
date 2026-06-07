@@ -28,7 +28,8 @@
   --r:10px;
 }
 html{scroll-behavior:smooth}
-body{font-family:var(--sans);background:var(--cream);color:var(--ink);font-size:16px;line-height:1.75;overflow-x:hidden}
+body{font-family:var(--sans);background:var(--cream);color:var(--ink);font-size:16px;line-height:1.75;overflow-x:hidden;opacity:0;transition:opacity .25s ease}
+body.content-ready{opacity:1}
 
 /* ADMIN TOOLBAR */
 #admin-bar{display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--ink);color:#fff;padding:.55rem 1.5rem;align-items:center;gap:1rem;font-size:.8rem}
@@ -1314,10 +1315,12 @@ async function loadContent() {
         if (content[k] !== undefined) el.innerHTML = content[k];
       });
       loadSettings(content);
+      document.body.classList.add('content-ready');
       return;
     }
   } catch(e) {}
   loadSettings({});
+  document.body.classList.add('content-ready');
 }
 
 async function saveAll() {
