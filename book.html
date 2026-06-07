@@ -279,10 +279,21 @@
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 const API_BASE = ''
+// Hourly rates — slider values are scaled by session duration
 const TIERS = {
   sustaining:  { min: 150, max: 250, default: 200 },
   standard:    { min: 65,  max: 150, default: 108 },
   concession:  { min: 25,  max: 65,  default: 45  }
+}
+
+function scaledTier(tier, durationMins) {
+  const t = TIERS[tier]
+  const factor = durationMins / 60
+  return {
+    min:     Math.round(t.min * factor),
+    max:     Math.round(t.max * factor),
+    default: Math.round(t.default * factor)
+  }
 }
 
 // Detect concession link (?tier=concession)
@@ -312,11 +323,11 @@ function initTierUI() {
     container.innerHTML = `
       <label class="tier-opt selected" id="tier-sustaining">
         <input type="radio" name="tier" value="sustaining" checked onchange="updateSlider()">
-        <div><div class="tier-opt-name">Sustaining — $150–$250 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div>
+        <div><div class="tier-opt-name">Sustaining — $150–$250 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others. Rate scales with session length.</div></div>
       </label>
       <label class="tier-opt" id="tier-standard">
         <input type="radio" name="tier" value="standard" onchange="updateSlider()">
-        <div><div class="tier-opt-name">Accessible Rate — $65–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div>
+        <div><div class="tier-opt-name">Accessible Rate — $65–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support. Rate scales with session length.</div></div>
       </label>`
   }
   updateSlider()
@@ -353,14 +364,14 @@ function selectSession(el, id, name, dur) {
   document.querySelectorAll('.session-opt').forEach(o => o.classList.remove('selected'))
   el.classList.add('selected')
   B.sessionTypeId = id; B.sessionName = name; B.durationMins = dur
-  updatePackageTotals()
+  updateSlider()
 }
 
 // ── Tier + slider ───────────────────────────────────────────────
 function updateSlider() {
   const t = document.querySelector('input[name=tier]:checked').value
   B.tier = t
-  const { min, max, default: def } = TIERS[t]
+  const { min, max, default: def } = scaledTier(t, B.durationMins)
   const slider = document.getElementById('price-slider')
   slider.min = min; slider.max = max; slider.value = def
   document.getElementById('slider-min').textContent = `$${min}`
