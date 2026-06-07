@@ -488,6 +488,11 @@ function selectCount(el, n) {
   updateRecurPreview()
 }
 
+function localDateStr(d) {
+  const pad = n => String(n).padStart(2,'0')
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`
+}
+
 function getRecurDates() {
   if (!S.date || !S.time) return []
   const freqDays = { weekly: 7, fortnightly: 14, monthly: null }
@@ -495,7 +500,7 @@ function getRecurDates() {
   const dates = []
   let current = new Date(S.date + 'T00:00:00')
   for (let i = 0; i < count; i++) {
-    dates.push(current.toISOString().split('T')[0])
+    dates.push(localDateStr(current))
     if (S.recurFreq === 'monthly') {
       current = new Date(current)
       current.setMonth(current.getMonth() + 1)
