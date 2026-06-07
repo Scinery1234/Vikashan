@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     clientName, clientEmail, clientPhone,
     sessionTypeId, date, time,
     amountCentsPerSession, sessionsTotal,
-    tier, notes, mailingOptIn
+    tier, notes, mailingOptIn, recurDates
   } = req.body
 
   if (!clientName || !clientEmail || !date || !time || !sessionTypeId || !amountCentsPerSession || !sessionsTotal) {
@@ -97,6 +97,25 @@ export default async function handler(req, res) {
 
   await supabase.from('bookings').update({ stripe_payment_intent_id: intent.id }).eq('id', booking.id)
   await supabase.from('packages').update({ stripe_payment_intent_id: intent.id }).eq('id', pkg.id)
+
+  // Create placeholder bookings for recurring dates (confirmed after payment)
+  if (recurDates && recurDates.length > 1) {
+    const extraDates = recurDates.slice(1) // first date already created above
+    await supabase.from('bookings').insert(extraDates.map(d => ({
+      client_id: client.id,
+      session_type_id: sessionTypeId,
+      date: d,
+      start_time: time,
+      duration_mins: sessionType.duration_mins,
+      meet_link: meetLink,
+      amount_cents: amountCentsPerSession,
+      tier: tier || 'full_rate',
+      notes: notes || null,
+      status: 'pending',
+      package_id: pkg.id,
+      stripe_payment_intent_id: intent.id
+    })))
+  }
 
   res.json({
     bookingId: booking.id,

@@ -206,6 +206,27 @@
     <div id="time-section" style="display:none">
       <label style="margin-bottom:.5rem">Available times</label>
       <div class="time-slots" id="time-slots"></div>
+
+      <!-- Recurring (shown when >1 session selected) -->
+      <div id="recur-section" style="display:none;margin-top:1.25rem;padding:1rem;background:var(--clay-pale);border-radius:8px">
+        <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.2rem">Schedule all sessions now?</label>
+        <p style="font-size:.75rem;color:var(--ink-soft);margin-bottom:.75rem">Or leave blank and schedule remaining sessions with Vik after your first appointment.</p>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="none" checked onchange="updateRecur()"> Schedule later
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="weekly" onchange="updateRecur()"> Weekly
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="fortnightly" onchange="updateRecur()"> Fortnightly
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="monthly" onchange="updateRecur()"> Monthly
+          </label>
+        </div>
+        <div id="recur-dates-preview" style="font-size:.78rem;color:var(--ink-soft);line-height:1.8"></div>
+      </div>
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" id="btn-s3" onclick="goStep(4)" disabled>Continue →</button>
@@ -239,10 +260,11 @@
     <h2>Confirm &amp; pay</h2>
     <table class="summary-table">
       <tr><td>Session</td><td id="sum-session">—</td></tr>
-      <tr><td>Date</td><td id="sum-date">—</td></tr>
+      <tr><td>First date</td><td id="sum-date">—</td></tr>
       <tr><td>Time</td><td id="sum-time">—</td></tr>
       <tr><td>Rate</td><td id="sum-rate">—</td></tr>
       <tr><td>Sessions</td><td id="sum-sessions">—</td></tr>
+      <tr id="sum-recur-row" style="display:none"><td>Schedule</td><td id="sum-recur" style="font-size:.78rem;line-height:1.8">—</td></tr>
       <tr class="summary-total"><td id="sum-total-label">Total</td><td id="sum-total">—</td></tr>
     </table>
 
@@ -285,27 +307,43 @@
 const API_BASE = ''
 
 // ── Timezone ────────────────────────────────────────────────────
-const TZ_OPTIONS = [
-  { label: 'Sydney / Melbourne (AEST/AEDT)', value: 'Australia/Sydney' },
-  { label: 'Brisbane (AEST, no DST)',         value: 'Australia/Brisbane' },
-  { label: 'Adelaide (ACST/ACDT)',            value: 'Australia/Adelaide' },
-  { label: 'Perth (AWST)',                    value: 'Australia/Perth' },
-  { label: 'Auckland (NZST/NZDT)',            value: 'Pacific/Auckland' },
-  { label: 'Singapore / Kuala Lumpur (SGT)',  value: 'Asia/Singapore' },
-  { label: 'Tokyo (JST)',                     value: 'Asia/Tokyo' },
-  { label: 'London (GMT/BST)',                value: 'Europe/London' },
-  { label: 'New York (EST/EDT)',              value: 'America/New_York' },
-  { label: 'Los Angeles (PST/PDT)',           value: 'America/Los_Angeles' },
-  { label: 'UTC',                             value: 'UTC' },
+const TZ_PINNED = [
+  'Australia/Sydney','Australia/Melbourne','Australia/Brisbane',
+  'Australia/Adelaide','Australia/Perth','Pacific/Auckland',
+  'Asia/Kolkata','Asia/Singapore','Asia/Kuala_Lumpur','Asia/Tokyo',
+  'Asia/Dubai','Asia/Hong_Kong','Asia/Bangkok',
+  'Europe/London','Europe/Paris','Europe/Berlin',
+  'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+  'Pacific/Honolulu','UTC',
 ]
 let selectedTz = 'Australia/Sydney'
+
+function tzLabel(tz) {
+  try {
+    const now = new Date()
+    const offset = new Intl.DateTimeFormat('en', {
+      timeZone: tz, timeZoneName: 'shortOffset'
+    }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || ''
+    return `${tz.replace(/_/g,' ')} (${offset})`
+  } catch { return tz }
+}
 
 function initTzSelect(elId) {
   const sel = document.getElementById(elId)
   if (!sel) return
-  sel.innerHTML = TZ_OPTIONS.map(o =>
-    `<option value="${o.value}"${o.value === selectedTz ? ' selected' : ''}>${o.label}</option>`
-  ).join('')
+  // All IANA timezones supported by the browser
+  const all = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : []
+  const rest = all.filter(z => !TZ_PINNED.includes(z))
+
+  let html = '<optgroup label="— Common —">'
+  html += TZ_PINNED.map(z => `<option value="${z}"${z===selectedTz?' selected':''}>${tzLabel(z)}</option>`).join('')
+  html += '</optgroup>'
+  if (rest.length) {
+    html += '<optgroup label="— All timezones —">'
+    html += rest.map(z => `<option value="${z}"${z===selectedTz?' selected':''}>${tzLabel(z)}</option>`).join('')
+    html += '</optgroup>'
+  }
+  sel.innerHTML = html
 }
 
 // Convert a Sydney date+hour to a UTC Date object, DST-aware
@@ -598,9 +636,40 @@ function onTzChange() {
 function selectTime(el, t) {
   document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'))
   el.classList.add('selected')
-  B.time = t // Always Sydney time stored server-side
+  B.time = t
   B.timeLabel = el.textContent
   document.getElementById('btn-s3').disabled = false
+  // Show recurrence section only when booking multiple sessions
+  const recurSec = document.getElementById('recur-section')
+  if (recurSec) recurSec.style.display = B.sessionsTotal > 1 ? 'block' : 'none'
+  updateRecur()
+}
+
+// ── Recurring (book.html) ────────────────────────────────────────
+function getRecurDates() {
+  const freq = document.querySelector('input[name=recur]:checked')?.value || 'none'
+  if (freq === 'none' || !B.date) return []
+  const freqDays = { weekly: 7, fortnightly: 14 }
+  const dates = []
+  let cur = new Date(B.date + 'T00:00:00')
+  for (let i = 1; i < B.sessionsTotal; i++) {
+    if (freq === 'monthly') { cur = new Date(cur); cur.setMonth(cur.getMonth() + 1) }
+    else { cur = new Date(cur); cur.setDate(cur.getDate() + freqDays[freq]) }
+    dates.push(cur.toISOString().split('T')[0])
+  }
+  return dates
+}
+
+function updateRecur() {
+  const freq = document.querySelector('input[name=recur]:checked')?.value || 'none'
+  const el = document.getElementById('recur-dates-preview')
+  if (!el) return
+  if (freq === 'none' || !B.date) { el.innerHTML = ''; return }
+  const allDates = [B.date, ...getRecurDates()]
+  el.innerHTML = '<strong>Scheduled dates:</strong><br>' + allDates.map((d, i) => {
+    const label = new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { weekday:'long', day:'numeric', month:'long' })
+    return `${i+1}. ${label}`
+  }).join('<br>')
 }
 
 // ── Step navigation ─────────────────────────────────────────────
@@ -654,6 +723,18 @@ function renderSummary() {
   document.getElementById('sum-time').textContent = B.timeLabel + ' (' + tzAbbr + ')'
   document.getElementById('sum-rate').textContent = `$${B.amountPerSession} / session (${tierLabel[B.tier]})`
   document.getElementById('sum-sessions').textContent = B.sessionsTotal === 1 ? '1 session' : `${B.sessionsTotal} sessions`
+  // Recurrence summary
+  const recurDates = getRecurDates()
+  const recurRow = document.getElementById('sum-recur-row')
+  if (recurDates.length > 0) {
+    const allDates = [B.date, ...recurDates]
+    recurRow.style.display = ''
+    document.getElementById('sum-recur').innerHTML = allDates.map((d, i) => {
+      return `${i+1}. ${new Date(d+'T00:00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})}`
+    }).join('<br>')
+  } else {
+    recurRow.style.display = 'none'
+  }
   document.getElementById('sum-total-label').textContent = isPlan ? 'First payment' : 'Total (incl. 10% discount)'
   document.getElementById('sum-total').textContent = isPlan
     ? `$${B.planAmount.toLocaleString()} ${B.planFreq}`
@@ -686,7 +767,8 @@ async function initStripe() {
       tier: B.tier === 'sustaining' ? 'full_rate' : B.tier === 'concession' ? 'concession' : 'accessible',
       notes: B.notes || null,
       mailingOptIn: B.mailingOptIn,
-      upfrontDiscount: !B.isPlan
+      upfrontDiscount: !B.isPlan,
+      recurDates: getRecurDates().length > 0 ? [B.date, ...getRecurDates()] : null
     })
   })
   const data = await r.json()

@@ -199,27 +199,42 @@ const API_BASE = ''
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 // ── Timezone ────────────────────────────────────────────────────
-const TZ_OPTIONS = [
-  { label: 'Sydney / Melbourne (AEST/AEDT)', value: 'Australia/Sydney' },
-  { label: 'Brisbane (AEST, no DST)',         value: 'Australia/Brisbane' },
-  { label: 'Adelaide (ACST/ACDT)',            value: 'Australia/Adelaide' },
-  { label: 'Perth (AWST)',                    value: 'Australia/Perth' },
-  { label: 'Auckland (NZST/NZDT)',            value: 'Pacific/Auckland' },
-  { label: 'Singapore / Kuala Lumpur (SGT)',  value: 'Asia/Singapore' },
-  { label: 'Tokyo (JST)',                     value: 'Asia/Tokyo' },
-  { label: 'London (GMT/BST)',                value: 'Europe/London' },
-  { label: 'New York (EST/EDT)',              value: 'America/New_York' },
-  { label: 'Los Angeles (PST/PDT)',           value: 'America/Los_Angeles' },
-  { label: 'UTC',                             value: 'UTC' },
+const TZ_PINNED = [
+  'Australia/Sydney','Australia/Melbourne','Australia/Brisbane',
+  'Australia/Adelaide','Australia/Perth','Pacific/Auckland',
+  'Asia/Kolkata','Asia/Singapore','Asia/Kuala_Lumpur','Asia/Tokyo',
+  'Asia/Dubai','Asia/Hong_Kong','Asia/Bangkok',
+  'Europe/London','Europe/Paris','Europe/Berlin',
+  'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
+  'Pacific/Honolulu','UTC',
 ]
 let selectedTz = 'Australia/Sydney'
+
+function tzLabel(tz) {
+  try {
+    const now = new Date()
+    const offset = new Intl.DateTimeFormat('en', {
+      timeZone: tz, timeZoneName: 'shortOffset'
+    }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || ''
+    return `${tz.replace(/_/g,' ')} (${offset})`
+  } catch { return tz }
+}
 
 function initTzSelect() {
   const sel = document.getElementById('tz-select')
   if (!sel) return
-  sel.innerHTML = TZ_OPTIONS.map(o =>
-    `<option value="${o.value}"${o.value === selectedTz ? ' selected' : ''}>${o.label}</option>`
-  ).join('')
+  const all = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : []
+  const rest = all.filter(z => !TZ_PINNED.includes(z))
+
+  let html = '<optgroup label="— Common —">'
+  html += TZ_PINNED.map(z => `<option value="${z}"${z===selectedTz?' selected':''}>${tzLabel(z)}</option>`).join('')
+  html += '</optgroup>'
+  if (rest.length) {
+    html += '<optgroup label="— All timezones —">'
+    html += rest.map(z => `<option value="${z}"${z===selectedTz?' selected':''}>${tzLabel(z)}</option>`).join('')
+    html += '</optgroup>'
+  }
+  sel.innerHTML = html
 }
 
 function sydneyToDate(dateStr, sydneyHour) {
