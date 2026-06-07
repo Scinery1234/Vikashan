@@ -1,6 +1,7 @@
 import { supabase } from '../../lib/supabase.js'
 import { sendConfirmation } from '../../lib/resend.js'
 import { createOutlookEvent } from '../../lib/outlook.js'
+import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import Stripe from 'stripe'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
@@ -89,7 +90,8 @@ export default async function handler(req, res) {
     const confirmedBooking = { ...booking, session_type_name: sessionType.name }
     await Promise.all([
       sendConfirmation({ booking: confirmedBooking, client, zoomLink }),
-      createOutlookEvent({ booking: confirmedBooking, client, meetLink: zoomLink })
+      createOutlookEvent({ booking: confirmedBooking, client, meetLink: zoomLink }),
+      createGoogleCalendarEvent({ booking: confirmedBooking, client, meetLink: zoomLink })
     ])
     return res.json({ success: true, bookingId: booking.id, zoomLink })
   }
