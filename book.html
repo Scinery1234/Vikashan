@@ -410,10 +410,10 @@ function calcPlan() {
   const total = B.amountPerSession * B.sessionsTotal
   const el = document.getElementById('plan-calc')
   const freqMin = { weekly: 50, fortnightly: 100, monthly: 200 }
-  const min = freqMin[freq]
+  const min = total < 200 ? 25 : freqMin[freq]
 
   if (amtInput < min) {
-    el.innerHTML = amtInput > 0 ? `<span style="color:#e53e3e">Minimum for ${freq} payments is $${min}.</span>` : ''
+    el.innerHTML = amtInput > 0 ? `<span style="color:#e53e3e">Minimum payment is $${min}.</span>` : ''
     B.planAmount = 0
     return
   }
@@ -540,10 +540,11 @@ function goStep(n) {
       return
     }
     if (B.isPlan) {
+      const total = B.amountPerSession * B.sessionsTotal
       const freqMin = { weekly: 50, fortnightly: 100, monthly: 200 }
-      const min = freqMin[B.planFreq] || 50
+      const min = total < 200 ? 25 : (freqMin[B.planFreq] || 50)
       if (B.planAmount < min) {
-        alert(`Minimum for ${B.planFreq} payments is $${min}.`)
+        alert(`Minimum payment is $${min}.`)
         return
       }
     }
