@@ -160,7 +160,7 @@
       <div class="field-row" style="margin-bottom:.75rem">
         <div class="field" style="margin-bottom:0">
           <label>Payment amount ($)</label>
-          <input type="number" id="plan-amount" placeholder="e.g. 100" min="50" oninput="calcPlan()">
+          <input type="number" id="plan-amount" placeholder="e.g. 50" min="25" oninput="calcPlan()">
         </div>
         <div class="field" style="margin-bottom:0">
           <label>Frequency</label>
@@ -401,8 +401,8 @@ function calcPlan() {
   const total = B.amountPerSession * B.sessionsTotal
   const el = document.getElementById('plan-calc')
 
-  if (amtInput < 50) {
-    el.innerHTML = amtInput > 0 ? '<span style="color:#e53e3e">Minimum payment is $50.</span>' : ''
+  if (amtInput < 25) {
+    el.innerHTML = amtInput > 0 ? '<span style="color:#e53e3e">Minimum payment is $25.</span>' : ''
     B.planAmount = 0
     return
   }
@@ -528,8 +528,8 @@ function goStep(n) {
       if (!B.email) document.getElementById('email').style.borderColor = '#e53e3e'
       return
     }
-    if (B.isPlan && B.planAmount < 50) {
-      alert('Please enter a payment plan amount of at least $50.')
+    if (B.isPlan && B.planAmount < 25) {
+      alert('Please enter a payment plan amount of at least $25.')
       return
     }
     renderSummary()
