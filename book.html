@@ -327,19 +327,25 @@ async function loadSessionTypes() {
   const r = await fetch(`${API_BASE}/api/session-types`)
   const { sessionTypes } = await r.json()
   const paid = sessionTypes.filter(s => !s.is_free)
+  // Default to Career Coaching (60 min) if present, otherwise first
+  const defaultIdx = paid.findIndex(s => s.duration_mins === 60 && s.name.toLowerCase().includes('career coaching'))
+  const defIdx = defaultIdx >= 0 ? defaultIdx : 0
   const container = document.getElementById('session-opts')
   container.innerHTML = paid.map((s, i) => `
-    <label class="session-opt${i===0?' selected':''}" onclick="selectSession(this,'${s.id}','${s.name.replace(/'/g,"\\'")}',${s.duration_mins})">
-      <input type="radio" name="session" value="${s.id}"${i===0?' checked':''}>
-      <div>
-        <div class="session-opt-name">${s.name}</div>
+    <label class="session-opt${i===defIdx?' selected':''}" onclick="selectSession(this,'${s.id}','${s.name.replace(/'/g,"\\'")}',${s.duration_mins})">
+      <input type="radio" name="session" value="${s.id}"${i===defIdx?' checked':''}>
+      <div style="flex:1">
+        <div style="display:flex;align-items:baseline;gap:.5rem">
+          <div class="session-opt-name">${s.name}</div>
+          <div style="font-size:.72rem;font-weight:600;color:var(--clay);white-space:nowrap">${s.duration_mins} min</div>
+        </div>
         <div class="session-opt-desc">${s.description || ''}</div>
       </div>
     </label>`).join('')
   if (paid.length) {
-    B.sessionTypeId = paid[0].id
-    B.sessionName = paid[0].name
-    B.durationMins = paid[0].duration_mins
+    B.sessionTypeId = paid[defIdx].id
+    B.sessionName = paid[defIdx].name
+    B.durationMins = paid[defIdx].duration_mins
   }
 }
 
