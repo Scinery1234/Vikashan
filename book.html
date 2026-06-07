@@ -189,6 +189,10 @@
     <div class="step-label">Step 3 of 5 — Choose your first session date</div>
     <h2>Pick a date &amp; time</h2>
     <p class="sub">Choose a date for your first session. Remaining sessions will be scheduled with Vik after your first appointment.</p>
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:1rem">
+      <label style="font-size:.75rem;color:var(--ink-soft);white-space:nowrap">Times in:</label>
+      <select id="tz-select" onchange="onTzChange()" style="flex:1;padding:.4rem .6rem;border:1.5px solid var(--border);border-radius:6px;font-size:.78rem;color:var(--ink)"></select>
+    </div>
     <div class="cal-nav">
       <button onclick="prevMonth()">‹</button>
       <div class="cal-month" id="cal-month"></div>
@@ -279,6 +283,61 @@
 <script src="https://js.stripe.com/v3/"></script>
 <script>
 const API_BASE = ''
+
+// ── Timezone ────────────────────────────────────────────────────
+const TZ_OPTIONS = [
+  { label: 'Sydney / Melbourne (AEST/AEDT)', value: 'Australia/Sydney' },
+  { label: 'Brisbane (AEST, no DST)',         value: 'Australia/Brisbane' },
+  { label: 'Adelaide (ACST/ACDT)',            value: 'Australia/Adelaide' },
+  { label: 'Perth (AWST)',                    value: 'Australia/Perth' },
+  { label: 'Auckland (NZST/NZDT)',            value: 'Pacific/Auckland' },
+  { label: 'Singapore / Kuala Lumpur (SGT)',  value: 'Asia/Singapore' },
+  { label: 'Tokyo (JST)',                     value: 'Asia/Tokyo' },
+  { label: 'London (GMT/BST)',                value: 'Europe/London' },
+  { label: 'New York (EST/EDT)',              value: 'America/New_York' },
+  { label: 'Los Angeles (PST/PDT)',           value: 'America/Los_Angeles' },
+  { label: 'UTC',                             value: 'UTC' },
+]
+let selectedTz = 'Australia/Sydney'
+
+function initTzSelect(elId) {
+  const sel = document.getElementById(elId)
+  if (!sel) return
+  sel.innerHTML = TZ_OPTIONS.map(o =>
+    `<option value="${o.value}"${o.value === selectedTz ? ' selected' : ''}>${o.label}</option>`
+  ).join('')
+}
+
+// Convert a Sydney date+hour to a UTC Date object, DST-aware
+function sydneyToDate(dateStr, sydneyHour) {
+  // Start with UTC+10 (AEST base)
+  const d = new Date(`${dateStr}T${String(sydneyHour).padStart(2,'0')}:00:00+10:00`)
+  // Check actual Sydney hour at this UTC moment (handles AEDT = UTC+11)
+  const actual = parseInt(new Intl.DateTimeFormat('en', {
+    timeZone: 'Australia/Sydney', hour: 'numeric', hour12: false
+  }).format(d))
+  // Adjust if DST shifted the hour
+  return actual === sydneyHour ? d : new Date(d.getTime() + (sydneyHour - actual) * 3600000)
+}
+
+// Format a UTC Date in the selected timezone
+function fmtTimeTz(date, tz) {
+  return new Intl.DateTimeFormat('en-AU', {
+    timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true
+  }).format(date).toLowerCase().replace(' ', '')
+}
+
+// Format a slot (Sydney hour) for display in selectedTz
+function slotLabel(dateStr, sydneyHour) {
+  if (selectedTz === 'Australia/Sydney') {
+    const h = sydneyHour
+    const ampm = h >= 12 ? 'pm' : 'am'
+    const h12 = h > 12 ? h - 12 : h === 0 ? 12 : h
+    return `${h12}:00${ampm}`
+  }
+  return fmtTimeTz(sydneyToDate(dateStr, sydneyHour), selectedTz)
+}
+
 // Hourly rates — slider values are scaled by session duration
 const TIERS = {
   sustaining:  { min: 150, max: 250, default: 200 },
@@ -518,15 +577,29 @@ async function selectDate(ds, el) {
     slotsDiv.innerHTML = '<div class="loading-slots">No availability on this date.</div>'
     return
   }
-  slotsDiv.innerHTML = slots.map(s => `
-    <div class="time-slot" data-time="${s.hour}:00" data-label="${s.label}" onclick="selectTime(this,'${s.hour}:00','${s.label}')">${s.label}</div>
-  `).join('')
+  renderSlots(slots, ds)
 }
 
-function selectTime(el, t, label) {
+let _lastSlots = [], _lastSlotDate = null
+function renderSlots(slots, dateStr) {
+  _lastSlots = slots; _lastSlotDate = dateStr
+  const slotsDiv = document.getElementById('time-slots')
+  slotsDiv.innerHTML = slots.map(s => {
+    const label = slotLabel(dateStr, s.hour)
+    return `<div class="time-slot" data-hour="${s.hour}" data-time="${s.hour}:00" onclick="selectTime(this,'${s.hour}:00')">${label}</div>`
+  }).join('')
+}
+
+function onTzChange() {
+  selectedTz = document.getElementById('tz-select').value
+  if (_lastSlots.length && _lastSlotDate) renderSlots(_lastSlots, _lastSlotDate)
+}
+
+function selectTime(el, t) {
   document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'))
   el.classList.add('selected')
-  B.time = t; B.timeLabel = label
+  B.time = t // Always Sydney time stored server-side
+  B.timeLabel = el.textContent
   document.getElementById('btn-s3').disabled = false
 }
 
@@ -576,8 +649,9 @@ function renderSummary() {
   const displayTotal = isPlan ? fullTotal : discountedTotal
 
   document.getElementById('sum-session').textContent = B.sessionName
-  document.getElementById('sum-date').textContent = new Date(B.date).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})
-  document.getElementById('sum-time').textContent = B.timeLabel + ' AEST'
+  document.getElementById('sum-date').textContent = new Date(B.date + 'T00:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})
+  const tzAbbr = selectedTz === 'Australia/Sydney' ? 'AEST/AEDT' : selectedTz
+  document.getElementById('sum-time').textContent = B.timeLabel + ' (' + tzAbbr + ')'
   document.getElementById('sum-rate').textContent = `$${B.amountPerSession} / session (${tierLabel[B.tier]})`
   document.getElementById('sum-sessions').textContent = B.sessionsTotal === 1 ? '1 session' : `${B.sessionsTotal} sessions`
   document.getElementById('sum-total-label').textContent = isPlan ? 'First payment' : 'Total (incl. 10% discount)'
@@ -693,6 +767,7 @@ function showSuccess() {
 // ── Init ────────────────────────────────────────────────────────
 initTierUI()
 loadSessionTypes()
+initTzSelect('tz-select')
 initCalendar()
 updatePackageTotals()
 </script>
