@@ -591,6 +591,7 @@ body{font-family:var(--sans);background:var(--surface);color:var(--ink);font-siz
         <option value="cancelled">Cancelled</option>
         <option value="no_show">No show</option>
       </select>
+      <button class="btn btn-primary btn-sm" onclick="openBookForClient()">+ Book for client</button>
     </div>
   </div>
   <div style="padding:2rem">
@@ -601,6 +602,60 @@ body{font-family:var(--sans);background:var(--surface);color:var(--ink);font-siz
           <tr><td colspan="9" style="text-align:center;color:var(--soft)">Loading…</td></tr>
         </tbody>
       </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOOK FOR CLIENT MODAL ═══ -->
+<div id="bfc-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;overflow-y:auto;padding:2rem 1rem">
+  <div style="background:#fff;border-radius:12px;max-width:520px;margin:0 auto;padding:2rem;position:relative">
+    <button onclick="closeBookForClient()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:#999">×</button>
+    <h3 style="font-family:var(--serif);font-style:italic;font-size:1.2rem;margin-bottom:.25rem">Book for client</h3>
+    <p style="font-size:.8rem;color:var(--soft);margin-bottom:1.5rem">Schedule a session and send them a confirmation with the Google Meet link.</p>
+
+    <div id="bfc-step1">
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Client name</label>
+        <input id="bfc-name" type="text" placeholder="Full name" style="width:100%;padding:.6rem .8rem;border:1.5px solid #e4e3df;border-radius:7px;font-size:.88rem">
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Client email</label>
+        <input id="bfc-email" type="email" placeholder="client@email.com" style="width:100%;padding:.6rem .8rem;border:1.5px solid #e4e3df;border-radius:7px;font-size:.88rem">
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Session type</label>
+        <select id="bfc-session-type" style="width:100%;padding:.6rem .8rem;border:1.5px solid #e4e3df;border-radius:7px;font-size:.88rem">
+          <option value="">Loading…</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+        <div>
+          <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Date</label>
+          <input id="bfc-date" type="date" style="width:100%;padding:.6rem .8rem;border:1.5px solid #e4e3df;border-radius:7px;font-size:.88rem" onchange="loadBfcSlots()">
+        </div>
+        <div>
+          <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Time</label>
+          <select id="bfc-time" style="width:100%;padding:.6rem .8rem;border:1.5px solid #e4e3df;border-radius:7px;font-size:.88rem">
+            <option value="">Pick a date first</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-bottom:1.25rem">
+        <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Notes <span style="font-weight:300;color:var(--soft)">(optional)</span></label>
+        <input id="bfc-notes" type="text" placeholder="Any context for this session…" style="width:100%;padding:.6rem .8rem;border:1.5px solid #e4e3df;border-radius:7px;font-size:.88rem">
+      </div>
+      <div id="bfc-error" style="color:#e53e3e;font-size:.8rem;margin-bottom:.75rem;display:none"></div>
+      <div style="display:flex;gap:.75rem">
+        <button class="btn btn-primary" onclick="submitBookForClient()" id="bfc-submit-btn">Confirm &amp; send confirmation</button>
+        <button class="btn btn-ghost" onclick="closeBookForClient()">Cancel</button>
+      </div>
+    </div>
+
+    <div id="bfc-success" style="display:none;text-align:center;padding:1rem 0">
+      <div style="font-size:2rem;margin-bottom:.75rem">✓</div>
+      <h4 style="font-family:var(--serif);font-style:italic;margin-bottom:.5rem">Booked & confirmation sent</h4>
+      <p style="font-size:.83rem;color:var(--soft)">A confirmation email with the Google Meet link has been sent to the client.</p>
+      <button class="btn btn-primary" style="margin-top:1.25rem" onclick="closeBookForClient()">Done</button>
     </div>
   </div>
 </div>
@@ -1771,6 +1826,96 @@ document.addEventListener('DOMContentLoaded', () => {
     initAdmin();
   }
 });
+
+// ═══ BOOK FOR CLIENT ═══
+async function openBookForClient() {
+  document.getElementById('bfc-overlay').style.display = 'block'
+  document.getElementById('bfc-success').style.display = 'none'
+  document.getElementById('bfc-step1').style.display = 'block'
+  document.getElementById('bfc-error').style.display = 'none'
+
+  // Set min date to today
+  const today = new Date().toISOString().split('T')[0]
+  document.getElementById('bfc-date').min = today
+
+  // Load session types
+  try {
+    const r = await apiFetch('/api/session-types')
+    const { sessionTypes } = await r.json()
+    const paid = (sessionTypes || []).filter(s => !s.is_free)
+    const sel = document.getElementById('bfc-session-type')
+    sel.innerHTML = paid.map(s =>
+      `<option value="${s.id}" data-dur="${s.duration_mins}">${s.name} (${s.duration_mins} min)</option>`
+    ).join('')
+  } catch(e) {}
+}
+
+function closeBookForClient() {
+  document.getElementById('bfc-overlay').style.display = 'none'
+}
+
+async function loadBfcSlots() {
+  const date = document.getElementById('bfc-date').value
+  if (!date) return
+  const timeEl = document.getElementById('bfc-time')
+  timeEl.innerHTML = '<option value="">Loading…</option>'
+  try {
+    const r = await fetch('/api/availability?date=' + date)
+    const { slots } = await r.json()
+    if (!slots || slots.length === 0) {
+      timeEl.innerHTML = '<option value="">No availability this day</option>'
+      return
+    }
+    timeEl.innerHTML = slots.map(s =>
+      `<option value="${s.hour}:00">${s.label}</option>`
+    ).join('')
+  } catch(e) {
+    timeEl.innerHTML = '<option value="">Could not load times</option>'
+  }
+}
+
+async function submitBookForClient() {
+  const name = document.getElementById('bfc-name').value.trim()
+  const email = document.getElementById('bfc-email').value.trim()
+  const sessionTypeId = document.getElementById('bfc-session-type').value
+  const date = document.getElementById('bfc-date').value
+  const time = document.getElementById('bfc-time').value
+  const notes = document.getElementById('bfc-notes').value.trim()
+  const errEl = document.getElementById('bfc-error')
+  errEl.style.display = 'none'
+
+  if (!name || !email || !sessionTypeId || !date || !time) {
+    errEl.textContent = 'Please fill in all required fields.'
+    errEl.style.display = 'block'
+    return
+  }
+
+  const selEl = document.getElementById('bfc-session-type')
+  const selectedOpt = selEl.options[selEl.selectedIndex]
+  const sessionName = selectedOpt.text.replace(/\s*\(\d+ min\)/, '')
+  const durationMins = parseInt(selectedOpt.dataset.dur) || 60
+
+  const btn = document.getElementById('bfc-submit-btn')
+  btn.disabled = true; btn.textContent = 'Booking…'
+
+  try {
+    const res = await fetch('/api/bookings/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clientName: name, clientEmail: email, sessionTypeId, sessionName, durationMins, date, time, notes })
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data.error || 'Booking failed')
+    document.getElementById('bfc-step1').style.display = 'none'
+    document.getElementById('bfc-success').style.display = 'block'
+    loadBookings()
+  } catch(e) {
+    errEl.textContent = e.message
+    errEl.style.display = 'block'
+  } finally {
+    btn.disabled = false; btn.textContent = 'Confirm & send confirmation'
+  }
+}
 </script>
 </body>
 </html>

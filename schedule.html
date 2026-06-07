@@ -225,7 +225,22 @@ function selectSession(el, id, name, dur) {
 // ── Calendar ─────────────────────────────────────────────────────
 let calYear = new Date().getFullYear()
 let calMonth = new Date().getMonth()
-let availData = {}
+// weeklyTemplate: set of day-of-week numbers that have any availability
+let weeklyDows = new Set()
+
+async function loadWeeklyTemplate() {
+  try {
+    const r = await fetch(`${API_BASE}/api/admin/availability`)
+    if (r.ok) {
+      const { availability } = await r.json()
+      weeklyDows = new Set(
+        Object.entries(availability)
+          .filter(([, hours]) => hours.length > 0)
+          .map(([dow]) => parseInt(dow))
+      )
+    }
+  } catch(e) { weeklyDows = new Set([1,2,3,4,5]) }
+}
 
 async function renderCal() {
   document.getElementById('cal-month').textContent = `${MONTHS[calMonth]} ${calYear}`
@@ -233,25 +248,17 @@ async function renderCal() {
   const firstDay = new Date(calYear, calMonth, 1).getDay()
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate()
 
-  // Fetch availability for this month
-  const from = `${calYear}-${String(calMonth+1).padStart(2,'0')}-01`
-  const toDate = new Date(calYear, calMonth + 1, 0)
-  const to = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(toDate.getDate()).padStart(2,'0')}`
-  try {
-    const r = await fetch(`${API_BASE}/api/availability?from=${from}&to=${to}`)
-    if (r.ok) availData = (await r.json()).available || {}
-  } catch(e) { availData = {} }
-
   let html = ''
   for (let i = 0; i < firstDay; i++) html += '<div class="cal-day empty"></div>'
   for (let d = 1; d <= daysInMonth; d++) {
     const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
     const date = new Date(calYear, calMonth, d)
+    const dow = date.getDay()
     const isPast = date < today
-    const hasSlots = availData[dateStr] && availData[dateStr].length > 0
+    const likelyHasSlots = weeklyDows.has(dow)
     let cls = 'cal-day'
     if (isPast) cls += ' past'
-    else if (hasSlots) cls += ' available'
+    else if (likelyHasSlots) cls += ' available'
     else cls += ' unavailable'
     if (S.date === dateStr) cls += ' selected'
     html += `<div class="${cls}" onclick="selectDate('${dateStr}')">${d}</div>`
@@ -268,20 +275,27 @@ function nextMonth() {
   renderCal()
 }
 
-function selectDate(dateStr) {
+async function selectDate(dateStr) {
   S.date = dateStr; S.time = null
   document.getElementById('btn-time-next').disabled = true
   renderCal()
-  const slots = availData[dateStr] || []
   const tsEl = document.getElementById('time-slots')
-  tsEl.innerHTML = slots.map(h => {
-    const ampm = h >= 12 ? 'pm' : 'am'
-    const h12 = h > 12 ? h - 12 : (h === 0 ? 12 : h)
-    const label = `${h12}:00 ${ampm}`
-    return `<div class="time-slot" onclick="selectTime(this,'${h}:00')">${label}</div>`
-  }).join('')
-  document.getElementById('time-section').style.display = slots.length ? 'block' : 'none'
-  if (!slots.length) tsEl.innerHTML = '<div class="loading-slots">No times available on this day.</div>'
+  tsEl.innerHTML = '<div class="loading-slots">Loading times…</div>'
+  document.getElementById('time-section').style.display = 'block'
+
+  try {
+    const r = await fetch(`${API_BASE}/api/availability?date=${dateStr}`)
+    const { slots } = await r.json()
+    if (!slots || slots.length === 0) {
+      tsEl.innerHTML = '<div class="loading-slots">No times available on this day.</div>'
+      return
+    }
+    tsEl.innerHTML = slots.map(s =>
+      `<div class="time-slot" onclick="selectTime(this,'${s.hour}:00')">${s.label}</div>`
+    ).join('')
+  } catch(e) {
+    tsEl.innerHTML = '<div class="loading-slots">Could not load times. Please try again.</div>'
+  }
 }
 
 function selectTime(el, time) {
@@ -367,7 +381,7 @@ async function confirmBooking() {
 
 // ── Init ─────────────────────────────────────────────────────────
 loadSessionTypes()
-renderCal()
+loadWeeklyTemplate().then(renderCal)
 </script>
 </body>
 </html>
