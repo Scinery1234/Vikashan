@@ -211,17 +211,17 @@
       <div id="recur-section" style="display:none;margin-top:1.25rem;padding:1rem;background:var(--clay-pale);border-radius:8px">
         <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.2rem">Schedule all sessions now?</label>
         <p style="font-size:.75rem;color:var(--ink-soft);margin-bottom:.75rem">Or leave blank and schedule remaining sessions with Vik after your first appointment.</p>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
-          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.4rem;margin-bottom:.75rem">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer;white-space:nowrap">
             <input type="radio" name="recur" value="none" checked onchange="updateRecur()"> Schedule later
           </label>
-          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer;white-space:nowrap">
             <input type="radio" name="recur" value="weekly" onchange="updateRecur()"> Weekly
           </label>
-          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer;white-space:nowrap">
             <input type="radio" name="recur" value="fortnightly" onchange="updateRecur()"> Fortnightly
           </label>
-          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer;white-space:nowrap">
             <input type="radio" name="recur" value="monthly" onchange="updateRecur()"> Monthly
           </label>
         </div>
