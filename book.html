@@ -307,43 +307,66 @@
 const API_BASE = ''
 
 // ── Timezone ────────────────────────────────────────────────────
-const TZ_PINNED = [
-  'Australia/Sydney','Australia/Melbourne','Australia/Brisbane',
-  'Australia/Adelaide','Australia/Perth','Pacific/Auckland',
-  'Asia/Kolkata','Asia/Singapore','Asia/Kuala_Lumpur','Asia/Tokyo',
-  'Asia/Dubai','Asia/Hong_Kong','Asia/Bangkok',
-  'Europe/London','Europe/Paris','Europe/Berlin',
-  'America/New_York','America/Chicago','America/Denver','America/Los_Angeles',
-  'Pacific/Honolulu','UTC',
+const TZ_LIST = [
+  { g: 'Australia & NZ', zones: [
+    { l: 'Sydney / Melbourne (AEST/AEDT)',  v: 'Australia/Sydney' },
+    { l: 'Brisbane (AEST, no DST)',          v: 'Australia/Brisbane' },
+    { l: 'Adelaide (ACST/ACDT)',             v: 'Australia/Adelaide' },
+    { l: 'Perth (AWST)',                     v: 'Australia/Perth' },
+    { l: 'Darwin (ACST)',                    v: 'Australia/Darwin' },
+    { l: 'Auckland (NZST/NZDT)',             v: 'Pacific/Auckland' },
+  ]},
+  { g: 'Asia & Pacific', zones: [
+    { l: 'Mumbai / Delhi / Kolkata (IST)',   v: 'Asia/Kolkata' },
+    { l: 'Singapore / Kuala Lumpur (SGT)',   v: 'Asia/Singapore' },
+    { l: 'Hong Kong (HKT)',                  v: 'Asia/Hong_Kong' },
+    { l: 'Tokyo (JST)',                      v: 'Asia/Tokyo' },
+    { l: 'Bangkok (ICT)',                    v: 'Asia/Bangkok' },
+    { l: 'Jakarta (WIB)',                    v: 'Asia/Jakarta' },
+    { l: 'Dubai (GST)',                      v: 'Asia/Dubai' },
+    { l: 'Karachi (PKT)',                    v: 'Asia/Karachi' },
+    { l: 'Dhaka (BST)',                      v: 'Asia/Dhaka' },
+    { l: 'Colombo (SLST)',                   v: 'Asia/Colombo' },
+    { l: 'Manila (PHT)',                     v: 'Asia/Manila' },
+    { l: 'Seoul (KST)',                      v: 'Asia/Seoul' },
+    { l: 'Taipei (CST)',                     v: 'Asia/Taipei' },
+    { l: 'Honolulu (HST)',                   v: 'Pacific/Honolulu' },
+    { l: 'Fiji (FJT)',                       v: 'Pacific/Fiji' },
+  ]},
+  { g: 'Europe & Africa', zones: [
+    { l: 'London (GMT/BST)',                 v: 'Europe/London' },
+    { l: 'Paris / Berlin / Rome (CET/CEST)', v: 'Europe/Paris' },
+    { l: 'Athens / Helsinki (EET/EEST)',     v: 'Europe/Athens' },
+    { l: 'Moscow (MSK)',                     v: 'Europe/Moscow' },
+    { l: 'Nairobi (EAT)',                    v: 'Africa/Nairobi' },
+    { l: 'Lagos / Accra (WAT/GMT)',          v: 'Africa/Lagos' },
+    { l: 'Johannesburg (SAST)',              v: 'Africa/Johannesburg' },
+    { l: 'Cairo (EET)',                      v: 'Africa/Cairo' },
+  ]},
+  { g: 'Americas', zones: [
+    { l: 'New York / Toronto (EST/EDT)',     v: 'America/New_York' },
+    { l: 'Chicago (CST/CDT)',                v: 'America/Chicago' },
+    { l: 'Denver (MST/MDT)',                 v: 'America/Denver' },
+    { l: 'Los Angeles / Vancouver (PST/PDT)',v: 'America/Los_Angeles' },
+    { l: 'Phoenix (MST, no DST)',            v: 'America/Phoenix' },
+    { l: 'Anchorage (AKST/AKDT)',            v: 'America/Anchorage' },
+    { l: 'São Paulo (BRT/BRST)',             v: 'America/Sao_Paulo' },
+    { l: 'Mexico City (CST/CDT)',            v: 'America/Mexico_City' },
+  ]},
+  { g: 'Other', zones: [
+    { l: 'UTC',                              v: 'UTC' },
+  ]},
 ]
 let selectedTz = 'Australia/Sydney'
-
-function tzLabel(tz) {
-  try {
-    const now = new Date()
-    const offset = new Intl.DateTimeFormat('en', {
-      timeZone: tz, timeZoneName: 'shortOffset'
-    }).formatToParts(now).find(p => p.type === 'timeZoneName')?.value || ''
-    return `${tz.replace(/_/g,' ')} (${offset})`
-  } catch { return tz }
-}
 
 function initTzSelect(elId) {
   const sel = document.getElementById(elId)
   if (!sel) return
-  // All IANA timezones supported by the browser
-  const all = Intl.supportedValuesOf ? Intl.supportedValuesOf('timeZone') : []
-  const rest = all.filter(z => !TZ_PINNED.includes(z))
-
-  let html = '<optgroup label="— Common —">'
-  html += TZ_PINNED.map(z => `<option value="${z}"${z===selectedTz?' selected':''}>${tzLabel(z)}</option>`).join('')
-  html += '</optgroup>'
-  if (rest.length) {
-    html += '<optgroup label="— All timezones —">'
-    html += rest.map(z => `<option value="${z}"${z===selectedTz?' selected':''}>${tzLabel(z)}</option>`).join('')
-    html += '</optgroup>'
-  }
-  sel.innerHTML = html
+  sel.innerHTML = TZ_LIST.map(g =>
+    `<optgroup label="${g.g}">${g.zones.map(z =>
+      `<option value="${z.v}"${z.v===selectedTz?' selected':''}>${z.l}</option>`
+    ).join('')}</optgroup>`
+  ).join('')
 }
 
 // Convert a Sydney date+hour to a UTC Date object, DST-aware
