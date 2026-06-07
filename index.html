@@ -1302,28 +1302,47 @@ async function loadSessionTypes() {
 // ADMIN (inline editing — localStorage is fine for content/settings)
 // ================================================================
 let adminMode = false;
-const CONTENT_KEY = 'vik_content';
 const SETTINGS_KEY = 'vik_settings';
 
-function loadContent() {
+async function loadContent() {
   try {
-    const d = JSON.parse(localStorage.getItem(CONTENT_KEY) || '{}');
-    document.querySelectorAll('[data-edit]').forEach(el => {
-      const k = el.dataset.edit;
-      if (d[k] !== undefined) el.innerHTML = d[k];
-    });
+    const res = await fetch('/api/content');
+    if (res.ok) {
+      const { content } = await res.json();
+      document.querySelectorAll('[data-edit]').forEach(el => {
+        const k = el.dataset.edit;
+        if (content[k] !== undefined) el.innerHTML = content[k];
+      });
+      loadSettings(content);
+      return;
+    }
   } catch(e) {}
-  loadSettings();
+  loadSettings({});
 }
 
-function saveAll() {
-  const d = {};
+async function saveAll() {
+  const token = sessionStorage.getItem('admin_token');
+  if (!token) return;
+  const content = {};
   document.querySelectorAll('[data-edit]').forEach(el => {
-    d[el.dataset.edit] = el.innerHTML;
+    content[el.dataset.edit] = el.innerHTML;
   });
-  localStorage.setItem(CONTENT_KEY, JSON.stringify(d));
   const btn = document.querySelector('.save-btn');
-  btn.textContent = '✓ Saved!';
+  btn.textContent = 'Saving…';
+  try {
+    const res = await fetch('/api/content', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ content })
+    });
+    if (res.ok) {
+      btn.textContent = '✓ Saved!';
+    } else {
+      btn.textContent = '✗ Error';
+    }
+  } catch(e) {
+    btn.textContent = '✗ Error';
+  }
   setTimeout(() => btn.textContent = 'Save Changes', 2000);
 }
 
@@ -1357,26 +1376,35 @@ function exitAdmin() {
   document.querySelectorAll('[data-edit]').forEach(el => el.contentEditable = 'false');
 }
 
-function loadSettings() {
-  try {
-    const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
-    if (s.stdMin) { document.getElementById('s-std-min').value = s.stdMin; updatePriceDisplay(); }
-    if (s.stdMax) { document.getElementById('s-std-max').value = s.stdMax; updatePriceDisplay(); }
-    if (s.susMin) { document.getElementById('s-sus-min').value = s.susMin; updatePriceDisplay(); }
-    if (s.susMax) { document.getElementById('s-sus-max').value = s.susMax; updatePriceDisplay(); }
-    if (s.email) {
-      document.getElementById('s-email').value = s.email;
-      document.querySelectorAll('[data-edit=contact-email]').forEach(el => el.textContent = s.email);
-      document.getElementById('f-email').href = 'mailto:' + s.email;
-      document.getElementById('f-email').textContent = s.email;
-    }
-    if (s.location) document.querySelectorAll('[data-edit=contact-loc]').forEach(el => el.textContent = s.location);
-    if (s.ig) document.getElementById('f-ig').href = s.ig;
-    if (s.li) document.getElementById('f-li').href = s.li;
-  } catch(e) {}
+function applySettings(s) {
+  if (s.stdMin) { document.getElementById('s-std-min').value = s.stdMin; updatePriceDisplay(); }
+  if (s.stdMax) { document.getElementById('s-std-max').value = s.stdMax; updatePriceDisplay(); }
+  if (s.susMin) { document.getElementById('s-sus-min').value = s.susMin; updatePriceDisplay(); }
+  if (s.susMax) { document.getElementById('s-sus-max').value = s.susMax; updatePriceDisplay(); }
+  if (s.email) {
+    document.getElementById('s-email').value = s.email;
+    document.querySelectorAll('[data-edit=contact-email]').forEach(el => el.textContent = s.email);
+    document.getElementById('f-email').href = 'mailto:' + s.email;
+    document.getElementById('f-email').textContent = s.email;
+  }
+  if (s.location) document.querySelectorAll('[data-edit=contact-loc]').forEach(el => el.textContent = s.location);
+  if (s.ig) document.getElementById('f-ig').href = s.ig;
+  if (s.li) document.getElementById('f-li').href = s.li;
 }
 
-function saveSettings() {
+function loadSettings(contentFromAPI) {
+  // contentFromAPI is passed from loadContent after API fetch
+  if (contentFromAPI) {
+    const s = {};
+    for (const [k, v] of Object.entries(contentFromAPI)) {
+      if (k.startsWith('_setting_')) s[k.replace('_setting_', '')] = v;
+    }
+    applySettings(s);
+  }
+}
+
+async function saveSettings() {
+  const token = sessionStorage.getItem('admin_token');
   const s = {
     stdMin: document.getElementById('s-std-min').value,
     stdMax: document.getElementById('s-std-max').value,
@@ -1387,7 +1415,16 @@ function saveSettings() {
     ig: document.getElementById('s-ig').value,
     li: document.getElementById('s-li').value,
   };
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+  // Save settings as special keys in site_content
+  const content = {};
+  for (const [k, v] of Object.entries(s)) content['_setting_' + k] = v;
+  if (token) {
+    await fetch('/api/content', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ content })
+    });
+  }
   updatePriceDisplay();
   loadSettings();
   closeSettings();
