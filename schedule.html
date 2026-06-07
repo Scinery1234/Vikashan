@@ -129,10 +129,10 @@
       <div id="recur-section" style="display:none;margin-top:1.25rem;padding:1rem;background:var(--clay-pale);border-radius:8px">
         <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.75rem">Repeat this session?</label>
         <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
-          <label class="recur-pill"><input type="radio" name="recur" value="none" checked onchange="updateRecur()"> One-off</label>
-          <label class="recur-pill"><input type="radio" name="recur" value="weekly" onchange="updateRecur()"> Weekly</label>
-          <label class="recur-pill"><input type="radio" name="recur" value="fortnightly" onchange="updateRecur()"> Fortnightly</label>
-          <label class="recur-pill"><input type="radio" name="recur" value="monthly" onchange="updateRecur()"> Monthly</label>
+          <label class="recur-pill" onclick="setTimeout(updateRecur,0)"><input type="radio" name="recur" value="none" checked> One-off</label>
+          <label class="recur-pill" onclick="setTimeout(updateRecur,0)"><input type="radio" name="recur" value="weekly"> Weekly</label>
+          <label class="recur-pill" onclick="setTimeout(updateRecur,0)"><input type="radio" name="recur" value="fortnightly"> Fortnightly</label>
+          <label class="recur-pill" onclick="setTimeout(updateRecur,0)"><input type="radio" name="recur" value="monthly"> Monthly</label>
         </div>
         <div id="recur-count-wrap" style="display:none">
           <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Number of sessions (including this one)</label>
