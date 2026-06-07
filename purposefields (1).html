@@ -1197,7 +1197,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       <div class="field"><label style="display:flex;align-items:center;gap:.5rem;font-weight:400;cursor:pointer"><input type="checkbox" id="b-mailopt" checked style="accent-color:var(--clay);width:auto"> Add me to the Vikashan mailing list</label></div>
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="goStep(1)">← Back</button>
-        <button class="btn btn-primary" onclick="goStep(3)">Continue →</button>
+        <button class="btn btn-primary" onclick="validateStep2AndContinue()">Continue →</button>
       </div>
     </div>
 
@@ -1542,6 +1542,24 @@ function selectTime(hour, label, el) {
   btn.disabled = false; btn.style.opacity = '1';
 }
 
+function validateStep2AndContinue() {
+  const fname = document.getElementById('b-fname').value.trim();
+  const email = document.getElementById('b-email').value.trim();
+  if (!fname) {
+    document.getElementById('b-fname').focus();
+    document.getElementById('b-fname').style.borderColor = 'var(--red)';
+    return;
+  }
+  if (!email || !email.includes('@')) {
+    document.getElementById('b-email').focus();
+    document.getElementById('b-email').style.borderColor = 'var(--red)';
+    return;
+  }
+  document.getElementById('b-fname').style.borderColor = '';
+  document.getElementById('b-email').style.borderColor = '';
+  goStep(3);
+}
+
 function goStep(n) {
   for(let i=1;i<=4;i++) { const p=document.getElementById('step'+i); if(p) p.classList.remove('active'); }
   const done=document.getElementById('step-done'); if(done) done.classList.remove('active');
@@ -1585,6 +1603,10 @@ function buildConfirm() {
 async function submitBooking() {
   if (!B.date || !B.timeStr || !B.fname || !B.email) {
     alert('Please fill in all required fields.');
+    return;
+  }
+  if (!discoveryCallId) {
+    alert('Unable to connect to the booking system. Please refresh the page and try again, or email Vik directly.');
     return;
   }
 
