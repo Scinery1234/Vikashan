@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vikashan — Booking & Admin System</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --clay:#C4724E;--clay-pale:#FBF0EA;
+  --sage:#7A9B72;--sage-pale:#EDF2EC;
+  --ink:#141414;--mid:#4A4A4A;--soft:#888;
+  --border:#E4E3DF;--surface:#F7F6F3;--white:#fff;
+  --green:#22863a;--green-bg:#eafbea;
+  --amber:#b45309;--amber-bg:#fffbeb;
+  --red:#dc2626;--red-bg:#fef2f2;
+  --blue:#1d4ed8;--blue-bg:#eff6ff;
+  --sans:'Inter',system-ui,sans-serif;
+  --serif:'Playfair Display',serif;
+}
+body{font-family:var(--sans);background:var(--surface);color:var(--ink);font-size:14px;line-height:1.5}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar{background:var(--ink);position:fixed;top:0;left:0;bottom:0;width:220px;display:flex;flex-direction:column;overflow-y:auto}
+.sidebar-brand{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid rgba(255,255,255,.08)}
+.sidebar-brand .name{font-family:var(--serif);font-style:italic;font-size:1.15rem;color:#fff}
+.sidebar-brand .role{font-size:.7rem;color:rgba(255,255,255,.35);margin-top:.15rem}
+.sidebar-status{margin:.75rem 1.25rem;padding:.5rem .75rem;background:rgba(122,155,114,.15);border:1px solid rgba(122,155,114,.3);border-radius:5px;display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:rgba(255,255,255,.6)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;flex-shrink:0}
+.nav-group{padding:.35rem 0}
+.nav-label{font-size:.62rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.2);padding:.5rem 1.25rem .25rem}
+.nav-item{display:flex;align-items:center;gap:.65rem;padding:.55rem 1.25rem;font-size:.8rem;color:rgba(255,255,255,.5);cursor:pointer;transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{color:rgba(255,255,255,.85);background:rgba(255,255,255,.04)}
+.nav-item.active{color:#fff;border-left-color:var(--clay);background:rgba(196,114,78,.1)}
+.nav-item svg{width:15px;height:15px;flex-shrink:0;opacity:.7}
+.nav-item.active svg{opacity:1}
+.sidebar-footer{margin-top:auto;padding:1rem 1.25rem;border-top:1px solid rgba(255,255,255,.08);font-size:.72rem;color:rgba(255,255,255,.25)}
+.sidebar-footer a{color:rgba(255,255,255,.35);text-decoration:none}
+.sidebar-footer a:hover{color:var(--clay)}
+
+/* MAIN */
+.main{margin-left:220px;min-height:100vh}
+.topbar{background:var(--white);border-bottom:1px solid var(--border);padding:.85rem 2rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.topbar-title{font-size:.95rem;font-weight:600;color:var(--ink)}
+.topbar-actions{display:flex;gap:.6rem;align-items:center}
+.btn{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;border-radius:5px;font-family:var(--sans);font-size:.78rem;font-weight:500;cursor:pointer;transition:all .15s;border:none;text-decoration:none}
+.btn-primary{background:var(--clay);color:#fff}
+.btn-primary:hover{background:#b5623f}
+.btn-ghost{background:transparent;color:var(--mid);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--clay);color:var(--clay)}
+.btn-sm{padding:.32rem .75rem;font-size:.73rem}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid #fecaca}
+.btn-success{background:var(--green-bg);color:var(--green);border:1px solid #bbf7d0}
+.page{display:none;padding:2rem;max-width:1100px}
+.page.active{display:block}
+
+/* CARDS */
+.card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:1.5rem}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.card-head h3{font-size:.88rem;font-weight:600;color:var(--ink)}
+.card-sub{font-size:.78rem;color:var(--soft);margin-top:.15rem}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat-card{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:1.25rem}
+.stat-label{font-size:.72rem;font-weight:500;color:var(--soft);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.stat-value{font-size:1.7rem;font-weight:700;color:var(--ink);line-height:1;margin-bottom:.3rem}
+.stat-change{font-size:.72rem}
+.stat-change.up{color:var(--green)}
+.stat-change.down{color:var(--red)}
+
+/* TABLE */
+.table{width:100%;border-collapse:collapse}
+.table th{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--soft);padding:.6rem .85rem;border-bottom:2px solid var(--border);text-align:left;background:var(--surface)}
+.table td{padding:.7rem .85rem;border-bottom:1px solid var(--border);font-size:.8rem;color:var(--mid);vertical-align:middle}
+.table tr:last-child td{border-bottom:none}
+.table tr:hover td{background:var(--surface)}
+.table td:first-child{color:var(--ink);font-weight:500}
+.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem;font-weight:600;padding:.2rem .6rem;border-radius:3px;letter-spacing:.04em}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-amber{background:var(--amber-bg);color:var(--amber)}
+.badge-red{background:var(--red-bg);color:var(--red)}
+.badge-blue{background:var(--blue-bg);color:var(--blue)}
+.badge-gray{background:var(--surface);color:var(--soft);border:1px solid var(--border)}
+
+/* FORMS */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.form-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.form-grid.cols1{grid-template-columns:1fr}
+.field{display:flex;flex-direction:column;gap:.35rem}
+.field label{font-size:.73rem;font-weight:500;color:var(--ink)}
+.field input,.field select,.field textarea{padding:.6rem .85rem;border:1.5px solid var(--border);border-radius:5px;font-family:var(--sans);font-size:.83rem;color:var(--ink);background:var(--white);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--clay)}
+.field textarea{resize:vertical;min-height:100px;line-height:1.65}
+.field-hint{font-size:.7rem;color:var(--soft);margin-top:.15rem}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:.75rem 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info h4{font-size:.82rem;font-weight:500;color:var(--ink)}
+.toggle-info p{font-size:.73rem;color:var(--soft);margin-top:.1rem}
+.toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:var(--border);border-radius:20px;cursor:pointer;transition:.2s}
+.toggle-slider::before{content:'';position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:var(--clay)}
+.toggle input:checked+.toggle-slider::before{transform:translateX(16px)}
+
+/* EMAIL TEMPLATE EDITOR */
+.email-preview{background:#f0f0f0;border-radius:8px;padding:1.5rem;margin-top:1rem}
+.email-preview-inner{background:#fff;border-radius:6px;max-width:580px;margin:0 auto;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.08)}
+.email-header{background:var(--ink);padding:1.25rem 1.5rem;display:flex;align-items:center;gap:.6rem}
+.email-header .logo-dot{width:10px;height:10px;border-radius:50%;background:var(--clay)}
+.email-header span{font-family:var(--serif);font-style:italic;font-size:1rem;color:#fff}
+.email-body{padding:1.75rem 1.5rem}
+.email-body h2{font-family:var(--serif);font-size:1.3rem;font-weight:400;color:var(--ink);margin-bottom:.75rem}
+.email-body p{font-size:.84rem;color:#555;line-height:1.75;margin-bottom:.75rem}
+.email-detail-box{background:var(--surface);border-radius:5px;padding:1rem;margin:1rem 0}
+.email-detail-row{display:flex;justify-content:space-between;padding:.3rem 0;font-size:.8rem;border-bottom:1px solid var(--border)}
+.email-detail-row:last-child{border-bottom:none}
+.email-detail-row span:first-child{color:var(--soft)}
+.email-detail-row span:last-child{font-weight:600;color:var(--ink)}
+.email-cta-btn{display:block;text-align:center;background:var(--clay);color:#fff;padding:.75rem 1.5rem;border-radius:5px;text-decoration:none;font-size:.85rem;font-weight:600;margin:1.25rem 0}
+.email-footer-bar{background:var(--surface);padding:1rem 1.5rem;font-size:.72rem;color:var(--soft);text-align:center;border-top:1px solid var(--border)}
+.token{display:inline-block;background:var(--clay-pale);color:var(--clay);font-size:.68rem;font-weight:600;padding:.1rem .4rem;border-radius:3px;font-family:monospace;cursor:default;border:1px solid rgba(196,114,78,.2)}
+
+/* SETUP GUIDE */
+.setup-step{display:flex;gap:1rem;margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border)}
+.setup-step:last-child{border-bottom:none;margin-bottom:0;padding-bottom:0}
+.step-num{width:28px;height:28px;border-radius:50%;background:var(--clay);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;margin-top:.1rem}
+.step-body h4{font-size:.85rem;font-weight:600;color:var(--ink);margin-bottom:.35rem}
+.step-body p{font-size:.79rem;color:var(--soft);line-height:1.7;margin-bottom:.5rem}
+.code-block{background:var(--ink);color:#e2e8f0;border-radius:5px;padding:.75rem 1rem;font-family:monospace;font-size:.75rem;line-height:1.7;overflow-x:auto;margin:.5rem 0}
+.code-block .comment{color:#6b7280}
+.code-block .key{color:#93c5fd}
+.code-block .val{color:#86efac}
+.code-block .str{color:#fca5a5}
+.tag-green{background:var(--green-bg);color:var(--green);font-size:.68rem;font-weight:600;padding:.15rem .5rem;border-radius:3px;display:inline-block}
+.tag-amber{background:var(--amber-bg);color:var(--amber);font-size:.68rem;font-weight:600;padding:.15rem .5rem;border-radius:3px;display:inline-block}
+
+/* VIDEO COMPARE */
+.video-compare{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1rem}
+.vc-card{border:1px solid var(--border);border-radius:8px;padding:1.25rem;position:relative}
+.vc-card.recommended{border-color:var(--sage);border-width:2px}
+.vc-badge{position:absolute;top:-9px;left:1rem;background:var(--sage);color:#fff;font-size:.65rem;font-weight:700;padding:.15rem .6rem;border-radius:3px;letter-spacing:.06em;text-transform:uppercase}
+.vc-card h4{font-size:.85rem;font-weight:600;color:var(--ink);margin-bottom:.6rem}
+.vc-card .price{font-size:1.1rem;font-weight:700;color:var(--ink);margin-bottom:.75rem}
+.vc-card .price span{font-size:.75rem;color:var(--soft);font-weight:400}
+.vc-row{display:flex;align-items:flex-start;gap:.4rem;margin-bottom:.35rem;font-size:.76rem;color:var(--mid)}
+.vc-row .tick{color:var(--green);flex-shrink:0;font-size:.8rem}
+.vc-row .cross{color:var(--red);flex-shrink:0;font-size:.8rem}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1.5rem}
+.tab{padding:.6rem 1rem;font-size:.8rem;font-weight:500;color:var(--soft);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab.active{color:var(--clay);border-bottom-color:var(--clay)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* INTEGRATIONS */
+.integration-row{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;border-bottom:1px solid var(--border)}
+.integration-row:last-child{border-bottom:none}
+.integration-info{display:flex;align-items:center;gap:.85rem}
+.integration-logo{width:36px;height:36px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;background:var(--surface);border:1px solid var(--border);font-weight:700;font-size:.7rem;color:var(--mid)}
+.integration-name{font-size:.84rem;font-weight:600;color:var(--ink)}
+.integration-desc{font-size:.73rem;color:var(--soft)}
+.connected-pill{font-size:.68rem;font-weight:600;padding:.2rem .6rem;border-radius:3px;background:var(--green-bg);color:var(--green)}
+.disconnected-pill{font-size:.68rem;font-weight:600;padding:.2rem .6rem;border-radius:3px;background:var(--surface);color:var(--soft);border:1px solid var(--border)}
+
+/* MAILING LIST */
+.ml-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-bottom:1.5rem}
+.ml-stat{background:var(--white);border:1px solid var(--border);border-radius:8px;padding:1rem 1.25rem}
+.flow-diagram{display:flex;align-items:center;gap:0;flex-wrap:wrap}
+.flow-node{background:var(--white);border:1px solid var(--border);border-radius:6px;padding:.75rem 1rem;font-size:.75rem;text-align:center;min-width:110px}
+.flow-node .f-icon{font-size:1.2rem;margin-bottom:.25rem}
+.flow-node .f-label{font-weight:600;color:var(--ink);display:block;font-size:.73rem}
+.flow-node .f-sub{color:var(--soft);display:block;font-size:.68rem;margin-top:.1rem}
+.flow-arrow{color:var(--border);font-size:1rem;padding:0 .35rem;font-weight:700}
+.flow-node.trigger{border-color:var(--clay);background:var(--clay-pale)}
+.flow-node.action{border-color:var(--sage);background:var(--sage-pale)}
+
+/* ================================================================
+   MOBILE RESPONSIVE — Admin Panel
+   ================================================================ */
+
+/* Mobile sidebar overlay backdrop */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  z-index: 99;
+}
+.sidebar-backdrop.open { display: block; }
+
+/* Hamburger button */
+.topbar-hamburger {
+  display: none;
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: .35rem .5rem;
+  cursor: pointer;
+  flex-direction: column;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+}
+.topbar-hamburger span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--ink);
+  border-radius: 2px;
+  transition: all .2s;
+}
+
+/* ---- TABLET (≤900px) ---- */
+@media (max-width: 900px) {
+  .layout { grid-template-columns: 1fr; }
+
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    z-index: 100;
+    width: 260px;
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .main { margin-left: 0; }
+
+  .topbar-hamburger { display: flex; }
+
+  /* Stats: 2 col on tablet */
+  .stats-row { grid-template-columns: 1fr 1fr; }
+
+  /* Dashboard grid: single col */
+  .main > .page > div > div[style*="grid-template-columns:1.4fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Email template: single col */
+  .main > #page-emails > div > div[style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Video compare: 1 col */
+  .video-compare { grid-template-columns: 1fr; }
+
+  /* Form grids */
+  .form-grid { grid-template-columns: 1fr !important; }
+  .form-grid.cols3 { grid-template-columns: 1fr !important; }
+
+  /* ML stats */
+  .ml-stats { grid-template-columns: 1fr 1fr; }
+
+  /* Flow diagram: wrap */
+  .flow-diagram { gap: .25rem; flex-wrap: wrap; }
+  .flow-node { min-width: 90px; }
+  .flow-arrow { font-size: .8rem; padding: 0 .15rem; }
+
+  /* Tables: horizontal scroll */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .table { min-width: 520px; }
+
+  /* Topbar */
+  .topbar { padding: .75rem 1rem; gap: .5rem; }
+  .topbar-title { font-size: .88rem; }
+  .topbar-actions { flex-wrap: wrap; gap: .4rem; }
+
+  /* Pages padding */
+  .page > div { padding: 1.25rem !important; }
+
+  /* Session cards */
+  .card { padding: 1.1rem; }
+}
+
+/* ---- MOBILE (≤600px) ---- */
+@media (max-width: 600px) {
+  /* Stats: single col */
+  .stats-row { grid-template-columns: 1fr; gap: .65rem; }
+  .stat-value { font-size: 1.4rem; }
+
+  /* ML stats: single col */
+  .ml-stats { grid-template-columns: 1fr; }
+
+  /* Tabs: scroll */
+  .tabs { overflow-x: auto; white-space: nowrap; padding-bottom: 1px; }
+  .tab { font-size: .73rem; padding: .5rem .75rem; flex-shrink: 0; }
+
+  /* Email preview: hide on small */
+  .email-preview { display: none; }
+
+  /* Topbar: tighter */
+  .topbar { flex-wrap: wrap; }
+  .topbar-actions .btn { font-size: .7rem; padding: .3rem .65rem; }
+
+  /* Card head: stack */
+  .card-head { flex-direction: column; align-items: flex-start; gap: .5rem; }
+
+  /* Setup steps */
+  .setup-step { flex-direction: column; gap: .65rem; }
+  .step-num { width: 24px; height: 24px; font-size: .7rem; }
+
+  /* Code blocks */
+  .code-block { font-size: .68rem; padding: .6rem .75rem; }
+
+  /* Sidebar wider on mobile */
+  .sidebar { width: 85vw; max-width: 300px; }
+
+  /* Token list wrap */
+  div[style*="blue-bg"] { line-height: 1.9; }
+
+  /* Video compare padding */
+  .vc-card { padding: 1rem; }
+
+  /* Integration rows: stack */
+  .integration-row { flex-direction: column; align-items: flex-start; gap: .65rem; }
+  .integration-row > div:last-child { padding-left: calc(36px + .85rem); }
+
+  /* Toggle rows */
+  .toggle-row { gap: .75rem; }
+  .toggle-info h4 { font-size: .78rem; }
+  .toggle-info p { font-size: .68rem; }
+
+  /* Table: card style on very small */
+  .table thead { display: none; }
+  .table tr { display: block; border: 1px solid var(--border); border-radius: 6px; margin-bottom: .65rem; padding: .75rem; }
+  .table tr:hover td { background: transparent; }
+  .table td { display: block; border-bottom: none; padding: .2rem 0; font-size: .78rem; }
+  .table td:first-child { font-size: .82rem; margin-bottom: .25rem; }
+  .table td:before { content: attr(data-label); font-size: .65rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--soft); display: block; margin-bottom: .1rem; }
+
+  /* Page padding */
+  .page > div { padding: 1rem !important; }
+  .page { padding: 0; }
+}
+
+/* ---- VERY SMALL (≤380px) ---- */
+@media (max-width: 380px) {
+  .topbar-title { font-size: .82rem; }
+  .stat-value { font-size: 1.25rem; }
+  .btn-sm { font-size: .68rem; padding: .28rem .55rem; }
+}
+
+
+/* ================================================================
+   CRM STYLES
+   ================================================================ */
+.crm-layout { display: grid; grid-template-columns: 1fr 380px; gap: 0; min-height: calc(100vh - 52px); }
+.crm-list-panel { border-right: 1px solid var(--border); overflow-y: auto; }
+.crm-detail-panel { background: var(--white); overflow-y: auto; position: relative; }
+.crm-detail-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--soft); text-align: center; padding: 2rem; gap: .5rem; }
+.crm-detail-empty .empty-icon { font-size: 2.5rem; opacity: .4; }
+.crm-search-bar { padding: .85rem 1rem; border-bottom: 1px solid var(--border); display: flex; gap: .5rem; align-items: center; background: var(--white); position: sticky; top: 0; z-index: 10; }
+.crm-search-bar input { flex: 1; padding: .45rem .75rem; border: 1.5px solid var(--border); border-radius: 5px; font-family: var(--sans); font-size: .8rem; color: var(--ink); outline: none; background: var(--surface); }
+.crm-search-bar input:focus { border-color: var(--clay); background: var(--white); }
+.crm-filter { padding: .5rem 1rem; border-bottom: 1px solid var(--border); display: flex; gap: .4rem; flex-wrap: wrap; background: var(--surface); }
+.filter-chip { padding: .25rem .7rem; border-radius: 20px; font-size: .7rem; font-weight: 600; cursor: pointer; border: 1.5px solid var(--border); background: var(--white); color: var(--soft); transition: all .15s; }
+.filter-chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.filter-chip:hover:not(.active) { border-color: var(--clay); color: var(--clay); }
+.client-row { display: flex; align-items: center; gap: .85rem; padding: .85rem 1rem; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s; }
+.client-row:hover { background: var(--surface); }
+.client-row.active { background: var(--clay-pale); border-left: 2px solid var(--clay); }
+.client-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .78rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.client-row-info { flex: 1; min-width: 0; }
+.client-row-name { font-size: .84rem; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.client-row-sub { font-size: .72rem; color: var(--soft); margin-top: .05rem; }
+.client-row-meta { display: flex; flex-direction: column; align-items: flex-end; gap: .2rem; flex-shrink: 0; }
+.client-row-meta .sessions { font-size: .7rem; color: var(--soft); }
+.client-row-meta .revenue { font-size: .78rem; font-weight: 600; color: var(--ink); }
+
+/* CLIENT DETAIL */
+.detail-header { padding: 1.25rem 1.25rem .75rem; border-bottom: 1px solid var(--border); }
+.detail-avatar-row { display: flex; align-items: center; gap: .85rem; margin-bottom: .85rem; }
+.detail-avatar { width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 700; color: #fff; flex-shrink: 0; }
+.detail-name { font-size: 1rem; font-weight: 700; color: var(--ink); }
+.detail-sub { font-size: .73rem; color: var(--soft); margin-top: .1rem; }
+.detail-actions { display: flex; gap: .4rem; }
+.detail-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .5rem; padding: .85rem 1.25rem; border-bottom: 1px solid var(--border); background: var(--surface); }
+.d-stat { text-align: center; }
+.d-stat-val { font-size: 1.1rem; font-weight: 700; color: var(--ink); }
+.d-stat-label { font-size: .65rem; color: var(--soft); text-transform: uppercase; letter-spacing: .06em; margin-top: .1rem; }
+.detail-section { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); }
+.detail-section h4 { font-size: .73rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--soft); margin-bottom: .75rem; }
+.detail-field-row { display: flex; justify-content: space-between; align-items: center; padding: .3rem 0; font-size: .79rem; border-bottom: 1px solid var(--surface); }
+.detail-field-row:last-child { border-bottom: none; }
+.detail-field-row span:first-child { color: var(--soft); }
+.detail-field-row span:last-child { font-weight: 500; color: var(--ink); }
+.detail-field-row a { color: var(--clay); text-decoration: none; font-weight: 500; font-size: .79rem; }
+.session-item { padding: .5rem 0; border-bottom: 1px solid var(--surface); font-size: .78rem; display: grid; grid-template-columns: 1fr auto auto; gap: .5rem; align-items: center; }
+.session-item:last-child { border-bottom: none; }
+.session-item-name { font-weight: 500; color: var(--ink); }
+.session-item-date { color: var(--soft); font-size: .72rem; }
+.session-item-amount { font-weight: 600; color: var(--ink); }
+.note-item { padding: .6rem .75rem; background: var(--surface); border-radius: 5px; margin-bottom: .5rem; font-size: .78rem; }
+.note-item .note-text { color: var(--ink); line-height: 1.6; }
+.note-item .note-meta { font-size: .68rem; color: var(--soft); margin-top: .25rem; }
+.note-input-row { display: flex; gap: .4rem; margin-top: .5rem; }
+.note-input-row textarea { flex: 1; padding: .5rem .75rem; border: 1.5px solid var(--border); border-radius: 5px; font-family: var(--sans); font-size: .78rem; color: var(--ink); outline: none; resize: none; min-height: 56px; transition: border-color .15s; }
+.note-input-row textarea:focus { border-color: var(--clay); }
+.tag-row { display: flex; flex-wrap: wrap; gap: .35rem; }
+.client-tag { font-size: .68rem; font-weight: 600; padding: .2rem .6rem; border-radius: 3px; }
+
+/* CRM mobile */
+@media (max-width: 900px) {
+  .crm-layout { grid-template-columns: 1fr; }
+  .crm-detail-panel { display: none; position: fixed; top: 0; right: 0; bottom: 0; width: 92vw; max-width: 420px; z-index: 150; box-shadow: -4px 0 24px rgba(0,0,0,.15); overflow-y: auto; }
+  .crm-detail-panel.open { display: block; }
+  .crm-detail-close { display: flex !important; }
+}
+@media (min-width: 901px) {
+  .crm-detail-close { display: none !important; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="name">Vikashan</div>
+    <div class="role">Admin Panel</div>
+  </div>
+  <div class="sidebar-status"><span class="status-dot"></span>Live — accepting bookings</div>
+  <div class="nav-group">
+    <div class="nav-label">Overview</div>
+    <div class="nav-item active" onclick="showPage('dashboard')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('bookings')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      Bookings
+    </div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Configure</div>
+    <div class="nav-item" onclick="showPage('emails')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+      Email Templates
+    </div>
+    <div class="nav-item" onclick="showPage('sessions')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Session Types
+    </div>
+    <div class="nav-item" onclick="showPage('availability')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14" stroke-width="3"/><line x1="12" y1="14" x2="12" y2="14" stroke-width="3"/><line x1="16" y1="14" x2="16" y2="14" stroke-width="3"/></svg>
+      Availability
+    </div>
+    <div class="nav-item" onclick="showPage('mailing')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Mailing List
+    </div>
+  </div>
+  <div class="nav-group">
+    <div class="nav-label">Setup</div>
+    <div class="nav-item" onclick="showPage('clients')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Clients
+    </div>
+    <div class="nav-item" onclick="showPage('integrations')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      Integrations
+    </div>
+    <div class="nav-item" onclick="showPage('setup')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93l-1.41 1.41M4.93 4.93l1.41 1.41M4.93 19.07l1.41-1.41M19.07 19.07l-1.41-1.41M21 12h-2M3 12H1M12 21v-2M12 3V1"/></svg>
+      Setup Guide
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <div style="margin-bottom:.4rem">Vikashan Admin v1.0</div>
+    <a href="#">View live site →</a>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="page active" id="page-dashboard">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div>
+      <div class="topbar-title">Dashboard</div>
+      <div style="font-size:.72rem;color:var(--soft)">Welcome back, Vik. Here's what's happening.</div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm">Export CSV</button>
+      <button class="btn btn-primary btn-sm">+ Block Time</button>
+    </div>
+  </div>
+  <div style="padding:2rem">
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">This Month Revenue</div>
+        <div class="stat-value">$2,840</div>
+        <div class="stat-change up">↑ 12% vs last month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Sessions Booked</div>
+        <div class="stat-value">18</div>
+        <div class="stat-change up">↑ 3 vs last month</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Discovery Calls</div>
+        <div class="stat-value">6</div>
+        <div class="stat-change">→ 4 pending conversion</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Mailing List</div>
+        <div class="stat-value">142</div>
+        <div class="stat-change up">↑ 8 new this month</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:1.25rem">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h3>Upcoming Sessions</h3>
+            <div class="card-sub">Next 7 days</div>
+          </div>
+          <button class="btn btn-ghost btn-sm">View all</button>
+        </div>
+        <div class="table-wrap"><table class="table">
+          <thead><tr><th>Client</th><th>Service</th><th>Date & Time</th><th>Rate</th><th>Status</th><th></th></tr></thead>
+          <tbody>
+            <tr><td data-label="Client">Priya M.</td><td data-label="Service">Career Coaching</td><td data-label="Date">Mon 9 Jun, 10:00am</td><td data-label="Rate">$150</td><td data-label="Status"><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-ghost btn-sm">View</button></td></tr>
+            <tr><td data-label="Client">James T.</td><td data-label="Service">Discovery Call</td><td data-label="Date">Mon 9 Jun, 2:00pm</td><td data-label="Rate">Free</td><td data-label="Status"><span class="badge badge-blue">Scheduled</span></td><td><button class="btn btn-ghost btn-sm">View</button></td></tr>
+            <tr><td data-label="Client">Anika R.</td><td data-label="Service">Psychotherapy</td><td data-label="Date">Wed 11 Jun, 11:00am</td><td data-label="Rate">$120</td><td data-label="Status"><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-ghost btn-sm">View</button></td></tr>
+            <tr><td data-label="Client">Daniel K.</td><td data-label="Service">Wellbeing Coaching</td><td data-label="Date">Thu 12 Jun, 3:00pm</td><td data-label="Rate">$95</td><td data-label="Status"><span class="badge badge-amber">Awaiting payment</span></td><td><button class="btn btn-ghost btn-sm">View</button></td></tr>
+            <tr><td data-label="Client">Sasha W.</td><td data-label="Service">Career Coaching</td><td data-label="Date">Fri 13 Jun, 10:00am</td><td data-label="Rate">$180</td><td data-label="Status"><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-ghost btn-sm">View</button></td></tr>
+          </tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Email Activity</h3></div>
+        <div class="table-wrap"><table class="table">
+          <thead><tr><th>Email Type</th><th>Sent</th><th>Open Rate</th></tr></thead>
+          <tbody>
+            <tr><td>Booking Confirmation</td><td>18</td><td>94%</td></tr>
+            <tr><td>24hr Reminder</td><td>15</td><td>88%</td></tr>
+            <tr><td>1hr Reminder</td><td>15</td><td>76%</td></tr>
+            <tr><td>Post-Session Follow-up</td><td>12</td><td>61%</td></tr>
+            <tr><td>Newsletter</td><td>142</td><td>43%</td></tr>
+          </tbody>
+        </table></div>
+        <div style="margin-top:1rem;padding:.75rem;background:var(--green-bg);border-radius:5px;font-size:.75rem;color:var(--green)">✓ 0 bounces · 0 unsubscribes this month</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BOOKINGS ═══ -->
+<div class="page" id="page-bookings">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div><div class="topbar-title">Bookings</div><div style="font-size:.72rem;color:var(--soft)">All sessions and discovery calls</div></div>
+    <div class="topbar-actions">
+      <select class="btn btn-ghost btn-sm" style="cursor:pointer"><option>All types</option><option>Career Coaching</option><option>Psychotherapy</option><option>Discovery Call</option><option>Wellbeing Coaching</option></select>
+      <select class="btn btn-ghost btn-sm" style="cursor:pointer"><option>All status</option><option>Confirmed</option><option>Pending</option><option>Cancelled</option></select>
+    </div>
+  </div>
+  <div style="padding:2rem">
+    <div class="card">
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Client</th><th>Service</th><th>Date & Time</th><th>Duration</th><th>Rate</th><th>Payment</th><th>Meet Link</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Priya M.</td><td>Career Coaching</td><td>Mon 9 Jun, 10:00am</td><td>60 min</td><td>$150</td><td><span class="badge badge-green">Paid</span></td><td><a href="#" style="color:var(--clay);text-decoration:none;font-size:.73rem">Open Meet →</a></td><td><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-ghost btn-sm">•••</button></td></tr>
+          <tr><td>James T.</td><td>Discovery Call</td><td>Mon 9 Jun, 2:00pm</td><td>20 min</td><td>Free</td><td><span class="badge badge-gray">N/A</span></td><td><a href="#" style="color:var(--clay);text-decoration:none;font-size:.73rem">Open Meet →</a></td><td><span class="badge badge-blue">Scheduled</span></td><td><button class="btn btn-ghost btn-sm">•••</button></td></tr>
+          <tr><td>Anika R.</td><td>Psychotherapy</td><td>Wed 11 Jun, 11:00am</td><td>60 min</td><td>$120</td><td><span class="badge badge-green">Paid</span></td><td><a href="#" style="color:var(--clay);text-decoration:none;font-size:.73rem">Open Meet →</a></td><td><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-ghost btn-sm">•••</button></td></tr>
+          <tr><td>Daniel K.</td><td>Wellbeing Coaching</td><td>Thu 12 Jun, 3:00pm</td><td>90 min</td><td>$95</td><td><span class="badge badge-amber">Pending</span></td><td><a href="#" style="color:var(--clay);text-decoration:none;font-size:.73rem">Open Meet →</a></td><td><span class="badge badge-amber">Awaiting payment</span></td><td><button class="btn btn-ghost btn-sm">•••</button></td></tr>
+          <tr><td>Sasha W.</td><td>Career Coaching</td><td>Fri 13 Jun, 10:00am</td><td>60 min</td><td>$180</td><td><span class="badge badge-green">Paid</span></td><td><a href="#" style="color:var(--clay);text-decoration:none;font-size:.73rem">Open Meet →</a></td><td><span class="badge badge-green">Confirmed</span></td><td><button class="btn btn-ghost btn-sm">•••</button></td></tr>
+          <tr style="opacity:.5"><td>Maya S.</td><td>Career Coaching</td><td>Tue 3 Jun, 10:00am</td><td>60 min</td><td>$165</td><td><span class="badge badge-green">Paid</span></td><td>—</td><td><span class="badge badge-gray">Completed</span></td><td><button class="btn btn-ghost btn-sm">•••</button></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ EMAIL TEMPLATES ═══ -->
+<div class="page" id="page-emails">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div><div class="topbar-title">Email Templates</div><div style="font-size:.72rem;color:var(--soft)">Edit and preview all automated emails</div></div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm" onclick="sendTestEmail()">Send Test Email</button>
+      <button class="btn btn-primary btn-sm" onclick="saveEmails()">Save All Templates</button>
+    </div>
+  </div>
+  <div style="padding:2rem">
+    <div style="margin-bottom:1rem;padding:.75rem 1rem;background:var(--blue-bg);border:1px solid #bfdbfe;border-radius:6px;font-size:.78rem;color:var(--blue)">
+      <strong>Available tokens:</strong> &nbsp;
+      <span class="token">{{client_name}}</span>&nbsp;
+      <span class="token">{{session_type}}</span>&nbsp;
+      <span class="token">{{date}}</span>&nbsp;
+      <span class="token">{{time}}</span>&nbsp;
+      <span class="token">{{duration}}</span>&nbsp;
+      <span class="token">{{meet_link}}</span>&nbsp;
+      <span class="token">{{amount}}</span>&nbsp;
+      <span class="token">{{reschedule_link}}</span>&nbsp;
+      <span class="token">{{cancel_link}}</span>
+    </div>
+    <div class="tabs">
+      <div class="tab active" onclick="switchEmailTab('confirm')">📩 Confirmation</div>
+      <div class="tab" onclick="switchEmailTab('remind24')">⏰ 24hr Reminder</div>
+      <div class="tab" onclick="switchEmailTab('remind1')">🔔 1hr Reminder</div>
+      <div class="tab" onclick="switchEmailTab('followup')">🌱 Post-Session</div>
+    </div>
+
+    <div class="tab-panel active" id="etab-confirm">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+        <div>
+          <div class="card">
+            <div class="card-head"><h3>Confirmation Email</h3><span class="badge badge-green">Sends immediately on booking</span></div>
+            <div style="display:flex;flex-direction:column;gap:1rem">
+              <div class="field"><label>Subject line</label><input type="text" value="Your session is confirmed ✓ — {{date}} at {{time}}"></div>
+              <div class="field"><label>Pre-header text</label><input type="text" value="See you on {{date}}. Here's everything you need."></div>
+              <div class="field"><label>Opening</label><textarea style="min-height:80px">Hi {{client_name}},
+
+Your session is confirmed. Here are the details:</textarea></div>
+              <div class="field"><label>Body text</label><textarea>Looking forward to our conversation. If you have anything you'd like me to know before we begin, feel free to reply to this email.
+
+If you need to reschedule or cancel, you can do so using the links below — please give at least 24 hours' notice where possible.</textarea></div>
+              <div class="field"><label>CTA Button text</label><input type="text" value="Join your session"></div>
+              <div class="field"><label>Closing note</label><input type="text" value="See you then, Vik"></div>
+              <div class="toggle-row">
+                <div class="toggle-info"><h4>Include reschedule link</h4><p>Clients can reschedule directly from the email</p></div>
+                <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><h4>Include cancel link</h4><p>Shows cancellation policy inline</p></div>
+                <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+              <div class="toggle-row">
+                <div class="toggle-info"><h4>Add to mailing list on booking</h4><p>Only if client opted in during booking</p></div>
+                <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="card-head" style="margin-bottom:.75rem"><h3>Live Preview</h3></div>
+          <div class="email-preview">
+            <div class="email-preview-inner">
+              <div class="email-header"><div class="logo-dot"></div><span>Vikashan</span></div>
+              <div class="email-body">
+                <h2>Your session is confirmed ✓</h2>
+                <p>Hi <strong>Priya</strong>,<br>Your session is confirmed. Here are the details:</p>
+                <div class="email-detail-box">
+                  <div class="email-detail-row"><span>Session</span><span>Career Coaching</span></div>
+                  <div class="email-detail-row"><span>Date</span><span>Monday, 9 June 2025</span></div>
+                  <div class="email-detail-row"><span>Time</span><span>10:00am AEST</span></div>
+                  <div class="email-detail-row"><span>Duration</span><span>60 minutes</span></div>
+                  <div class="email-detail-row"><span>Amount paid</span><span>$150</span></div>
+                </div>
+                <a class="email-cta-btn">Join your session</a>
+                <p style="font-size:.78rem">Looking forward to our conversation. Reply to this email if there's anything you'd like me to know beforehand.</p>
+                <p style="font-size:.75rem;color:#999">Need to reschedule? <a href="#" style="color:var(--clay)">Click here</a> &nbsp;·&nbsp; <a href="#" style="color:#999">Cancel</a></p>
+              </div>
+              <div class="email-footer-bar">Vikashan · Career Coaching & Holistic Wellbeing · Online<br><a href="#" style="color:var(--soft)">Unsubscribe</a> · <a href="#" style="color:var(--soft)">Privacy Policy</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="etab-remind24">
+      <div class="card">
+        <div class="card-head"><h3>24-Hour Reminder</h3><span class="badge badge-amber">Sends 24hrs before session</span></div>
+        <div class="form-grid">
+          <div class="field"><label>Subject line</label><input type="text" value="Reminder: your session tomorrow at {{time}}"></div>
+          <div class="field"><label>Send timing</label><select><option>24 hours before</option><option>48 hours before</option><option>Custom</option></select></div>
+          <div class="field form-grid cols1"><label>Body text</label><textarea>Hi {{client_name}},
+
+Just a reminder that your {{session_type}} session is tomorrow at {{time}} AEST.
+
+Your video link: {{meet_link}}
+
+No need to download anything — just click the link when it's time. See you then.</textarea></div>
+          <div class="field"><label>Include prep note?</label><textarea style="min-height:60px">If there's anything specific you'd like to focus on, feel free to make a note and bring it along.</textarea></div>
+        </div>
+        <div style="margin-top:1rem;display:flex;gap:.65rem">
+          <div class="toggle-row" style="flex:1"><div class="toggle-info"><h4>Include Meet link</h4></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+          <div class="toggle-row" style="flex:1"><div class="toggle-info"><h4>Include reschedule link</h4></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="etab-remind1">
+      <div class="card">
+        <div class="card-head"><h3>1-Hour Reminder</h3><span class="badge badge-amber">Sends 1hr before session</span></div>
+        <div class="form-grid">
+          <div class="field"><label>Subject line</label><input type="text" value="Your session starts in 1 hour — join link inside"></div>
+          <div class="field"><label>Send timing</label><select><option>1 hour before</option><option>30 minutes before</option><option>2 hours before</option></select></div>
+          <div class="field form-grid cols1"><label>Body text</label><textarea>Hi {{client_name}},
+
+Your {{session_type}} with Vik starts in one hour at {{time}} AEST.
+
+👉 {{meet_link}}
+
+See you soon.</textarea></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="etab-followup">
+      <div class="card">
+        <div class="card-head"><h3>Post-Session Follow-up</h3><span class="badge badge-blue">Sends 2hrs after session end</span></div>
+        <div class="form-grid">
+          <div class="field"><label>Subject line</label><input type="text" value="Good to see you, {{client_name}} — what's next"></div>
+          <div class="field"><label>Send timing</label><select><option>2 hours after</option><option>Same evening</option><option>Next morning</option></select></div>
+          <div class="field form-grid cols1"><label>Body text</label><textarea>Hi {{client_name}},
+
+It was good to connect today. I hope the session was useful.
+
+If anything came up after we spoke, or if you want to continue the conversation, reply to this email — I'm here.
+
+When you're ready to book your next session, you can do so here.</textarea></div>
+          <div class="field"><label>CTA button</label><input type="text" value="Book your next session"></div>
+          <div class="toggle-row">
+            <div class="toggle-info"><h4>Invite to mailing list (if not already subscribed)</h4><p>Sends a single invite, never repeats</p></div>
+            <label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SESSION TYPES ═══ -->
+<div class="page" id="page-sessions">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div><div class="topbar-title">Session Types</div></div>
+    <div class="topbar-actions"><button class="btn btn-primary btn-sm">+ Add session type</button></div>
+  </div>
+  <div style="padding:2rem">
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-head"><div><h3>Free Discovery Call</h3><div class="card-sub">Entry point — no payment required</div></div><div style="display:flex;gap:.5rem;align-items:center"><span class="badge badge-green">Active</span><button class="btn btn-ghost btn-sm">Edit</button></div></div>
+      <div class="form-grid">
+        <div class="field"><label>Duration</label><select><option>20 minutes</option></select></div>
+        <div class="field"><label>Price</label><input type="text" value="Free"></div>
+        <div class="field"><label>Buffer after</label><select><option>15 minutes</option><option>30 minutes</option></select></div>
+        <div class="field"><label>Max per day</label><input type="number" value="3"></div>
+        <div class="field form-grid cols1"><label>Description (shown on booking page)</label><textarea style="min-height:60px">A 20-minute conversation to understand where you are and whether working together makes sense. No obligation.</textarea></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-head"><div><h3>Career Coaching (60 min)</h3><div class="card-sub">Primary service — sliding scale</div></div><div style="display:flex;gap:.5rem;align-items:center"><span class="badge badge-green">Active</span><button class="btn btn-ghost btn-sm">Edit</button></div></div>
+      <div class="form-grid">
+        <div class="field"><label>Duration</label><select><option>60 minutes</option></select></div>
+        <div class="field"><label>Price range</label><input type="text" value="$75–$220 (sliding scale)"></div>
+        <div class="field"><label>Min (Accessible Rate)</label><input type="number" value="75"></div>
+        <div class="field"><label>Max (Full Rate)</label><input type="number" value="220"></div>
+        <div class="field"><label>Buffer after</label><select><option>15 minutes</option><option>30 minutes</option></select></div>
+        <div class="field"><label>Max per day</label><input type="number" value="5"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div><h3>Extended Session (90 min)</h3><div class="card-sub">For deeper therapeutic or coaching work</div></div><div style="display:flex;gap:.5rem;align-items:center"><span class="badge badge-green">Active</span><button class="btn btn-ghost btn-sm">Edit</button></div></div>
+      <div class="form-grid">
+        <div class="field"><label>Duration</label><select><option>90 minutes</option></select></div>
+        <div class="field"><label>Price range</label><input type="text" value="$110–$330 (sliding scale)"></div>
+        <div class="field"><label>Buffer after</label><select><option>30 minutes</option></select></div>
+        <div class="field"><label>Max per day</label><input type="number" value="3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AVAILABILITY (placeholder) ═══ -->
+<div class="page" id="page-availability">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button><div><div class="topbar-title">Availability</div></div></div>
+  <div style="padding:2rem">
+    <div class="card"><div class="card-head"><h3>Weekly Template</h3><div class="card-sub">Set your default available hours. Changes take effect immediately.</div></div>
+    <p style="font-size:.83rem;color:var(--soft);margin-bottom:1.5rem">This mirrors the availability tool on the main site. Changes here update what clients can book in real time.</p>
+    <div id="avail-grid-placeholder" style="display:grid;grid-template-columns:repeat(7,1fr);gap:.5rem">
+    </div>
+    <div style="margin-top:1.5rem;display:flex;gap:1rem;flex-wrap:wrap">
+      <div class="toggle-row" style="flex:1;min-width:200px"><div class="toggle-info"><h4>Block holiday dates</h4><p>Disable specific calendar dates</p></div><label class="toggle"><input type="checkbox"><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row" style="flex:1;min-width:200px"><div class="toggle-info"><h4>Buffer between sessions</h4><p>15 min gap after every session</p></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row" style="flex:1;min-width:200px"><div class="toggle-info"><h4>Limit bookings per day</h4><p>Max 5 sessions per calendar day</p></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+    </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MAILING LIST ═══ -->
+<div class="page" id="page-mailing">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div><div class="topbar-title">Mailing List</div><div style="font-size:.72rem;color:var(--soft)">142 subscribers</div></div>
+    <div class="topbar-actions"><button class="btn btn-ghost btn-sm">Export CSV</button><button class="btn btn-primary btn-sm">Send newsletter</button></div>
+  </div>
+  <div style="padding:2rem">
+    <div class="ml-stats">
+      <div class="ml-stat"><div class="stat-label">Total Subscribers</div><div class="stat-value">142</div></div>
+      <div class="ml-stat"><div class="stat-label">Added from Bookings</div><div class="stat-value">48</div></div>
+      <div class="ml-stat"><div class="stat-label">Avg Open Rate</div><div class="stat-value">43%</div></div>
+    </div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-head"><h3>Capture Points</h3><div class="card-sub">Where subscribers are added automatically</div></div>
+      <div class="toggle-row"><div class="toggle-info"><h4>Booking form opt-in checkbox</h4><p>Shown during booking — pre-checked by default</p></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><h4>Footer mailing list signup</h4><p>Standalone name + email form on the website</p></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><h4>Post-session follow-up email invite</h4><p>Single invite sent to clients not yet subscribed</p></div><label class="toggle"><input type="checkbox" checked><span class="toggle-slider"></span></label></div>
+    </div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-head"><h3>Automation Flows</h3></div>
+      <p style="font-size:.78rem;color:var(--soft);margin-bottom:1.25rem">What happens automatically when someone subscribes</p>
+      <div class="flow-diagram">
+        <div class="flow-node trigger"><div class="f-icon">✅</div><span class="f-label">Subscribed</span><span class="f-sub">booking or form</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node action"><div class="f-icon">📩</div><span class="f-label">Welcome email</span><span class="f-sub">instant</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node"><div class="f-icon">✉️</div><span class="f-label">Added to list</span><span class="f-sub">in Resend</span></div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node action"><div class="f-icon">🌱</div><span class="f-label">Newsletter</span><span class="f-sub">fortnightly</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Recent Subscribers</h3></div>
+      <div class="table-wrap"><table class="table">
+        <thead><tr><th>Name</th><th>Email</th><th>Source</th><th>Subscribed</th><th></th></tr></thead>
+        <tbody>
+          <tr><td>Priya M.</td><td>priya@email.com</td><td><span class="badge badge-blue">Booking</span></td><td>9 Jun 2025</td><td><button class="btn btn-danger btn-sm">Remove</button></td></tr>
+          <tr><td>Sasha W.</td><td>sasha@email.com</td><td><span class="badge badge-blue">Booking</span></td><td>8 Jun 2025</td><td><button class="btn btn-danger btn-sm">Remove</button></td></tr>
+          <tr><td>Anonymous</td><td>hello@gmail.com</td><td><span class="badge badge-gray">Footer form</span></td><td>7 Jun 2025</td><td><button class="btn btn-danger btn-sm">Remove</button></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ INTEGRATIONS ═══ -->
+<div class="page" id="page-integrations">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button><div><div class="topbar-title">Integrations</div></div></div>
+  <div style="padding:2rem">
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="card-head"><h3>Connected Services</h3></div>
+      <div class="integration-row">
+        <div class="integration-info">
+          <div class="integration-logo" style="background:#635BFF;color:#fff">S</div>
+          <div><div class="integration-name">Stripe</div><div class="integration-desc">Payment processing — sliding scale, card storage, refunds</div></div>
+        </div>
+        <div style="display:flex;gap:.65rem;align-items:center"><span class="disconnected-pill">Not connected</span><button class="btn btn-primary btn-sm">Connect Stripe</button></div>
+      </div>
+      <div class="integration-row">
+        <div class="integration-info">
+          <div class="integration-logo" style="background:#000;color:#fff">R</div>
+          <div><div class="integration-name">Resend</div><div class="integration-desc">Transactional email — confirmations, reminders, follow-ups</div></div>
+        </div>
+        <div style="display:flex;gap:.65rem;align-items:center"><span class="disconnected-pill">Not connected</span><button class="btn btn-primary btn-sm">Add API Key</button></div>
+      </div>
+      <div class="integration-row">
+        <div class="integration-info">
+          <div class="integration-logo" style="background:#1a73e8;color:#fff;font-size:.6rem">Meet</div>
+          <div><div class="integration-name">Google Meet (via Jitsi)</div><div class="integration-desc">Auto-generates unique video links per booking — no client account needed, unlimited duration</div></div>
+        </div>
+        <div style="display:flex;gap:.65rem;align-items:center"><span class="connected-pill">Auto-configured</span><button class="btn btn-ghost btn-sm">Settings</button></div>
+      </div>
+      <div class="integration-row">
+        <div class="integration-info">
+          <div class="integration-logo" style="background:#FF6B35;color:#fff;font-size:.55rem">Kit</div>
+          <div><div class="integration-name">Kit (ConvertKit) — optional</div><div class="integration-desc">Sync mailing list subscribers to a dedicated email marketing platform</div></div>
+        </div>
+        <div style="display:flex;gap:.65rem;align-items:center"><span class="disconnected-pill">Optional</span><button class="btn btn-ghost btn-sm">Connect</button></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Video Call Platform</h3><div class="card-sub">Comparison for your use case (solo, 90-min sessions)</div></div>
+      <div class="video-compare">
+        <div class="vc-card recommended">
+          <div class="vc-badge">Recommended</div>
+          <h4>Jitsi Meet</h4>
+          <div class="price">Free <span>forever</span></div>
+          <div class="vc-row"><span class="tick">✓</span> No time limit (any duration)</div>
+          <div class="vc-row"><span class="tick">✓</span> No client account needed</div>
+          <div class="vc-row"><span class="tick">✓</span> Unique link per session (auto)</div>
+          <div class="vc-row"><span class="tick">✓</span> Works in browser, no download</div>
+          <div class="vc-row"><span class="tick">✓</span> End-to-end encrypted</div>
+          <div class="vc-row"><span class="cross">✗</span> Less well-known brand</div>
+          <div style="margin-top:.75rem;font-size:.71rem;color:var(--soft)">Link format: meet.jit.si/vikashan-[unique-id]</div>
+        </div>
+        <div class="vc-card">
+          <h4>Google Meet</h4>
+          <div class="price">Free <span>with Google account</span></div>
+          <div class="vc-row"><span class="tick">✓</span> No time limit (1-on-1)</div>
+          <div class="vc-row"><span class="tick">✓</span> Client doesn't need account</div>
+          <div class="vc-row"><span class="tick">✓</span> Familiar, trusted brand</div>
+          <div class="vc-row"><span class="tick">✓</span> Works in browser</div>
+          <div class="vc-row"><span class="cross">✗</span> Need Google Calendar API to auto-generate links</div>
+          <div class="vc-row"><span class="cross">✗</span> More API setup required</div>
+        </div>
+        <div class="vc-card">
+          <h4>Zoom (Free)</h4>
+          <div class="price">Free <span>with limits</span></div>
+          <div class="vc-row"><span class="tick">✓</span> Unlimited 1-on-1 calls</div>
+          <div class="vc-row"><span class="tick">✓</span> Most familiar brand</div>
+          <div class="vc-row"><span class="cross">✗</span> Client needs Zoom account</div>
+          <div class="vc-row"><span class="cross">✗</span> Download required (mobile)</div>
+          <div class="vc-row"><span class="cross">✗</span> 40 min limit if 3+ people</div>
+          <div class="vc-row"><span class="cross">✗</span> API requires paid plan for auto-links</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CLIENTS CRM ═══ -->
+<div class="page" id="page-clients" style="padding:0;max-width:100%">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div><div class="topbar-title">Clients</div><div style="font-size:.72rem;color:var(--soft)">6 clients · CRM</div></div>
+    <div class="topbar-actions">
+      <button class="btn btn-ghost btn-sm">Import CSV</button>
+      <button class="btn btn-primary btn-sm">+ Add client</button>
+    </div>
+  </div>
+  <div style="padding:.75rem 1rem;background:var(--amber-bg);border-bottom:1px solid #fde68a;font-size:.75rem;color:var(--amber)">
+    ⚠ <strong>Note:</strong> This CRM is for administrative contact management only. Clinical session notes must be kept in a compliant system (e.g. Halaxy, SimplePractice) under Australian Privacy Principles.
+  </div>
+  <div class="crm-layout">
+    <div class="crm-list-panel">
+      <div class="crm-search-bar">
+        <input type="text" placeholder="Search clients by name, email or service..." oninput="crmSearch(this.value)">
+      </div>
+      <div class="crm-filter">
+        <div class="filter-chip active" id="filter-all" onclick="setCRMFilter('all')">All (6)</div>
+        <div class="filter-chip" id="filter-active" onclick="setCRMFilter('active')">Active (4)</div>
+        <div class="filter-chip" id="filter-lead" onclick="setCRMFilter('lead')">Leads (1)</div>
+        <div class="filter-chip" id="filter-concession" onclick="setCRMFilter('concession')">Concession (1)</div>
+        <div class="filter-chip" id="filter-inactive" onclick="setCRMFilter('inactive')">Inactive (1)</div>
+      </div>
+      <div id="crm-client-list"></div>
+    </div>
+    <div class="crm-detail-panel" id="crm-detail-panel">
+      <div class="crm-detail-empty">
+        <div class="empty-icon">👤</div>
+        <p style="font-size:.82rem;font-weight:500;color:var(--ink)">Select a client</p>
+        <p style="font-size:.75rem">Click any client to view their profile,<br>session history and notes.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETUP GUIDE ═══ -->
+<div class="page" id="page-setup">
+  <div class="topbar">
+    <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button><div><div class="topbar-title">Setup Guide</div><div style="font-size:.72rem;color:var(--soft)">What you need to do — in order</div></div></div>
+  <div style="padding:2rem">
+    <div style="margin-bottom:1.25rem;padding:1rem 1.25rem;background:var(--clay-pale);border:1px solid rgba(196,114,78,.2);border-radius:8px;font-size:.82rem;color:var(--ink)">
+      <strong>Time estimate: ~3 hours total.</strong> Steps 1–3 take about 30 min each. Step 4 (backend deploy) takes 1–2 hours if you're comfortable with code, or hand this document to a developer.
+    </div>
+
+    <div class="card">
+      <div class="setup-step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Create a Stripe account <span class="tag-green">Free</span></h4>
+          <p>Go to <strong>stripe.com</strong> → Sign up → Complete business verification (takes ~10 min, requires ABN and bank account for payouts). Once verified, go to <strong>Developers → API Keys</strong> and copy your <em>Secret Key</em> and <em>Publishable Key</em>.</p>
+          <div class="code-block"><span class="comment"># Your Stripe keys will look like this:</span>
+<span class="key">STRIPE_SECRET_KEY</span>=<span class="str">sk_live_xxxxxxxxxxxxxxxxxxxx</span>
+<span class="key">STRIPE_PUBLISHABLE_KEY</span>=<span class="str">pk_live_xxxxxxxxxxxxxxxxxxxx</span></div>
+          <p>In Stripe, enable <strong>Payment Element</strong> (for card forms) and set up a <strong>Webhook</strong> pointing to your backend URL at <code>/webhooks/stripe</code> — this is how your system knows when a payment succeeds.</p>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Create a Resend account <span class="tag-green">Free — 3,000 emails/month</span></h4>
+          <p>Go to <strong>resend.com</strong> → Sign up → Go to <strong>Domains</strong> → Add <code>vikashan.com.au</code>. Resend will give you 3 DNS records to add to your domain registrar (Namecheap, GoDaddy, etc.). This verifies you own the domain and dramatically improves email deliverability. Paste them in, wait 10 minutes, click Verify.</p>
+          <div class="code-block"><span class="comment"># DNS records to add (example — Resend will give you the exact values):</span>
+<span class="comment"># Type: TXT  Name: resend._domainkey  Value: [from Resend dashboard]</span>
+<span class="comment"># Type: TXT  Name: @                  Value: v=spf1 include:resend.com ~all</span>
+<span class="comment"># Type: TXT  Name: _dmarc              Value: v=DMARC1; p=none;</span></div>
+          <p>Once verified, go to <strong>API Keys</strong> and create a key. Store it in your backend .env file.</p>
+          <div class="code-block"><span class="key">RESEND_API_KEY</span>=<span class="str">re_xxxxxxxxxxxxxxxxxxxx</span>
+<span class="key">FROM_EMAIL</span>=<span class="str">hello@vikashan.com.au</span></div>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Create a Supabase database <span class="tag-green">Free tier</span></h4>
+          <p>Go to <strong>supabase.com</strong> → New project → Copy your <em>Project URL</em> and <em>anon key</em>. This is your database. You'll need three tables: <code>bookings</code>, <code>subscribers</code>, and <code>blocked_times</code>.</p>
+          <div class="code-block"><span class="comment">-- Run this in Supabase SQL Editor:</span>
+<span class="key">CREATE TABLE</span> bookings (
+  id uuid <span class="key">DEFAULT</span> gen_random_uuid() <span class="key">PRIMARY KEY</span>,
+  client_name text, client_email text,
+  session_type text, session_date date,
+  session_time time, duration_mins int,
+  meet_link text, amount_cents int,
+  tier text, stripe_payment_id text,
+  status text <span class="key">DEFAULT</span> <span class="str">'pending'</span>,
+  mailing_opt_in boolean <span class="key">DEFAULT</span> false,
+  notes text, created_at timestamptz <span class="key">DEFAULT</span> now()
+);
+
+<span class="key">CREATE TABLE</span> subscribers (
+  id uuid <span class="key">DEFAULT</span> gen_random_uuid() <span class="key">PRIMARY KEY</span>,
+  name text, email text <span class="key">UNIQUE</span>,
+  source text, subscribed_at timestamptz <span class="key">DEFAULT</span> now()
+);</div>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h4>Deploy the backend to Vercel <span class="tag-green">Free hosting</span></h4>
+          <p>Your backend needs 5 API routes. Deploy these as Vercel serverless functions (Node.js) — no server to manage, free hosting, deploys in seconds from GitHub.</p>
+          <div class="code-block"><span class="comment"># /api/create-booking     POST  — saves booking, generates meet link, charges Stripe</span>
+<span class="comment"># /api/send-confirmation  POST  — fires confirmation email via Resend</span>
+<span class="comment"># /api/send-reminder      POST  — triggered by cron job 24h + 1h before session</span>
+<span class="comment"># /api/webhooks/stripe    POST  — listens for payment.succeeded events</span>
+<span class="comment"># /api/subscribe          POST  — adds email to subscriber list</span></div>
+          <p>The meet link is generated automatically — no external API needed:</p>
+          <div class="code-block"><span class="comment">// Auto-generate a unique Jitsi room link per booking</span>
+<span class="key">const</span> roomId = crypto.randomUUID().substring(<span class="val">0</span>, <span class="val">8</span>);
+<span class="key">const</span> meetLink = <span class="str">`https://meet.jit.si/vikashan-${roomId}`</span>;
+<span class="comment">// e.g. https://meet.jit.si/vikashan-a3f9c12b</span>
+<span class="comment">// Unique per session, works immediately, no API key needed</span></div>
+          <p>Set your environment variables in Vercel dashboard under <strong>Settings → Environment Variables</strong>. Add your Stripe keys, Resend key, and Supabase URL + key.</p>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <h4>Set up reminder cron job <span class="tag-amber">Vercel Cron — free on hobby plan</span></h4>
+          <p>Add a <code>vercel.json</code> file to your project with a cron job that runs every 15 minutes, checks for sessions in 24h or 1h, and fires reminders.</p>
+          <div class="code-block">{
+  <span class="key">"crons"</span>: [{
+    <span class="key">"path"</span>: <span class="str">"/api/send-reminder"</span>,
+    <span class="key">"schedule"</span>: <span class="str">"*/15 * * * *"</span>
+  }]
+}</div>
+          <p>The reminder endpoint queries Supabase for upcoming sessions, checks if a 24h or 1h reminder hasn't been sent yet, and fires the email via Resend. Mark reminders as sent so they don't repeat.</p>
+        </div>
+      </div>
+      <div class="setup-step">
+        <div class="step-num">6</div>
+        <div class="step-body">
+          <h4>Optional: Connect Kit (ConvertKit) for newsletter</h4>
+          <p>If you want a more powerful newsletter tool (sequences, tagging, automation), connect Kit. When someone subscribes (via booking opt-in or footer form), your backend calls the Kit API to add them to your list. <span class="tag-green">Free up to 10,000 subscribers</span></p>
+          <div class="code-block"><span class="comment">// Add subscriber to Kit list</span>
+<span class="key">await</span> fetch(<span class="str">'https://api.kit.com/v4/subscribers'</span>, {
+  method: <span class="str">'POST'</span>,
+  headers: { <span class="str">'Authorization'</span>: <span class="str">`Bearer ${KIT_API_KEY}`</span> },
+  body: JSON.stringify({ email_address: email, first_name: name })
+});</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+  // Update topbar if needed
+  window.scrollTo(0, 0);
+}
+function switchEmailTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('etab-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+function saveEmails() {
+  const btn = event.currentTarget;
+  btn.textContent = '✓ Saved';
+  btn.style.background = '#22863a';
+  setTimeout(() => { btn.textContent = 'Save All Templates'; btn.style.background = ''; }, 2000);
+}
+function sendTestEmail() {
+  alert('Test email sent to hello@vikashan.com.au');
+}
+
+// Mobile sidebar
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  const backdrop = document.getElementById('sidebar-backdrop');
+  sidebar.classList.toggle('open');
+  backdrop.classList.toggle('open');
+}
+function closeSidebar() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebar-backdrop').classList.remove('open');
+}
+// Close sidebar when nav item clicked on mobile
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', function() {
+    if (window.innerWidth <= 900) closeSidebar();
+  });
+});
+
+
+// ================================================================
+// CRM DATA & LOGIC
+// ================================================================
+const CLIENTS = [
+  {
+    id: 1, name: 'Priya Mehta', email: 'priya@email.com', phone: '+61 412 345 678',
+    status: 'active', service: 'Career Coaching', sessions: 8, revenue: 1240,
+    lastSession: '3 Jun 2025', nextSession: '9 Jun 2025',
+    tags: ['active','career'],
+    notes: [
+      { text: 'Strong clarity on values. Exploring nonprofit sector transition. Follow up on LinkedIn strategy.', date: '3 Jun 2025, 11:30am' },
+      { text: 'Initial session — career crossroads after 6 years in corporate. Highly motivated.', date: '14 Apr 2025, 10:15am' }
+    ],
+    sessions_list: [
+      { type: 'Career Coaching', date: '3 Jun 2025', amount: '$165' },
+      { type: 'Career Coaching', date: '19 May 2025', amount: '$150' },
+      { type: 'Career Coaching', date: '5 May 2025', amount: '$150' },
+      { type: 'Career Coaching', date: '14 Apr 2025', amount: '$150' }
+    ],
+    color: '#C4724E', initials: 'PM', intake: true
+  },
+  {
+    id: 2, name: 'James Tran', email: 'james@email.com', phone: '+61 423 456 789',
+    status: 'lead', service: 'Discovery Call', sessions: 1, revenue: 0,
+    lastSession: '9 Jun 2025', nextSession: null,
+    tags: ['lead','new'],
+    notes: [
+      { text: 'Discovery call scheduled 9 Jun 2pm. Works in tech, considering shift to impact sector.', date: '7 Jun 2025, 9:00am' }
+    ],
+    sessions_list: [{ type: 'Discovery Call', date: '9 Jun 2025', amount: 'Free' }],
+    color: '#7A9B72', initials: 'JT', intake: false
+  },
+  {
+    id: 3, name: 'Anika Rao', email: 'anika@email.com', phone: '+61 434 567 890',
+    status: 'active', service: 'Psychotherapy', sessions: 5, revenue: 600,
+    lastSession: '28 May 2025', nextSession: '11 Jun 2025',
+    tags: ['active','wellbeing'],
+    notes: [
+      { text: 'Working through nervous system dysregulation patterns. Good progress with ACT exercises. Continue somatic work.', date: '28 May 2025, 12:15pm' }
+    ],
+    sessions_list: [
+      { type: 'Psychotherapy', date: '28 May 2025', amount: '$120' },
+      { type: 'Psychotherapy', date: '14 May 2025', amount: '$120' },
+      { type: 'Psychotherapy', date: '30 Apr 2025', amount: '$120' }
+    ],
+    color: '#96A8FE', initials: 'AR', intake: true
+  },
+  {
+    id: 4, name: 'Daniel Kim', email: 'daniel@email.com', phone: '+61 445 678 901',
+    status: 'concession', service: 'Wellbeing Coaching', sessions: 3, revenue: 280,
+    lastSession: '2 Jun 2025', nextSession: '12 Jun 2025',
+    tags: ['concession','active'],
+    notes: [
+      { text: 'Concession approved at $95/hr. Recently unemployed, job searching. Resilience work is the priority.', date: '2 Jun 2025, 4:00pm' }
+    ],
+    sessions_list: [
+      { type: 'Wellbeing Coaching', date: '2 Jun 2025', amount: '$95' },
+      { type: 'Wellbeing Coaching', date: '19 May 2025', amount: '$95' },
+      { type: 'Discovery Call', date: '5 May 2025', amount: 'Free' }
+    ],
+    color: '#C779DB', initials: 'DK', intake: true
+  },
+  {
+    id: 5, name: 'Sasha Williams', email: 'sasha@email.com', phone: '+61 456 789 012',
+    status: 'active', service: 'Career Coaching', sessions: 12, revenue: 2160,
+    lastSession: '6 Jun 2025', nextSession: '13 Jun 2025',
+    tags: ['active','career','longterm'],
+    notes: [
+      { text: 'Preparing for senior leadership interviews. Strong momentum. Working on executive presence narrative.', date: '6 Jun 2025, 10:30am' },
+      { text: 'Completed values deep-dive. Clarity is high. Transition from gov to private sector confirmed as goal.', date: '10 Mar 2025, 10:00am' }
+    ],
+    sessions_list: [
+      { type: 'Career Coaching', date: '6 Jun 2025', amount: '$185' },
+      { type: 'Career Coaching', date: '23 May 2025', amount: '$185' },
+      { type: 'Career Coaching', date: '9 May 2025', amount: '$180' },
+      { type: 'Career Coaching', date: '25 Apr 2025', amount: '$175' }
+    ],
+    color: '#D4896A', initials: 'SW', intake: true
+  },
+  {
+    id: 6, name: 'Maya Singh', email: 'maya@email.com', phone: '+61 467 890 123',
+    status: 'inactive', service: 'Career Coaching', sessions: 6, revenue: 990,
+    lastSession: '3 Jun 2025', nextSession: null,
+    tags: ['inactive'],
+    notes: [
+      { text: 'Completed coaching package. Left with a solid plan. Check in at 3 months.', date: '3 Jun 2025, 11:00am' }
+    ],
+    sessions_list: [
+      { type: 'Career Coaching', date: '3 Jun 2025', amount: '$165' },
+      { type: 'Career Coaching', date: '20 May 2025', amount: '$165' },
+      { type: 'Career Coaching', date: '6 May 2025', amount: '$165' }
+    ],
+    color: '#888', initials: 'MS', intake: true
+  }
+];
+
+const STATUS_LABELS = { active: 'Active', lead: 'Lead', inactive: 'Inactive', concession: 'Concession' };
+const STATUS_BADGES = { active: 'badge-green', lead: 'badge-blue', inactive: 'badge-gray', concession: 'badge-amber' };
+const TAG_COLORS = { active: 'badge-green', lead: 'badge-blue', inactive: 'badge-gray', concession: 'badge-amber', career: 'badge-blue', wellbeing: 'badge-green', longterm: 'badge-amber', new: 'badge-gray', default: 'badge-gray' };
+
+let activeFilter = 'all';
+let searchQuery = '';
+let selectedClientId = null;
+
+function renderClientList() {
+  const list = document.getElementById('crm-client-list');
+  if (!list) return;
+  const filtered = CLIENTS.filter(c => {
+    const matchFilter = activeFilter === 'all' || c.status === activeFilter;
+    const matchSearch = !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase()) || c.email.toLowerCase().includes(searchQuery.toLowerCase()) || c.service.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchFilter && matchSearch;
+  });
+  list.innerHTML = filtered.map(c => `
+    <div class="client-row${selectedClientId===c.id?' active':''}" onclick="selectClient(${c.id})">
+      <div class="client-avatar" style="background:${c.color}">${c.initials}</div>
+      <div class="client-row-info">
+        <div class="client-row-name">${c.name}</div>
+        <div class="client-row-sub">${c.service} · <span class="badge ${STATUS_BADGES[c.status]}" style="font-size:.63rem">${STATUS_LABELS[c.status]}</span></div>
+      </div>
+      <div class="client-row-meta">
+        <div class="revenue">${c.revenue > 0 ? '$'+c.revenue.toLocaleString() : 'Free'}</div>
+        <div class="sessions">${c.sessions} session${c.sessions!==1?'s':''}</div>
+      </div>
+    </div>`).join('');
+}
+
+function selectClient(id) {
+  selectedClientId = id;
+  const c = CLIENTS.find(x => x.id === id);
+  if (!c) return;
+  renderClientList();
+  const panel = document.getElementById('crm-detail-panel');
+  if (!c) { panel.innerHTML = '<div class="crm-detail-empty"><div class="empty-icon">👤</div><p>Select a client to view details</p></div>'; return; }
+  const tagBadges = c.tags.map(t => `<span class="client-tag ${TAG_COLORS[t]||'badge-gray'}">${t}</span>`).join('');
+  const sessionRows = c.sessions_list.map(s => `
+    <div class="session-item">
+      <div><div class="session-item-name">${s.type}</div><div class="session-item-date">${s.date}</div></div>
+      <span class="badge ${s.amount==='Free'?'badge-gray':'badge-green'}">${s.amount === 'Free' ? 'Free' : 'Paid'}</span>
+      <div class="session-item-amount">${s.amount}</div>
+    </div>`).join('');
+  const noteItems = c.notes.map(n => `
+    <div class="note-item">
+      <div class="note-text">${n.text}</div>
+      <div class="note-meta">${n.date}</div>
+    </div>`).join('');
+  panel.innerHTML = `
+    <div class="detail-header">
+      <button class="btn btn-ghost btn-sm crm-detail-close" onclick="closeCrmDetail()" style="margin-bottom:.75rem">← Back</button>
+      <div class="detail-avatar-row">
+        <div class="detail-avatar" style="background:${c.color}">${c.initials}</div>
+        <div>
+          <div class="detail-name">${c.name}</div>
+          <div class="detail-sub">${c.email} · ${c.phone}</div>
+          <div style="margin-top:.35rem"><span class="badge ${STATUS_BADGES[c.status]}">${STATUS_LABELS[c.status]}</span>${!c.intake?'&nbsp;<span class="badge badge-amber">No intake form</span>':''}</div>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button class="btn btn-primary btn-sm" onclick="openBooking()">+ Book session</button>
+        <button class="btn btn-ghost btn-sm">Send email</button>
+        <button class="btn btn-ghost btn-sm">Edit</button>
+      </div>
+    </div>
+    <div class="detail-stats">
+      <div class="d-stat"><div class="d-stat-val">${c.sessions}</div><div class="d-stat-label">Sessions</div></div>
+      <div class="d-stat"><div class="d-stat-val">${c.revenue>0?'$'+c.revenue.toLocaleString():'–'}</div><div class="d-stat-label">Revenue</div></div>
+      <div class="d-stat"><div class="d-stat-val">${c.nextSession?'Soon':'–'}</div><div class="d-stat-label">Next session</div></div>
+    </div>
+    <div class="detail-section">
+      <h4>Contact</h4>
+      <div class="detail-field-row"><span>Email</span><a href="mailto:${c.email}">${c.email}</a></div>
+      <div class="detail-field-row"><span>Phone</span><span>${c.phone}</span></div>
+      <div class="detail-field-row"><span>Primary service</span><span>${c.service}</span></div>
+      <div class="detail-field-row"><span>Last session</span><span>${c.lastSession||'–'}</span></div>
+      <div class="detail-field-row"><span>Next session</span><span>${c.nextSession||'None scheduled'}</span></div>
+      <div class="detail-field-row"><span>Intake form</span><span>${c.intake?'<span class="badge badge-green">Signed</span>':'<span class="badge badge-amber">Not sent</span>'}</span></div>
+    </div>
+    <div class="detail-section">
+      <h4>Tags</h4>
+      <div class="tag-row">${tagBadges}</div>
+    </div>
+    <div class="detail-section">
+      <h4>Session History</h4>
+      ${sessionRows}
+    </div>
+    <div class="detail-section">
+      <h4>Practitioner Notes</h4>
+      <p style="font-size:.7rem;color:var(--soft);margin-bottom:.65rem">⚠ Admin notes only — not for clinical session records</p>
+      ${noteItems}
+      <div class="note-input-row">
+        <textarea id="note-input-${c.id}" placeholder="Add a note..."></textarea>
+        <button class="btn btn-primary btn-sm" style="align-self:flex-end" onclick="addNote(${c.id})">Add</button>
+      </div>
+    </div>`;
+  // On mobile, open panel
+  if (window.innerWidth <= 900) panel.classList.add('open');
+}
+
+function closeCrmDetail() {
+  document.getElementById('crm-detail-panel').classList.remove('open');
+  selectedClientId = null;
+  renderClientList();
+}
+
+function addNote(clientId) {
+  const input = document.getElementById('note-input-' + clientId);
+  if (!input || !input.value.trim()) return;
+  const c = CLIENTS.find(x => x.id === clientId);
+  if (!c) return;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-AU', {day:'numeric',month:'short',year:'numeric'}) + ', ' + now.toLocaleTimeString('en-AU', {hour:'2-digit',minute:'2-digit'});
+  c.notes.unshift({ text: input.value.trim(), date: dateStr });
+  selectClient(clientId);
+}
+
+function setCRMFilter(filter) {
+  activeFilter = filter;
+  document.querySelectorAll('.filter-chip').forEach(chip => chip.classList.remove('active'));
+  document.getElementById('filter-' + filter).classList.add('active');
+  renderClientList();
+}
+
+function crmSearch(q) {
+  searchQuery = q;
+  renderClientList();
+}
+
+// Init CRM on load
+document.addEventListener("DOMContentLoaded", renderClientList);
+</script>
+</body>
+</html>
