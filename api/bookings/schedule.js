@@ -9,7 +9,7 @@ export default async function handler(req, res) {
 
   const {
     clientName, clientEmail, sessionTypeId, sessionName,
-    durationMins, date, time, notes, packageId
+    durationMins, date, time, notes, packageId, recurDates
   } = req.body
 
   if (!clientName || !clientEmail || !sessionTypeId || !date || !time) {
@@ -59,7 +59,27 @@ export default async function handler(req, res) {
 
   if (bookingError) return res.status(500).json({ error: 'Failed to create booking' })
 
+  // Create additional recurring bookings if requested
+  const allDates = (recurDates && recurDates.length > 1) ? recurDates.slice(1) : []
+  if (allDates.length > 0) {
+    const extraRows = allDates.map(d => ({
+      client_id: client.id,
+      session_type_id: sessionTypeId,
+      date: d,
+      start_time: time,
+      duration_mins: sessionType.duration_mins,
+      meet_link: meetLink,
+      amount_cents: 0,
+      tier: 'returning',
+      notes: notes || null,
+      status: 'confirmed',
+      package_id: packageId || null
+    }))
+    await supabase.from('bookings').insert(extraRows)
+  }
+
   // If linked to a package, update sessions used
+  const totalBooked = 1 + allDates.length
   if (packageId) {
     const { data: pkg } = await supabase
       .from('packages')
@@ -69,17 +89,21 @@ export default async function handler(req, res) {
     if (pkg) {
       await supabase
         .from('packages')
-        .update({ sessions_used: (pkg.sessions_used || 0) + 1 })
+        .update({ sessions_used: (pkg.sessions_used || 0) + totalBooked })
         .eq('id', packageId)
     }
   }
 
   const confirmedBooking = { ...booking, session_type_name: sessionType.name }
+  const allBookingDates = recurDates && recurDates.length > 1 ? recurDates : null
 
   await Promise.all([
-    sendConfirmation({ booking: confirmedBooking, client, zoomLink: meetLink }),
+    sendConfirmation({ booking: confirmedBooking, client, zoomLink: meetLink, recurDates: allBookingDates }),
     createOutlookEvent({ booking: confirmedBooking, client, meetLink }),
-    createGoogleCalendarEvent({ booking: confirmedBooking, client, meetLink })
+    createGoogleCalendarEvent({ booking: confirmedBooking, client, meetLink }),
+    // Create calendar events for recurring dates too
+    ...allDates.map(d => createOutlookEvent({ booking: { ...confirmedBooking, date: d }, client, meetLink })),
+    ...allDates.map(d => createGoogleCalendarEvent({ booking: { ...confirmedBooking, date: d }, client, meetLink }))
   ])
 
   return res.json({ success: true, bookingId: booking.id })

@@ -65,6 +65,8 @@
   .success-links{display:flex;flex-direction:column;gap:.5rem;margin-top:1.25rem}
   .success-links a{display:block;text-align:center;padding:.65rem;border:1.5px solid var(--border);border-radius:7px;font-size:.83rem;color:var(--ink);text-decoration:none}
   .success-links a:hover{border-color:var(--clay)}
+  .recur-count-btn{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);border-radius:7px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s}
+  .recur-count-btn:hover,.recur-count-btn.selected{border-color:var(--clay);background:var(--clay);color:#fff}
   @media(max-width:480px){.field-row{grid-template-columns:1fr}.time-slots{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
@@ -109,6 +111,36 @@
     <div id="time-section" style="display:none">
       <label style="margin-bottom:.5rem">Available times</label>
       <div class="time-slots" id="time-slots"></div>
+
+      <!-- Recurrence -->
+      <div id="recur-section" style="display:none;margin-top:1.25rem;padding:1rem;background:var(--clay-pale);border-radius:8px">
+        <label style="font-size:.82rem;font-weight:500;display:block;margin-bottom:.75rem">Repeat this session?</label>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem">
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="none" checked onchange="updateRecur()"> One-off
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="weekly" onchange="updateRecur()"> Weekly
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="fortnightly" onchange="updateRecur()"> Fortnightly
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;font-size:.83rem;cursor:pointer">
+            <input type="radio" name="recur" value="monthly" onchange="updateRecur()"> Monthly
+          </label>
+        </div>
+        <div id="recur-count-wrap" style="display:none">
+          <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.35rem">Number of sessions (including this one)</label>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap" id="recur-count-opts">
+            <div class="recur-count-btn selected" onclick="selectCount(this,2)">2</div>
+            <div class="recur-count-btn" onclick="selectCount(this,3)">3</div>
+            <div class="recur-count-btn" onclick="selectCount(this,4)">4</div>
+            <div class="recur-count-btn" onclick="selectCount(this,5)">5</div>
+            <div class="recur-count-btn" onclick="selectCount(this,6)">6</div>
+          </div>
+          <div id="recur-dates-preview" style="margin-top:.75rem;font-size:.78rem;color:var(--ink-soft);line-height:1.8"></div>
+        </div>
+      </div>
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" id="btn-time-next" onclick="goStep(3)" disabled>Continue →</button>
@@ -132,11 +164,13 @@
     <div style="margin-bottom:1.25rem">
       <table class="summary-table">
         <tr><td>Session</td><td id="sum-session">—</td></tr>
-        <tr><td>Date</td><td id="sum-date">—</td></tr>
+        <tr><td>First date</td><td id="sum-date">—</td></tr>
         <tr><td>Time</td><td id="sum-time">—</td></tr>
         <tr><td>Duration</td><td id="sum-dur">—</td></tr>
+        <tr id="sum-recur-row" style="display:none"><td>Repeats</td><td id="sum-recur">—</td></tr>
         <tr><td>Format</td><td>Online (Google Meet)</td></tr>
       </table>
+      <div id="sum-recur-dates" style="font-size:.78rem;color:var(--ink-soft);line-height:1.9;margin-top:.25rem"></div>
     </div>
     <p class="note">A confirmation email with your Google Meet link will be sent once you confirm. No payment is taken via this link.</p>
     <div class="btn-row">
@@ -167,6 +201,8 @@ const S = {
   durationMins: 60,
   date: null,
   time: null,
+  recurFreq: 'none',
+  recurCount: 1,
   fname: '', lname: '', email: '', notes: ''
 }
 
@@ -335,18 +371,86 @@ function selectTime(el, time) {
   el.classList.add('selected')
   S.time = time
   document.getElementById('btn-time-next').disabled = false
+  document.getElementById('recur-section').style.display = 'block'
+  updateRecurPreview()
+}
+
+function updateRecur() {
+  S.recurFreq = document.querySelector('input[name=recur]:checked').value
+  S.recurCount = S.recurFreq === 'none' ? 1 : 2
+  document.getElementById('recur-count-wrap').style.display = S.recurFreq === 'none' ? 'none' : 'block'
+  // Reset count buttons
+  document.querySelectorAll('.recur-count-btn').forEach((b, i) => {
+    b.classList.toggle('selected', i === 0)
+  })
+  updateRecurPreview()
+}
+
+function selectCount(el, n) {
+  document.querySelectorAll('.recur-count-btn').forEach(b => b.classList.remove('selected'))
+  el.classList.add('selected')
+  S.recurCount = n
+  updateRecurPreview()
+}
+
+function getRecurDates() {
+  if (!S.date || !S.time) return []
+  const freqDays = { weekly: 7, fortnightly: 14, monthly: null }
+  const count = S.recurFreq === 'none' ? 1 : S.recurCount
+  const dates = []
+  let current = new Date(S.date + 'T00:00:00')
+  for (let i = 0; i < count; i++) {
+    dates.push(current.toISOString().split('T')[0])
+    if (S.recurFreq === 'monthly') {
+      current = new Date(current)
+      current.setMonth(current.getMonth() + 1)
+    } else {
+      current = new Date(current)
+      current.setDate(current.getDate() + (freqDays[S.recurFreq] || 7))
+    }
+  }
+  return dates
+}
+
+function updateRecurPreview() {
+  if (S.recurFreq === 'none' || !S.date) {
+    document.getElementById('recur-dates-preview').innerHTML = ''
+    return
+  }
+  const dates = getRecurDates()
+  document.getElementById('recur-dates-preview').innerHTML =
+    '<strong>Scheduled dates:</strong><br>' +
+    dates.map((d, i) => {
+      const label = new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
+      return `${i + 1}. ${label}`
+    }).join('<br>')
 }
 
 // ── Summary ──────────────────────────────────────────────────────
 function fillSummary() {
   document.getElementById('sum-session').textContent = S.sessionName
-  document.getElementById('sum-date').textContent = new Date(S.date).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'})
-  const [h] = S.time.split(':')
-  const hour = parseInt(h)
+  document.getElementById('sum-date').textContent = new Date(S.date + 'T00:00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})
+  const hour = parseInt(S.time.split(':')[0])
   const ampm = hour >= 12 ? 'pm' : 'am'
   const h12 = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour)
   document.getElementById('sum-time').textContent = `${h12}:00 ${ampm}`
   document.getElementById('sum-dur').textContent = `${S.durationMins} minutes`
+
+  S.recurFreq = document.querySelector('input[name=recur]:checked')?.value || 'none'
+  const recurRow = document.getElementById('sum-recur-row')
+  const recurDatesEl = document.getElementById('sum-recur-dates')
+  if (S.recurFreq !== 'none') {
+    const dates = getRecurDates()
+    recurRow.style.display = ''
+    document.getElementById('sum-recur').textContent = `${S.recurFreq} × ${dates.length} sessions`
+    recurDatesEl.innerHTML = dates.map((d, i) => {
+      const label = new Date(d + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
+      return `${i + 1}. ${label}`
+    }).join('<br>')
+  } else {
+    recurRow.style.display = 'none'
+    recurDatesEl.innerHTML = ''
+  }
 }
 
 // ── Confirm ──────────────────────────────────────────────────────
@@ -368,6 +472,8 @@ async function confirmBooking() {
   const btn = document.getElementById('btn-confirm')
   btn.disabled = true; btn.textContent = 'Confirming…'
 
+  const dates = getRecurDates()
+
   try {
     const res = await fetch(`${API_BASE}/api/bookings/schedule`, {
       method: 'POST',
@@ -381,26 +487,27 @@ async function confirmBooking() {
         date: S.date,
         time: S.time,
         notes: S.notes,
-        packageId: params.get('package') || null
+        packageId: params.get('package') || null,
+        recurDates: dates.length > 1 ? dates : null
       })
     })
     const data = await res.json()
     if (!res.ok) throw new Error(data.error || 'Booking failed')
 
-    // Success
-    const dateLabel = new Date(S.date).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',timeZone:'UTC'})
-    const [h] = S.time.split(':')
-    const hour = parseInt(h)
-    const ampm = hour >= 12 ? 'pm' : 'am'
-    const h12 = hour > 12 ? hour - 12 : (hour === 0 ? 12 : hour)
-    const timeLabel = `${h12}:00 ${ampm}`
+    // Build Google Calendar link for first session
+    const hour = parseInt(S.time.split(':')[0])
     const gcalStart = S.date.replace(/-/g,'') + 'T' + String(hour).padStart(2,'0') + '0000'
     const endHour = hour + Math.floor(S.durationMins/60)
     const gcalEnd = S.date.replace(/-/g,'') + 'T' + String(endHour).padStart(2,'0') + '0000'
     const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Session with Vikashan')}&dates=${gcalStart}/${gcalEnd}&details=${encodeURIComponent('Online via Google Meet')}`
 
+    const successMsg = dates.length > 1
+      ? `<p class="sub" style="text-align:center">All ${dates.length} sessions confirmed. Check your inbox for a confirmation with all your dates and Google Meet link.</p>`
+      : `<p class="sub" style="text-align:center">Check your inbox for a confirmation with your Google Meet link.</p>`
+
+    document.querySelector('#s-success .sub').outerHTML = successMsg
     document.getElementById('success-links').innerHTML = `
-      <a href="${gcalUrl}" target="_blank">+ Add to Google Calendar</a>
+      <a href="${gcalUrl}" target="_blank">+ Add first session to Google Calendar</a>
       <a href="index.html">Return to vikashan.org</a>`
 
     goStep('success')
