@@ -111,15 +111,8 @@
     <div class="step-label">Step 2 of 5 — Choose your rate &amp; package</div>
     <h2>Rate &amp; package</h2>
     <p class="sub">Choose the tier that honestly reflects your financial situation, then set your rate and how many sessions you'd like.</p>
-    <div class="tier-opts">
-      <label class="tier-opt" id="tier-sustaining">
-        <input type="radio" name="tier" value="sustaining" checked onchange="updateSlider()">
-        <div><div class="tier-opt-name">Sustaining — $150–$220 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div>
-      </label>
-      <label class="tier-opt" id="tier-standard">
-        <input type="radio" name="tier" value="standard" onchange="updateSlider()">
-        <div><div class="tier-opt-name">Accessible Rate — $75–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div>
-      </label>
+    <div class="tier-opts" id="tier-opts">
+      <!-- populated by JS based on URL param -->
     </div>
     <div class="slider-wrap">
       <div class="slider-label"><span id="slider-min">$150</span><span id="slider-max">$220</span></div>
@@ -236,18 +229,46 @@
 <script>
 const API_BASE = ''
 const TIERS = {
-  sustaining: { min: 150, max: 220, default: 185 },
-  standard:   { min: 75,  max: 150, default: 110 }
+  sustaining:  { min: 150, max: 220, default: 185 },
+  standard:    { min: 75,  max: 150, default: 110 },
+  concession:  { min: 20,  max: 75,  default: 50  }
 }
+
+// Detect concession link (?tier=concession)
+const isConcession = new URLSearchParams(location.search).get('tier') === 'concession'
 
 const B = {
   sessionTypeId: null, sessionName: '', durationMins: 60,
-  tier: 'sustaining', amountPerSession: 185, sessionsTotal: 1,
+  tier: isConcession ? 'concession' : 'sustaining',
+  amountPerSession: isConcession ? 50 : 185, sessionsTotal: 1,
   date: null, dateLabel: '', time: null, timeLabel: '',
   fname: '', lname: '', email: '', phone: '', notes: '', mailingOptIn: true
 }
 
 let calYear, calMonth, stripe, cardElement, clientSecret
+
+// ── Tier UI ────────────────────────────────────────────────────
+function initTierUI() {
+  const container = document.getElementById('tier-opts')
+  if (isConcession) {
+    container.innerHTML = `
+      <label class="tier-opt selected" id="tier-concession">
+        <input type="radio" name="tier" value="concession" checked onchange="updateSlider()">
+        <div><div class="tier-opt-name">Concession — $20–$75 / hr</div><div class="tier-opt-price">Approved concession rate — thank you for being here</div></div>
+      </label>`
+  } else {
+    container.innerHTML = `
+      <label class="tier-opt selected" id="tier-sustaining">
+        <input type="radio" name="tier" value="sustaining" checked onchange="updateSlider()">
+        <div><div class="tier-opt-name">Sustaining — $150–$220 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div>
+      </label>
+      <label class="tier-opt" id="tier-standard">
+        <input type="radio" name="tier" value="standard" onchange="updateSlider()">
+        <div><div class="tier-opt-name">Accessible Rate — $75–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div>
+      </label>`
+  }
+  updateSlider()
+}
 
 // ── Session types ──────────────────────────────────────────────
 async function loadSessionTypes() {
@@ -468,6 +489,7 @@ function showSuccess() {
 }
 
 // ── Init ────────────────────────────────────────────────────────
+initTierUI()
 loadSessionTypes()
 initCalendar()
 updatePackageTotals()
