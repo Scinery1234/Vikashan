@@ -1206,10 +1206,11 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       <span class="step-label">Choose your rate (for future sessions)</span>
       <p style="font-size:.8rem;color:var(--ink-soft);font-weight:300;margin-bottom:1rem;line-height:1.7">The discovery call is free. For ongoing sessions, choose the tier that reflects your financial situation. All rates are per hour.</p>
       <div class="tier-opts">
-        <label class="tier-opt"><input type="radio" name="tier" value="standard" checked onchange="updateTierUI()"><div><div class="tier-opt-name">Accessible Rate — $75–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div></label>
-        <label class="tier-opt"><input type="radio" name="tier" value="sustaining" onchange="updateTierUI()"><div><div class="tier-opt-name">Sustaining — $150–$220 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div></label>
+        <label class="tier-opt"><input type="radio" name="tier" value="sustaining" checked onchange="updateTierUI()"><div><div class="tier-opt-name">Sustaining — $150–$220 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div></label>
+        <label class="tier-opt"><input type="radio" name="tier" value="standard" onchange="updateTierUI()"><div><div class="tier-opt-name">Accessible Rate — $75–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div></label>
         <label class="tier-opt"><input type="radio" name="tier" value="concession" onchange="updateTierUI()"><div><div class="tier-opt-name">Concession — Under $75 / hr</div><div class="tier-opt-price">Financial hardship — application required after call</div></div></label>
       </div>
+      <p style="font-size:.76rem;color:var(--ink-soft);font-weight:300;margin-top:-.5rem;margin-bottom:1rem">No credit card required at this stage — payment is arranged after your discovery call.</p>
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
         <button class="btn btn-primary" onclick="goStep(4)">Review →</button>
@@ -1448,7 +1449,7 @@ function closeAvail() { document.getElementById('avail-panel').classList.remove(
 // ================================================================
 // BOOKING
 // ================================================================
-const B = {date:null,time:null,timeStr:'',timeLabel:'',tier:'standard',fname:'',lname:'',email:'',phone:'',notes:'',mailingOptIn:true};
+const B = {date:null,time:null,timeStr:'',timeLabel:'',tier:'sustaining',fname:'',lname:'',email:'',phone:'',notes:'',mailingOptIn:true};
 let calY = new Date().getFullYear(), calM = new Date().getMonth();
 
 function openBooking() {
