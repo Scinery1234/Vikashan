@@ -21,8 +21,10 @@ export default async function handler(req, res) {
   if (!clientName || !clientEmail || !date || !time || !sessionTypeId || !amountCentsPerSession || !sessionsTotal || !paymentMethodId || !planAmountCents) {
     return res.status(400).json({ error: 'Missing required fields' })
   }
-  if (planAmountCents < 2500) {
-    return res.status(400).json({ error: 'Minimum payment is $25.' })
+  const freqMin = { weekly: 5000, fortnightly: 10000, monthly: 20000 }
+  const minCents = freqMin[planFreq] || 5000
+  if (planAmountCents < minCents) {
+    return res.status(400).json({ error: `Minimum for ${planFreq} payments is $${minCents / 100}.` })
   }
 
   const firstInstalmentCents = Math.min(planAmountCents, amountCentsPerSession * sessionsTotal)

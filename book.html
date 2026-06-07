@@ -152,7 +152,7 @@
           <input type="radio" name="paymethod" value="plan" onchange="updatePayMethod()">
           <div>
             <div class="tier-opt-name">Flexible payment plan <span style="color:var(--ink-soft);font-size:.78rem;margin-left:.4rem">Interest-free</span></div>
-            <div class="tier-opt-price">Pay weekly, fortnightly or monthly — no interest, max 6 months</div>
+            <div class="tier-opt-price">Pay weekly, fortnightly or monthly — no interest, no set end date</div>
           </div>
         </label>
       </div>
@@ -163,7 +163,7 @@
       <div class="field-row" style="margin-bottom:.75rem">
         <div class="field" style="margin-bottom:0">
           <label>Payment amount ($)</label>
-          <input type="number" id="plan-amount" placeholder="e.g. 50" min="25" oninput="calcPlan()">
+          <input type="number" id="plan-amount" placeholder="e.g. 50" min="50" oninput="calcPlan()">
         </div>
         <div class="field" style="margin-bottom:0">
           <label>Frequency</label>
@@ -398,7 +398,7 @@ function updatePayMethod() {
   document.getElementById('pay-upfront-opt').classList.toggle('selected', !isPlan)
   document.getElementById('pay-plan-opt').classList.toggle('selected', isPlan)
   document.getElementById('pay-note').textContent = isPlan
-    ? 'Interest-free. Full balance must be cleared within 6 months. Minimum $50 per payment.'
+    ? 'Interest-free. No set end date — pay at a pace that works for you. Minimum $50/week, $100/fortnight, or $200/month.'
     : '10% discount applied for paying upfront. No credit card required until the payment step.'
   updatePackageTotals()
   if (isPlan) calcPlan()
@@ -409,9 +409,11 @@ function calcPlan() {
   const freq = document.getElementById('plan-freq').value
   const total = B.amountPerSession * B.sessionsTotal
   const el = document.getElementById('plan-calc')
+  const freqMin = { weekly: 50, fortnightly: 100, monthly: 200 }
+  const min = freqMin[freq]
 
-  if (amtInput < 25) {
-    el.innerHTML = amtInput > 0 ? '<span style="color:#e53e3e">Minimum payment is $25.</span>' : ''
+  if (amtInput < min) {
+    el.innerHTML = amtInput > 0 ? `<span style="color:#e53e3e">Minimum for ${freq} payments is $${min}.</span>` : ''
     B.planAmount = 0
     return
   }
@@ -537,9 +539,13 @@ function goStep(n) {
       if (!B.email) document.getElementById('email').style.borderColor = '#e53e3e'
       return
     }
-    if (B.isPlan && B.planAmount < 25) {
-      alert('Please enter a payment plan amount of at least $25.')
-      return
+    if (B.isPlan) {
+      const freqMin = { weekly: 50, fortnightly: 100, monthly: 200 }
+      const min = freqMin[B.planFreq] || 50
+      if (B.planAmount < min) {
+        alert(`Minimum for ${B.planFreq} payments is $${min}.`)
+        return
+      }
     }
     renderSummary()
     initStripe()
