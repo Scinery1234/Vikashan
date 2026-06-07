@@ -1028,7 +1028,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
 
       
     </div>
-    <p class="pricing-note" data-edit="pricing-note">All sessions online via Zoom. In-person options (Sydney &amp; Northern Rivers) available by arrangement — contact Vik directly. Payment plans available on request.</p>
+    <p class="pricing-note" data-edit="pricing-note">All sessions online via Google Meet. In-person options (Sydney &amp; Northern Rivers) available by arrangement — contact Vik directly. Payment plans available on request.</p>
   </div>
 </section>
 
@@ -1152,7 +1152,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   <div class="modal-top">
     <button class="modal-close-btn" onclick="closeBooking()">×</button>
     <h2>Free Discovery Call</h2>
-    <p>20 minutes · online via Zoom · with Vik</p>
+    <p>20 minutes · online via Google Meet · with Vik</p>
   </div>
   <div class="modal-body">
     <div class="steps-bar">
@@ -1219,7 +1219,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
     <div class="step-panel" id="step4">
       <span class="step-label">Confirm your booking</span>
       <div class="confirm-box" id="confirm-box"></div>
-      <p style="font-size:.79rem;color:var(--ink-soft);font-weight:300;line-height:1.7;margin-bottom:1.25rem">A Zoom link will be sent to your email. No payment is taken for the discovery call. Vik will be in touch to confirm.</p>
+      <p style="font-size:.79rem;color:var(--ink-soft);font-weight:300;line-height:1.7;margin-bottom:1.25rem">A Google Meet link will be sent to your email. No payment is taken for the discovery call. Vik will be in touch to confirm.</p>
       <div class="modal-foot">
         <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
         <button class="btn btn-primary" onclick="submitBooking()">Confirm Booking ✓</button>
@@ -1230,7 +1230,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       <div class="success-state">
         <div class="success-icon">🌅</div>
         <h3>You're booked.</h3>
-        <p>A confirmation and Zoom link are on their way to your inbox. Vik will be in touch before your call if there's anything to prepare. See you then.</p>
+        <p>A confirmation and Google Meet link are on their way to your inbox. Vik will be in touch before your call if there's anything to prepare. See you then.</p>
         <button class="btn btn-primary" style="margin-top:1.75rem" onclick="closeBooking()">Close</button>
       </div>
     </div>
@@ -1590,7 +1590,7 @@ function buildConfirm() {
   const tierLabel = {standard:'Accessible Rate ($75–$150/hr)',sustaining:'Sustaining ($150–$220/hr)',concession:'Concession (application after call)'};
   const rows = [
     ['Service','Career & Wellness Coaching — Discovery Call'],
-    ['Format','Online (Zoom)'],
+    ['Format','Online (Google Meet)'],
     ['Date', dateStr],
     ['Time', B.timeLabel||'—'],
     ['Ongoing rate', tierLabel[B.tier]||'—'],
