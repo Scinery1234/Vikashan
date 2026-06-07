@@ -814,6 +814,43 @@ When you're ready to book your next session, you can do so here.</textarea></div
       <button class="btn btn-primary" onclick="saveAvailability()">Save availability</button>
     </div>
     </div>
+
+    <!-- One-off availability -->
+    <div class="card" style="margin-top:1.5rem">
+      <div class="card-head"><h3>One-off Availability</h3><div class="card-sub">Open specific times on days that aren't normally available.</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:.75rem;align-items:end;margin-bottom:1rem">
+        <div><label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">Date</label>
+          <input type="date" id="oo-date" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem"></div>
+        <div><label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">Times (select all that apply)</label>
+          <select id="oo-hours" multiple style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem;height:120px">
+            <option value="7">7:00 am</option><option value="8">8:00 am</option><option value="9">9:00 am</option>
+            <option value="10">10:00 am</option><option value="11">11:00 am</option><option value="12">12:00 pm</option>
+            <option value="13">1:00 pm</option><option value="14">2:00 pm</option><option value="15">3:00 pm</option>
+            <option value="16">4:00 pm</option><option value="17">5:00 pm</option><option value="18">6:00 pm</option>
+            <option value="19">7:00 pm</option>
+          </select></div>
+        <button class="btn btn-primary" onclick="addOneOffAvailability()" style="height:fit-content">Add</button>
+      </div>
+      <div id="oo-list"><div style="font-size:.82rem;color:var(--soft)">Loading…</div></div>
+    </div>
+
+    <!-- Block time -->
+    <div class="card" style="margin-top:1.5rem">
+      <div class="card-head"><h3>Block Time</h3><div class="card-sub">Close off specific times — holidays, personal appointments, or anything not in your calendar.</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:.75rem;align-items:end;margin-bottom:1rem;flex-wrap:wrap">
+        <div><label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">Date</label>
+          <input type="date" id="bl-date" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem"></div>
+        <div><label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">Start time</label>
+          <input type="time" id="bl-start" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem"></div>
+        <div><label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">End time</label>
+          <input type="time" id="bl-end" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem"></div>
+        <div><label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">Reason (optional)</label>
+          <input type="text" id="bl-reason" placeholder="e.g. Holiday" style="width:100%;padding:.55rem .75rem;border:1.5px solid var(--border);border-radius:6px;font-size:.85rem"></div>
+        <button class="btn btn-primary" onclick="addBlockedTime()" style="height:fit-content">Block</button>
+      </div>
+      <div id="bl-list"><div style="font-size:.82rem;color:var(--soft)">Loading…</div></div>
+    </div>
+
   </div>
 </div>
 
@@ -1171,7 +1208,7 @@ function showPage(id) {
   if (id === 'clients') renderClientList();
   if (id === 'bookings') loadBookings();
   if (id === 'emails') loadEmailSettings();
-  if (id === 'availability') loadAvailability();
+  if (id === 'availability') { loadAvailability(); loadOneOffAvailability(); loadBlockedTimes(); }
 }
 
 function switchEmailTab(id) {
@@ -1382,6 +1419,87 @@ async function saveAvailability() {
   } catch(e) {
     alert('Save failed: ' + (e.error || 'Unknown error'));
   }
+}
+
+// ================================================================
+// ONE-OFF AVAILABILITY
+// ================================================================
+async function loadOneOffAvailability() {
+  const data = await apiFetch('/api/admin/overrides')
+  const list = document.getElementById('oo-list')
+  if (!list) return
+  if (!data?.overrides?.length) { list.innerHTML = '<div style="font-size:.82rem;color:var(--soft)">No one-off slots added yet.</div>'; return }
+  const grouped = {}
+  data.overrides.forEach(o => { if (!grouped[o.date]) grouped[o.date] = []; grouped[o.date].push(o.hour) })
+  list.innerHTML = Object.entries(grouped).sort(([a],[b]) => a.localeCompare(b)).map(([date, hours]) => {
+    const label = new Date(date).toLocaleDateString('en-AU', { weekday:'short', day:'numeric', month:'short', year:'numeric' })
+    const times = hours.sort((a,b)=>a-b).map(h => h < 12 ? `${h}am` : h === 12 ? '12pm' : `${h-12}pm`).join(', ')
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.83rem">
+      <div><strong>${label}</strong> — ${times}</div>
+      <button onclick="deleteOverride('${date}')" style="background:none;border:none;color:#e53e3e;cursor:pointer;font-size:.8rem">Remove</button>
+    </div>`
+  }).join('')
+}
+
+async function addOneOffAvailability() {
+  const date = document.getElementById('oo-date').value
+  const select = document.getElementById('oo-hours')
+  const hours = Array.from(select.selectedOptions).map(o => parseInt(o.value))
+  if (!date || !hours.length) { alert('Please select a date and at least one time slot.'); return }
+  await apiFetch('/api/admin/overrides', { method: 'POST', body: { date, hours } })
+  document.getElementById('oo-date').value = ''
+  select.selectedIndex = -1
+  loadOneOffAvailability()
+}
+
+async function deleteOverride(date) {
+  if (!confirm(`Remove all one-off slots for ${date}?`)) return
+  await apiFetch('/api/admin/overrides', { method: 'DELETE', body: { date } })
+  loadOneOffAvailability()
+}
+
+// ================================================================
+// BLOCKED TIMES
+// ================================================================
+async function loadBlockedTimes() {
+  const data = await apiFetch('/api/admin/blocked-times')
+  const list = document.getElementById('bl-list')
+  if (!list) return
+  const manual = (data?.blockedTimes || []).filter(b => b.source === 'manual' || !b.source)
+  const synced = (data?.blockedTimes || []).filter(b => b.source && b.source !== 'manual')
+  if (!data?.blockedTimes?.length) { list.innerHTML = '<div style="font-size:.82rem;color:var(--soft)">No blocked times.</div>'; return }
+  list.innerHTML = [
+    manual.length ? '<div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin-bottom:.4rem">Manually added</div>' : '',
+    ...manual.map(b => `<div style="display:flex;justify-content:space-between;align-items:center;padding:.6rem 0;border-bottom:1px solid var(--border);font-size:.83rem">
+      <div><strong>${new Date(b.date).toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})}</strong>
+        ${b.start_time ? ` ${b.start_time}–${b.end_time}` : ' (all day)'}
+        ${b.reason ? ` — <span style="color:var(--soft)">${b.reason}</span>` : ''}</div>
+      <button onclick="deleteBlockedTime('${b.id}')" style="background:none;border:none;color:#e53e3e;cursor:pointer;font-size:.8rem">Remove</button>
+    </div>`),
+    synced.length ? `<div style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);margin:.75rem 0 .4rem">Synced from calendar (${synced.length} blocks)</div>
+      <div style="font-size:.8rem;color:var(--soft)">Auto-updated every 15 min from Google Calendar and Outlook. Not editable here.</div>` : ''
+  ].join('')
+}
+
+async function addBlockedTime() {
+  const date = document.getElementById('bl-date').value
+  const start = document.getElementById('bl-start').value
+  const end = document.getElementById('bl-end').value
+  const reason = document.getElementById('bl-reason').value.trim()
+  if (!date) { alert('Please select a date.'); return }
+  if ((start && !end) || (!start && end)) { alert('Please enter both start and end time, or leave both blank to block the whole day.'); return }
+  await apiFetch('/api/admin/blocked-times', { method: 'POST', body: { date, start_time: start || null, end_time: end || null, reason: reason || null } })
+  document.getElementById('bl-date').value = ''
+  document.getElementById('bl-start').value = ''
+  document.getElementById('bl-end').value = ''
+  document.getElementById('bl-reason').value = ''
+  loadBlockedTimes()
+}
+
+async function deleteBlockedTime(id) {
+  if (!confirm('Remove this blocked time?')) return
+  await apiFetch(`/api/admin/blocked-times?id=${id}`, { method: 'DELETE' })
+  loadBlockedTimes()
 }
 
 // ================================================================
