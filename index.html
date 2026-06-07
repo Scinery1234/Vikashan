@@ -1322,7 +1322,10 @@ async function loadContent() {
 
 async function saveAll() {
   const token = sessionStorage.getItem('admin_token');
-  if (!token) return;
+  if (!token) {
+    alert('Not logged in — please use Edit site to log in first.');
+    return;
+  }
   const content = {};
   document.querySelectorAll('[data-edit]').forEach(el => {
     content[el.dataset.edit] = el.innerHTML;
@@ -1335,13 +1338,16 @@ async function saveAll() {
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
       body: JSON.stringify({ content })
     });
+    const body = await res.json();
     if (res.ok) {
       btn.textContent = '✓ Saved!';
     } else {
       btn.textContent = '✗ Error';
+      alert('Save failed: ' + (body.error || res.status));
     }
   } catch(e) {
     btn.textContent = '✗ Error';
+    alert('Save error: ' + e.message);
   }
   setTimeout(() => btn.textContent = 'Save Changes', 2000);
 }
