@@ -660,6 +660,55 @@ body{font-family:var(--sans);background:var(--surface);color:var(--ink);font-siz
   </div>
 </div>
 
+<!-- ═══ BOOKING ACTIONS MODAL ═══ -->
+<div id="bka-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:1.75rem;width:100%;max-width:420px;margin:1rem;position:relative">
+    <button onclick="closeBka()" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.3rem;cursor:pointer;color:#999">×</button>
+    <div id="bka-main">
+      <h3 style="font-family:var(--serif);font-style:italic;margin-bottom:.25rem" id="bka-title">Booking</h3>
+      <p style="font-size:.8rem;color:var(--soft);margin-bottom:1.25rem" id="bka-subtitle"></p>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        <button class="btn btn-primary" onclick="openBkaReschedule()">Reschedule</button>
+        <button class="btn btn-ghost" onclick="openBkaCancel()">Cancel booking</button>
+        <button class="btn btn-ghost" onclick="bkaMarkComplete()">Mark as complete</button>
+      </div>
+    </div>
+    <!-- Reschedule view -->
+    <div id="bka-reschedule" style="display:none">
+      <h3 style="font-family:var(--serif);font-style:italic;margin-bottom:1rem">Reschedule</h3>
+      <div style="margin-bottom:.75rem">
+        <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">New date</label>
+        <input type="date" id="bka-new-date" style="width:100%;padding:.5rem .7rem;border:1.5px solid var(--border);border-radius:7px;font-size:.85rem" onchange="loadBkaSlots()">
+      </div>
+      <div style="margin-bottom:1rem">
+        <label style="font-size:.8rem;font-weight:500;display:block;margin-bottom:.3rem">New time</label>
+        <select id="bka-new-time" style="width:100%;padding:.5rem .7rem;border:1.5px solid var(--border);border-radius:7px;font-size:.85rem">
+          <option value="">Select a date first</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:.6rem">
+        <button class="btn btn-primary" onclick="submitBkaReschedule()" style="flex:1">Confirm reschedule</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('bka-reschedule').style.display='none';document.getElementById('bka-main').style.display='block'">Back</button>
+      </div>
+    </div>
+    <!-- Cancel view -->
+    <div id="bka-cancel" style="display:none">
+      <h3 style="font-family:var(--serif);font-style:italic;margin-bottom:.5rem">Cancel booking</h3>
+      <p style="font-size:.83rem;color:var(--soft);margin-bottom:1rem">This will mark the booking as cancelled. The client will not be automatically notified — you can email them separately if needed.</p>
+      <div style="display:flex;gap:.6rem">
+        <button class="btn btn-ghost" onclick="submitBkaCancel()" style="flex:1;border-color:#e53e3e;color:#e53e3e">Yes, cancel it</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('bka-cancel').style.display='none';document.getElementById('bka-main').style.display='block'">Go back</button>
+      </div>
+    </div>
+    <!-- Success view -->
+    <div id="bka-success" style="display:none;text-align:center;padding:.5rem 0">
+      <div style="font-size:2rem;margin-bottom:.5rem">✓</div>
+      <p id="bka-success-msg" style="font-size:.9rem;color:var(--soft)"></p>
+      <button class="btn btn-primary" style="margin-top:1rem" onclick="closeBka()">Done</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ EMAIL TEMPLATES ═══ -->
 <div class="page" id="page-emails">
   <div class="topbar">
@@ -1397,7 +1446,7 @@ async function loadBookings() {
       <td><span class="badge ${paidBadge}">${paidLabel}</span></td>
       <td>${b.meet_link ? '<a href="' + b.meet_link + '" target="_blank" style="color:var(--clay);font-size:.73rem">Open →</a>' : '—'}</td>
       <td><span class="badge ${badge}">${cap(b.status)}</span></td>
-      <td><button class="btn btn-ghost btn-sm">•••</button></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openBka(${JSON.stringify(b).replace(/"/g,'&quot;')})">•••</button></td>
     </tr>`;
   }).join('');
 }
@@ -1405,6 +1454,90 @@ async function loadBookings() {
 function filterBookingStatus(val) {
   bookingStatusFilter = val;
   loadBookings();
+}
+
+// ── Booking Actions Modal ────────────────────────────────────────
+let _bkaBooking = null
+
+function openBka(b) {
+  _bkaBooking = b
+  const dateStr = new Date(b.date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })
+  document.getElementById('bka-title').textContent = b.clients?.name || 'Booking'
+  document.getElementById('bka-subtitle').textContent = `${b.session_types?.name || ''} · ${dateStr} at ${fmtAdminTime(b.start_time)}`
+  document.getElementById('bka-main').style.display = 'block'
+  document.getElementById('bka-reschedule').style.display = 'none'
+  document.getElementById('bka-cancel').style.display = 'none'
+  document.getElementById('bka-success').style.display = 'none'
+  const overlay = document.getElementById('bka-overlay')
+  overlay.style.display = 'flex'
+  // Set min date for reschedule input
+  const today = new Date().toISOString().split('T')[0]
+  document.getElementById('bka-new-date').min = today
+  document.getElementById('bka-new-date').value = ''
+  document.getElementById('bka-new-time').innerHTML = '<option value="">Select a date first</option>'
+}
+
+function closeBka() {
+  document.getElementById('bka-overlay').style.display = 'none'
+  _bkaBooking = null
+  loadBookings()
+}
+
+function openBkaReschedule() {
+  document.getElementById('bka-main').style.display = 'none'
+  document.getElementById('bka-reschedule').style.display = 'block'
+}
+
+function openBkaCancel() {
+  document.getElementById('bka-main').style.display = 'none'
+  document.getElementById('bka-cancel').style.display = 'block'
+}
+
+async function loadBkaSlots() {
+  const date = document.getElementById('bka-new-date').value
+  if (!date) return
+  const sel = document.getElementById('bka-new-time')
+  sel.innerHTML = '<option value="">Loading…</option>'
+  const data = await apiFetch(`/api/availability?date=${date}`)
+  if (!data?.slots?.length) { sel.innerHTML = '<option value="">No availability</option>'; return }
+  sel.innerHTML = '<option value="">Pick a time</option>' +
+    data.slots.map(s => {
+      const h = s.hour, ampm = h >= 12 ? 'pm' : 'am', h12 = h > 12 ? h - 12 : h === 0 ? 12 : h
+      return `<option value="${h}:00">${h12}:00 ${ampm} AEST</option>`
+    }).join('')
+}
+
+async function submitBkaReschedule() {
+  const date = document.getElementById('bka-new-date').value
+  const time = document.getElementById('bka-new-time').value
+  if (!date || !time) { alert('Please select a date and time.'); return }
+  const r = await apiFetch(`/api/admin/bookings?id=${_bkaBooking.id}`, {
+    method: 'PUT', body: JSON.stringify({ date, start_time: time, status: 'confirmed' })
+  })
+  if (!r) return
+  document.getElementById('bka-reschedule').style.display = 'none'
+  document.getElementById('bka-success-msg').textContent = `Rescheduled to ${new Date(date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })} at ${time}`
+  document.getElementById('bka-success').style.display = 'block'
+}
+
+async function submitBkaCancel() {
+  const r = await apiFetch(`/api/admin/bookings?id=${_bkaBooking.id}`, {
+    method: 'PUT', body: JSON.stringify({ status: 'cancelled' })
+  })
+  if (!r) return
+  document.getElementById('bka-cancel').style.display = 'none'
+  document.getElementById('bka-success-msg').textContent = 'Booking cancelled.'
+  document.getElementById('bka-success').style.display = 'block'
+}
+
+async function bkaMarkComplete() {
+  const r = await apiFetch(`/api/admin/bookings?id=${_bkaBooking.id}`, {
+    method: 'PUT', body: JSON.stringify({ status: 'completed' })
+  })
+  if (!r) return
+  document.getElementById('bka-main').style.display = 'none'
+  document.getElementById('bka-success-msg').textContent = 'Marked as complete.'
+  document.getElementById('bka-success').style.display = 'block'
 }
 
 // ================================================================
