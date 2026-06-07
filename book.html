@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Book a Session — Vikashan</title>
+<style>
+  :root{--clay:#C4724E;--clay-mid:#b5623f;--clay-pale:#fdf4ef;--ink:#141414;--ink-mid:#3a3a3a;--ink-soft:#7a7a7a;--sage:#5a7a6a;--border:#e4e3df;--bg:#f7f6f3;--white:#fff;--sans:'Inter',system-ui,sans-serif;--serif:'Georgia',serif}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:2rem 1rem}
+  .logo{font-family:var(--serif);font-style:italic;font-size:1.4rem;color:var(--ink);margin-bottom:2rem;display:flex;align-items:center;gap:.5rem}
+  .logo-dot{width:8px;height:8px;border-radius:50%;background:var(--clay);display:inline-block}
+  .card{background:var(--white);border-radius:12px;padding:2rem;width:100%;max-width:520px;box-shadow:0 2px 16px rgba(0,0,0,.06)}
+  h2{font-family:var(--serif);font-weight:400;font-size:1.35rem;margin-bottom:.4rem}
+  .sub{color:var(--ink-soft);font-size:.83rem;font-weight:300;line-height:1.6;margin-bottom:1.5rem}
+  .step{display:none}
+  .step.active{display:block}
+  .step-label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--clay);margin-bottom:1.25rem}
+  label{display:block;font-size:.82rem;font-weight:500;margin-bottom:.35rem;color:var(--ink-mid)}
+  input,select,textarea{width:100%;padding:.65rem .85rem;border:1.5px solid var(--border);border-radius:7px;font-family:var(--sans);font-size:.88rem;color:var(--ink);background:var(--white);outline:none;transition:border-color .15s}
+  input:focus,select:focus,textarea:focus{border-color:var(--clay)}
+  .field{margin-bottom:1rem}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+  .btn{display:inline-block;padding:.7rem 1.5rem;border-radius:7px;font-family:var(--sans);font-size:.88rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;text-decoration:none}
+  .btn-primary{background:var(--clay);color:#fff}
+  .btn-primary:hover{background:var(--clay-mid)}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed}
+  .btn-ghost{background:transparent;color:var(--ink-soft);border:1.5px solid var(--border)}
+  .btn-ghost:hover{border-color:var(--ink-soft)}
+  .btn-row{display:flex;gap:.75rem;margin-top:1.25rem;align-items:center}
+  .session-opts{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.25rem}
+  .session-opt{display:flex;align-items:flex-start;gap:.75rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s}
+  .session-opt:hover,.session-opt.selected{border-color:var(--clay)}
+  .session-opt input{accent-color:var(--clay);margin-top:3px;cursor:pointer}
+  .session-opt-name{font-size:.87rem;font-weight:500}
+  .session-opt-desc{font-size:.75rem;color:var(--ink-soft);margin-top:.15rem}
+  .tier-opts{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem}
+  .tier-opt{display:flex;align-items:flex-start;gap:.75rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s}
+  .tier-opt:hover,.tier-opt.selected{border-color:var(--clay)}
+  .tier-opt input{accent-color:var(--clay);margin-top:3px}
+  .tier-opt-name{font-size:.87rem;font-weight:500}
+  .tier-opt-price{font-size:.75rem;color:var(--ink-soft);margin-top:.15rem}
+  .slider-wrap{margin:1rem 0}
+  .slider-label{display:flex;justify-content:space-between;font-size:.75rem;color:var(--ink-soft);margin-bottom:.5rem}
+  .price-slider{width:100%;accent-color:var(--clay);cursor:pointer}
+  .selected-price{text-align:center;font-size:1.4rem;font-weight:700;color:var(--clay);margin:.5rem 0}
+  .selected-price span{font-size:.8rem;font-weight:400;color:var(--ink-soft)}
+  .pkg-opts{display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1rem}
+  .pkg-opt{border:1.5px solid var(--border);border-radius:8px;padding:.85rem .6rem;text-align:center;cursor:pointer;transition:border-color .15s}
+  .pkg-opt:hover,.pkg-opt.selected{border-color:var(--clay);background:var(--clay-pale)}
+  .pkg-opt-num{font-size:1.3rem;font-weight:700;color:var(--clay)}
+  .pkg-opt-label{font-size:.72rem;color:var(--ink-soft);margin-top:.2rem}
+  .pkg-opt-total{font-size:.78rem;font-weight:600;margin-top:.3rem}
+  .calendar-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin-bottom:1rem}
+  .cal-header{display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;margin-bottom:.4rem}
+  .cal-day-name{text-align:center;font-size:.65rem;color:var(--ink-soft);font-weight:600;text-transform:uppercase}
+  .cal-day{text-align:center;padding:.45rem .2rem;border-radius:6px;font-size:.82rem;cursor:pointer;border:1.5px solid transparent;transition:all .15s}
+  .cal-day.empty{pointer-events:none}
+  .cal-day.past{color:var(--border);pointer-events:none}
+  .cal-day.available:hover{border-color:var(--clay);color:var(--clay)}
+  .cal-day.selected{background:var(--clay);color:#fff;border-color:var(--clay)}
+  .cal-day.unavailable{color:var(--border);pointer-events:none}
+  .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem}
+  .cal-nav button{background:none;border:none;font-size:1.1rem;cursor:pointer;color:var(--ink-soft);padding:.2rem .5rem}
+  .cal-month{font-size:.9rem;font-weight:600}
+  .time-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
+  .time-slot{padding:.55rem;text-align:center;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;cursor:pointer;transition:all .15s}
+  .time-slot:hover{border-color:var(--clay)}
+  .time-slot.selected{background:var(--clay);color:#fff;border-color:var(--clay)}
+  .summary-table{width:100%;border-collapse:collapse;margin-bottom:1.25rem}
+  .summary-table td{padding:.4rem 0;font-size:.85rem}
+  .summary-table td:first-child{color:var(--ink-soft)}
+  .summary-table td:last-child{text-align:right;font-weight:500}
+  .summary-total td{font-weight:700;font-size:1rem;border-top:1.5px solid var(--border);padding-top:.75rem;margin-top:.5rem}
+  #stripe-element{padding:.7rem .85rem;border:1.5px solid var(--border);border-radius:7px;margin-bottom:.5rem}
+  #stripe-error{color:#e53e3e;font-size:.8rem;margin-bottom:.75rem;min-height:1.2em}
+  .success-icon{font-size:2.5rem;margin-bottom:1rem;text-align:center}
+  .success-links{display:flex;flex-direction:column;gap:.5rem;margin-top:1.25rem}
+  .success-links a{display:block;text-align:center;padding:.65rem;border:1.5px solid var(--border);border-radius:7px;font-size:.83rem;color:var(--ink);text-decoration:none}
+  .success-links a:hover{border-color:var(--clay)}
+  .note{font-size:.75rem;color:var(--ink-soft);font-weight:300;line-height:1.6;margin-bottom:1rem}
+  .back-link{font-size:.8rem;color:var(--ink-soft);text-decoration:none;cursor:pointer}
+  .back-link:hover{color:var(--clay)}
+  .loading-slots{color:var(--ink-soft);font-size:.83rem;padding:.5rem 0}
+  @media(max-width:480px){.field-row{grid-template-columns:1fr}.pkg-opts{grid-template-columns:repeat(3,1fr)}.time-slots{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<a href="index.html" style="text-decoration:none">
+  <div class="logo"><span class="logo-dot"></span> Vikashan</div>
+</a>
+
+<div class="card">
+
+  <!-- STEP 1: Session type -->
+  <div class="step active" id="s1">
+    <div class="step-label">Step 1 of 5 — Choose your session</div>
+    <h2>Book a session</h2>
+    <p class="sub">Choose the type of session that fits your needs. All sessions are online via Google Meet.</p>
+    <div class="session-opts" id="session-opts">
+      <div class="loading-slots">Loading sessions…</div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(2)">Continue →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: Tier + slider + package -->
+  <div class="step" id="s2">
+    <div class="step-label">Step 2 of 5 — Choose your rate &amp; package</div>
+    <h2>Rate &amp; package</h2>
+    <p class="sub">Choose the tier that honestly reflects your financial situation, then set your rate and how many sessions you'd like.</p>
+    <div class="tier-opts">
+      <label class="tier-opt" id="tier-sustaining">
+        <input type="radio" name="tier" value="sustaining" checked onchange="updateSlider()">
+        <div><div class="tier-opt-name">Sustaining — $150–$220 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div>
+      </label>
+      <label class="tier-opt" id="tier-standard">
+        <input type="radio" name="tier" value="standard" onchange="updateSlider()">
+        <div><div class="tier-opt-name">Accessible Rate — $75–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div>
+      </label>
+    </div>
+    <div class="slider-wrap">
+      <div class="slider-label"><span id="slider-min">$150</span><span id="slider-max">$220</span></div>
+      <input type="range" class="price-slider" id="price-slider" min="150" max="220" value="185" oninput="updatePrice()">
+      <div class="selected-price" id="selected-price">$185 <span>/ session</span></div>
+    </div>
+    <div class="field"><label>Number of sessions</label>
+      <div class="pkg-opts">
+        <div class="pkg-opt selected" data-sessions="1" onclick="selectPkg(this,1)">
+          <div class="pkg-opt-num">1</div>
+          <div class="pkg-opt-label">session</div>
+          <div class="pkg-opt-total" id="pkg-total-1">$185</div>
+        </div>
+        <div class="pkg-opt" data-sessions="3" onclick="selectPkg(this,3)">
+          <div class="pkg-opt-num">3</div>
+          <div class="pkg-opt-label">sessions</div>
+          <div class="pkg-opt-total" id="pkg-total-3">$555</div>
+        </div>
+        <div class="pkg-opt" data-sessions="6" onclick="selectPkg(this,6)">
+          <div class="pkg-opt-num">6</div>
+          <div class="pkg-opt-label">sessions</div>
+          <div class="pkg-opt-total" id="pkg-total-6">$1,110</div>
+        </div>
+      </div>
+    </div>
+    <p class="note">No credit card required yet — you'll pay on the next step after choosing your date.</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(3)">Continue →</button>
+      <a class="back-link" onclick="goStep(1)">← Back</a>
+    </div>
+  </div>
+
+  <!-- STEP 3: Date & time -->
+  <div class="step" id="s3">
+    <div class="step-label">Step 3 of 5 — Choose your first session date</div>
+    <h2>Pick a date &amp; time</h2>
+    <p class="sub">Choose a date for your first session. Remaining sessions will be scheduled with Vik after your first appointment.</p>
+    <div class="cal-nav">
+      <button onclick="prevMonth()">‹</button>
+      <div class="cal-month" id="cal-month"></div>
+      <button onclick="nextMonth()">›</button>
+    </div>
+    <div class="cal-header">
+      <div class="cal-day-name">Su</div><div class="cal-day-name">Mo</div><div class="cal-day-name">Tu</div>
+      <div class="cal-day-name">We</div><div class="cal-day-name">Th</div><div class="cal-day-name">Fr</div><div class="cal-day-name">Sa</div>
+    </div>
+    <div class="calendar-grid" id="calendar-grid"></div>
+    <div id="time-section" style="display:none">
+      <label style="margin-bottom:.5rem">Available times</label>
+      <div class="time-slots" id="time-slots"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-s3" onclick="goStep(4)" disabled>Continue →</button>
+      <a class="back-link" onclick="goStep(2)">← Back</a>
+    </div>
+  </div>
+
+  <!-- STEP 4: Your details -->
+  <div class="step" id="s4">
+    <div class="step-label">Step 4 of 5 — Your details</div>
+    <h2>Your details</h2>
+    <div class="field-row">
+      <div class="field"><label>First name *</label><input type="text" id="fname" placeholder="Jane"></div>
+      <div class="field"><label>Last name</label><input type="text" id="lname" placeholder="Smith"></div>
+    </div>
+    <div class="field"><label>Email *</label><input type="email" id="email" placeholder="jane@example.com"></div>
+    <div class="field"><label>Phone</label><input type="tel" id="phone" placeholder="+61 4xx xxx xxx"></div>
+    <div class="field"><label>Anything you'd like Vik to know before your session?</label><textarea id="notes" rows="3" placeholder="Optional"></textarea></div>
+    <label style="display:flex;align-items:center;gap:.5rem;font-size:.82rem;font-weight:400;color:var(--ink-soft);cursor:pointer;margin-bottom:1rem">
+      <input type="checkbox" id="mailing" checked style="accent-color:var(--clay)"> Keep me updated with occasional insights from Vikashan
+    </label>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="goStep(5)">Continue to payment →</button>
+      <a class="back-link" onclick="goStep(3)">← Back</a>
+    </div>
+  </div>
+
+  <!-- STEP 5: Payment -->
+  <div class="step" id="s5">
+    <div class="step-label">Step 5 of 5 — Payment</div>
+    <h2>Confirm &amp; pay</h2>
+    <table class="summary-table">
+      <tr><td>Session</td><td id="sum-session">—</td></tr>
+      <tr><td>Date</td><td id="sum-date">—</td></tr>
+      <tr><td>Time</td><td id="sum-time">—</td></tr>
+      <tr><td>Rate</td><td id="sum-rate">—</td></tr>
+      <tr><td>Sessions</td><td id="sum-sessions">—</td></tr>
+      <tr class="summary-total"><td>Total</td><td id="sum-total">—</td></tr>
+    </table>
+    <label style="margin-bottom:.5rem">Card details</label>
+    <div id="stripe-element"></div>
+    <div id="stripe-error"></div>
+    <p class="note">Payment is processed securely by Stripe. Vikashan never sees your card details.</p>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="pay-btn" onclick="submitPayment()">Pay & confirm booking</button>
+      <a class="back-link" onclick="goStep(4)">← Back</a>
+    </div>
+  </div>
+
+  <!-- STEP 6: Success -->
+  <div class="step" id="s6">
+    <div class="success-icon">✓</div>
+    <h2 style="text-align:center">You're booked in</h2>
+    <p class="sub" style="text-align:center;margin-top:.5rem">A confirmation email with your Google Meet link and calendar invite is on its way.</p>
+    <div id="success-cal-links" class="success-links"></div>
+    <div style="margin-top:1.5rem;text-align:center">
+      <a href="index.html" style="font-size:.83rem;color:var(--ink-soft)">← Back to Vikashan</a>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://js.stripe.com/v3/"></script>
+<script>
+const API_BASE = ''
+const TIERS = {
+  sustaining: { min: 150, max: 220, default: 185 },
+  standard:   { min: 75,  max: 150, default: 110 }
+}
+
+const B = {
+  sessionTypeId: null, sessionName: '', durationMins: 60,
+  tier: 'sustaining', amountPerSession: 185, sessionsTotal: 1,
+  date: null, dateLabel: '', time: null, timeLabel: '',
+  fname: '', lname: '', email: '', phone: '', notes: '', mailingOptIn: true
+}
+
+let calYear, calMonth, stripe, cardElement, clientSecret
+
+// ── Session types ──────────────────────────────────────────────
+async function loadSessionTypes() {
+  const r = await fetch(`${API_BASE}/api/session-types`)
+  const { sessionTypes } = await r.json()
+  const paid = sessionTypes.filter(s => !s.is_free)
+  const container = document.getElementById('session-opts')
+  container.innerHTML = paid.map((s, i) => `
+    <label class="session-opt${i===0?' selected':''}" onclick="selectSession(this,'${s.id}','${s.name.replace(/'/g,"\\'")}',${s.duration_mins})">
+      <input type="radio" name="session" value="${s.id}"${i===0?' checked':''}>
+      <div>
+        <div class="session-opt-name">${s.name}</div>
+        <div class="session-opt-desc">${s.description || ''}</div>
+      </div>
+    </label>`).join('')
+  if (paid.length) {
+    B.sessionTypeId = paid[0].id
+    B.sessionName = paid[0].name
+    B.durationMins = paid[0].duration_mins
+  }
+}
+
+function selectSession(el, id, name, dur) {
+  document.querySelectorAll('.session-opt').forEach(o => o.classList.remove('selected'))
+  el.classList.add('selected')
+  B.sessionTypeId = id; B.sessionName = name; B.durationMins = dur
+  updatePackageTotals()
+}
+
+// ── Tier + slider ───────────────────────────────────────────────
+function updateSlider() {
+  const t = document.querySelector('input[name=tier]:checked').value
+  B.tier = t
+  const { min, max, default: def } = TIERS[t]
+  const slider = document.getElementById('price-slider')
+  slider.min = min; slider.max = max; slider.value = def
+  document.getElementById('slider-min').textContent = `$${min}`
+  document.getElementById('slider-max').textContent = `$${max}`
+  updatePrice()
+}
+
+function updatePrice() {
+  B.amountPerSession = parseInt(document.getElementById('price-slider').value)
+  document.getElementById('selected-price').innerHTML = `$${B.amountPerSession} <span>/ session</span>`
+  updatePackageTotals()
+}
+
+function updatePackageTotals() {
+  ;[1,3,6].forEach(n => {
+    const el = document.getElementById(`pkg-total-${n}`)
+    if (el) el.textContent = `$${(B.amountPerSession * n).toLocaleString()}`
+  })
+}
+
+function selectPkg(el, n) {
+  document.querySelectorAll('.pkg-opt').forEach(o => o.classList.remove('selected'))
+  el.classList.add('selected')
+  B.sessionsTotal = n
+}
+
+// ── Calendar ────────────────────────────────────────────────────
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+
+function initCalendar() {
+  const now = new Date()
+  calYear = now.getFullYear(); calMonth = now.getMonth()
+  renderCalendar()
+}
+
+function prevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--} renderCalendar() }
+function nextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++} renderCalendar() }
+
+function renderCalendar() {
+  document.getElementById('cal-month').textContent = `${MONTHS[calMonth]} ${calYear}`
+  const grid = document.getElementById('calendar-grid')
+  const first = new Date(calYear, calMonth, 1).getDay()
+  const days = new Date(calYear, calMonth+1, 0).getDate()
+  const today = new Date(); today.setHours(0,0,0,0)
+  let html = ''
+  for(let i=0;i<first;i++) html += `<div class="cal-day empty"></div>`
+  for(let d=1;d<=days;d++) {
+    const dt = new Date(calYear, calMonth, d)
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`
+    const isPast = dt < today
+    const isSelected = ds === B.date
+    html += `<div class="cal-day${isPast?' past':' available'}${isSelected?' selected':''}" data-date="${ds}" onclick="selectDate('${ds}',this)">${d}</div>`
+  }
+  grid.innerHTML = html
+}
+
+async function selectDate(ds, el) {
+  B.date = ds; B.time = null; B.timeLabel = ''
+  document.querySelectorAll('.cal-day').forEach(d => d.classList.remove('selected'))
+  el.classList.add('selected')
+  document.getElementById('btn-s3').disabled = true
+  const timeSection = document.getElementById('time-section')
+  const slotsDiv = document.getElementById('time-slots')
+  timeSection.style.display = 'block'
+  slotsDiv.innerHTML = '<div class="loading-slots">Loading times…</div>'
+
+  const r = await fetch(`${API_BASE}/api/availability?date=${ds}`)
+  const { slots } = await r.json()
+  if (!slots || !slots.length) {
+    slotsDiv.innerHTML = '<div class="loading-slots">No availability on this date.</div>'
+    return
+  }
+  slotsDiv.innerHTML = slots.map(s => `
+    <div class="time-slot" data-time="${s.hour}:00" data-label="${s.label}" onclick="selectTime(this,'${s.hour}:00','${s.label}')">${s.label}</div>
+  `).join('')
+}
+
+function selectTime(el, t, label) {
+  document.querySelectorAll('.time-slot').forEach(s => s.classList.remove('selected'))
+  el.classList.add('selected')
+  B.time = t; B.timeLabel = label
+  document.getElementById('btn-s3').disabled = false
+}
+
+// ── Step navigation ─────────────────────────────────────────────
+function goStep(n) {
+  if (n === 4) {
+    if (!B.date || !B.time) { alert('Please select a date and time.'); return }
+  }
+  if (n === 5) {
+    B.fname = document.getElementById('fname').value.trim()
+    B.email = document.getElementById('email').value.trim()
+    B.lname = document.getElementById('lname').value.trim()
+    B.phone = document.getElementById('phone').value.trim()
+    B.notes = document.getElementById('notes').value.trim()
+    B.mailingOptIn = document.getElementById('mailing').checked
+    if (!B.fname || !B.email) {
+      if (!B.fname) document.getElementById('fname').style.borderColor = '#e53e3e'
+      if (!B.email) document.getElementById('email').style.borderColor = '#e53e3e'
+      return
+    }
+    renderSummary()
+    initStripe()
+  }
+  document.querySelectorAll('.step').forEach(s => s.classList.remove('active'))
+  document.getElementById(`s${n}`).classList.add('active')
+  window.scrollTo(0,0)
+}
+
+// ── Summary ─────────────────────────────────────────────────────
+function renderSummary() {
+  const tierLabel = { sustaining: 'Sustaining', standard: 'Accessible Rate' }
+  document.getElementById('sum-session').textContent = B.sessionName
+  document.getElementById('sum-date').textContent = new Date(B.date).toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long'})
+  document.getElementById('sum-time').textContent = B.timeLabel + ' AEST'
+  document.getElementById('sum-rate').textContent = `$${B.amountPerSession} / session (${tierLabel[B.tier]})`
+  document.getElementById('sum-sessions').textContent = B.sessionsTotal === 1 ? '1 session' : `${B.sessionsTotal} sessions`
+  document.getElementById('sum-total').textContent = `$${(B.amountPerSession * B.sessionsTotal).toLocaleString()}`
+}
+
+// ── Stripe ───────────────────────────────────────────────────────
+async function initStripe() {
+  if (stripe) return
+  const r = await fetch(`${API_BASE}/api/packages/create`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      clientName: (B.fname + ' ' + B.lname).trim(),
+      clientEmail: B.email,
+      clientPhone: B.phone || null,
+      sessionTypeId: B.sessionTypeId,
+      date: B.date,
+      time: B.time,
+      amountCentsPerSession: B.amountPerSession * 100,
+      sessionsTotal: B.sessionsTotal,
+      tier: B.tier === 'sustaining' ? 'full_rate' : 'accessible',
+      notes: B.notes || null,
+      mailingOptIn: B.mailingOptIn
+    })
+  })
+  const data = await r.json()
+  if (!r.ok) { document.getElementById('stripe-error').textContent = data.error || 'Error creating booking.'; return }
+
+  clientSecret = data.clientSecret
+  stripe = Stripe(data.publishableKey)
+  const elements = stripe.elements()
+  cardElement = elements.create('card', { style: { base: { fontFamily: 'Inter, sans-serif', fontSize: '15px', color: '#141414' } } })
+  cardElement.mount('#stripe-element')
+}
+
+async function submitPayment() {
+  const btn = document.getElementById('pay-btn')
+  const errEl = document.getElementById('stripe-error')
+  btn.disabled = true; btn.textContent = 'Processing…'; errEl.textContent = ''
+
+  const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+    payment_method: { card: cardElement, billing_details: { name: (B.fname + ' ' + B.lname).trim(), email: B.email } }
+  })
+
+  if (error) {
+    errEl.textContent = error.message
+    btn.disabled = false; btn.textContent = 'Pay & confirm booking'
+    return
+  }
+
+  if (paymentIntent.status === 'succeeded') {
+    showSuccess()
+  }
+}
+
+function showSuccess() {
+  const [y, mo, d] = B.date.split('-').map(Number)
+  const [h, mi] = B.time.split(':').map(Number)
+  const start = new Date(y, mo-1, d, h, mi)
+  const end = new Date(start.getTime() + B.durationMins * 60000)
+  const fmt = dt => `${dt.getFullYear()}${String(dt.getMonth()+1).padStart(2,'0')}${String(dt.getDate()).padStart(2,'0')}T${String(dt.getHours()).padStart(2,'0')}${String(dt.getMinutes()).padStart(2,'0')}00`
+  const gcal = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(B.sessionName+' — Vikashan')}&dates=${fmt(start)}/${fmt(end)}&location=${encodeURIComponent('https://meet.google.com/sbz-irxr-zht')}`
+
+  document.getElementById('success-cal-links').innerHTML = `
+    <a href="${gcal}" target="_blank">📅 Add to Google Calendar</a>
+    <a href="index.html">← Back to Vikashan</a>
+  `
+  goStep(6)
+}
+
+// ── Init ────────────────────────────────────────────────────────
+loadSessionTypes()
+initCalendar()
+updatePackageTotals()
+</script>
+</body>
+</html>

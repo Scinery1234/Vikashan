@@ -49,9 +49,17 @@ export default async function handler(req, res) {
       .update({ status: 'active', primary_service: booking.session_types.name })
       .eq('id', booking.client_id)
 
+    // Activate package if this payment is for one
+    if (intent.metadata?.packageId) {
+      await supabase.from('packages')
+        .update({ status: 'active', sessions_used: 1 })
+        .eq('id', intent.metadata.packageId)
+    }
+
     const confirmedBooking = { ...booking, session_type_name: booking.session_types.name }
+    const sessionsTotal = intent.metadata?.sessionsTotal ? parseInt(intent.metadata.sessionsTotal) : 1
     await Promise.all([
-      sendConfirmation({ booking: confirmedBooking, client: booking.clients, zoomLink: booking.meet_link }),
+      sendConfirmation({ booking: confirmedBooking, client: booking.clients, zoomLink: booking.meet_link, sessionsTotal }),
       createOutlookEvent({ booking: confirmedBooking, client: booking.clients, meetLink: booking.meet_link }),
       createGoogleCalendarEvent({ booking: confirmedBooking, client: booking.clients, meetLink: booking.meet_link })
     ])
