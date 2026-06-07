@@ -494,7 +494,7 @@ function localDateStr(d) {
 }
 
 function getRecurDates() {
-  if (!S.date || !S.time) return []
+  if (!S.date) return []
   const freqDays = { weekly: 7, fortnightly: 14, monthly: null }
   const count = S.recurFreq === 'none' ? 1 : S.recurCount
   const dates = []
