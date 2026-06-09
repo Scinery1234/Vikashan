@@ -1638,8 +1638,13 @@ let calY = new Date().getFullYear(), calM = new Date().getMonth();
 
 function openBooking() {
   document.getElementById('booking-overlay').classList.add('open');
+  goStep(1);
   initFcTzSelect();
-  goStep(1); renderCal();
+  renderCal();
+  // Reset slot area
+  document.getElementById('slots-wrap').style.display = 'none';
+  const btn = document.getElementById('step1-next');
+  btn.disabled = true; btn.style.opacity = '.4';
 }
 function closeBooking() { document.getElementById('booking-overlay').classList.remove('open'); }
 function handleOverlay(e,id) { if(e.target.id===id) document.getElementById(id).classList.remove('open'); }
@@ -1702,7 +1707,6 @@ async function selectDate(ds, el) {
     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
     document.getElementById('slots-label').textContent =
       'Available times · ' + parseInt(parts[2]) + ' ' + months[parseInt(parts[1])-1];
-    grid.innerHTML = '';
     renderFcSlots(slots || [], ds);
   } catch(e) {
     grid.innerHTML = '<span class="no-slots">Could not load times. Please try again.</span>';
