@@ -33,9 +33,12 @@ export default async function handler(req, res) {
       .eq('date', date)
   ])
 
-  const bookedHours = new Set(
-    (existingBookings || []).map(b => parseInt(b.start_time.split(':')[0]))
-  )
+  const bookedHours = new Set()
+  for (const b of existingBookings || []) {
+    const startHour = parseInt(b.start_time.split(':')[0])
+    const numHours = Math.ceil((b.duration_mins || 60) / 60)
+    for (let h = startHour; h < startHour + numHours; h++) bookedHours.add(h)
+  }
 
   const blockedHours = new Set()
   for (const b of blocked || []) {

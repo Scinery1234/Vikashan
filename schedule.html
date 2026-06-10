@@ -70,7 +70,19 @@
   .success-links a:hover{border-color:var(--clay)}
   .recur-count-btn{width:42px;height:42px;display:flex;align-items:center;justify-content:center;border:1.5px solid var(--border);border-radius:7px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .15s}
   .recur-count-btn:hover,.recur-count-btn.selected{border-color:var(--clay);background:var(--clay);color:#fff}
-  @media(max-width:480px){.field-row{grid-template-columns:1fr}.time-slots{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:480px){
+    body{padding:1rem .75rem}
+    .logo{margin-bottom:1.25rem}
+    .card{padding:1.5rem 1.25rem}
+    h2{font-size:1.2rem}
+    .field-row{grid-template-columns:1fr}
+    .time-slots{grid-template-columns:repeat(2,1fr)}
+    .cal-day{min-height:2.5rem;padding:.3rem .05rem;display:flex;align-items:center;justify-content:center;font-size:.78rem}
+    .calendar-grid,.cal-header{gap:.2rem}
+    .session-opt{padding:.75rem .85rem}
+    .btn-primary{width:100%}
+    .btn-row{flex-wrap:wrap}
+  }
 </style>
 </head>
 <body>
@@ -617,9 +629,22 @@ async function confirmBooking() {
   }
 }
 
+function showTzCurrent() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const allZones = TZ_LIST.flatMap(g => g.zones)
+    if (allZones.find(z => z.v === tz)) {
+      selectedTz = tz
+      const sel = document.getElementById('tz-select')
+      if (sel) sel.value = tz
+    }
+  } catch(e) {}
+}
+
 // ── Init ─────────────────────────────────────────────────────────
 loadSessionTypes()
 initTzSelect()
+showTzCurrent()
 renderCal()
 </script>
 </body>
