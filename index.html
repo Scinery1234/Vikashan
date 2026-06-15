@@ -1257,9 +1257,11 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       </div>
       <div class="field" style="margin-bottom:.75rem"><label>Email</label><input type="email" id="a-email"></div>
       <div class="field" style="margin-bottom:.75rem"><label>Current situation</label>
-        <select id="a-sit"><option value="">Select one</option><option>Unemployed / seeking work</option><option>Receiving income support / Centrelink</option><option>Significant financial hardship</option><option>Student with limited income</option><option>Other</option></select>
+        <textarea id="a-sit" placeholder="Briefly describe your current financial situation." style="min-height:72px"></textarea>
       </div>
-      <div class="field" style="margin-bottom:.75rem"><label>What support are you looking for?</label><textarea id="a-reason" placeholder="Brief description of what you'd like to work on."></textarea></div>
+      <div class="field" style="margin-bottom:.75rem"><label>What support are you looking for?</label>
+        <select id="a-reason"><option value="">Select one</option><option>Therapeutic support / counselling</option><option>Career coaching &amp; readiness</option><option>Life transitions &amp; clarity work</option><option>A combination of the above</option><option>Not sure yet</option></select>
+      </div>
       <div class="field" style="margin-bottom:.75rem"><label>Rate you can afford ($/hr)</label><input type="text" id="a-rate" placeholder="e.g. 40"></div>
       <button class="btn btn-primary" onclick="submitApp()">Submit application</button>
     </div>
