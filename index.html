@@ -445,15 +445,22 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   .price-card { padding: 1.35rem; }
   .price-amount { font-size: 1.85rem; }
 
-  /* Booking modal */
+  /* Booking modal — bottom sheet */
   .modal { border-radius: 10px 10px 0 0; max-height: 95vh; margin-top: auto; }
   .overlay { align-items: flex-end; padding: 0; }
   .modal-top { padding: 1.25rem 1.5rem 1rem; }
   .modal-body { padding: 1.25rem 1.5rem; }
 
-  /* Slots */
+  /* Larger close button touch target */
+  .modal-close-btn { width: 36px; height: 36px; font-size: 1.1rem; }
+
+  /* Modal footer — primary button expands, ghost stays compact */
+  .modal-foot { gap: .65rem; flex-wrap: wrap; }
+  .modal-foot .btn-primary { flex: 1; text-align: center; }
+
+  /* Slots — taller touch targets */
   .slots-grid { gap: .35rem; }
-  .time-slot { padding: .35rem .75rem; font-size: .78rem; }
+  .time-slot { padding: .6rem .75rem; font-size: .8rem; min-height: 2.5rem; display: inline-flex; align-items: center; justify-content: center; }
 
   /* Footer */
   .footer-grid { grid-template-columns: 1fr; gap: 1.75rem; }
@@ -1164,7 +1171,6 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       <div class="sp active" id="sp1"></div>
       <div class="sp" id="sp2"></div>
       <div class="sp" id="sp3"></div>
-      <div class="sp" id="sp4"></div>
     </div>
 
     <div class="step-panel active" id="step1">
@@ -1190,7 +1196,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
         <div class="slots-grid" id="slots-grid"></div>
       </div>
       <div class="modal-foot">
-        <span></span>
+        <span id="step1-hint" style="font-size:.75rem;color:var(--ink-soft)">Pick a date &amp; time above</span>
         <button class="btn btn-primary" id="step1-next" onclick="goStep(2)" disabled style="opacity:.4">Your details →</button>
       </div>
     </div>
@@ -1213,26 +1219,11 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
     </div>
 
     <div class="step-panel" id="step3">
-      <span class="step-label">Choose your rate (for future sessions)</span>
-      <p style="font-size:.8rem;color:var(--ink-soft);font-weight:300;margin-bottom:1rem;line-height:1.7">The discovery call is free. For ongoing sessions, choose the tier that reflects your financial situation. All rates are per hour.</p>
-      <div class="tier-opts">
-        <label class="tier-opt"><input type="radio" name="tier" value="sustaining" checked onchange="updateTierUI()"><div><div class="tier-opt-name">Sustaining — $150–$250 / hr</div><div class="tier-opt-price">Helps subsidise concession access for others</div></div></label>
-        <label class="tier-opt"><input type="radio" name="tier" value="standard" onchange="updateTierUI()"><div><div class="tier-opt-name">Accessible Rate — $65–$150 / hr</div><div class="tier-opt-price">For those who need a lower rate to access support</div></div></label>
-        <label class="tier-opt"><input type="radio" name="tier" value="concession" onchange="updateTierUI()"><div><div class="tier-opt-name">Concession — $25–$65 / hr</div><div class="tier-opt-price">Financial hardship — application required after call</div></div></label>
-      </div>
-      <p style="font-size:.76rem;color:var(--ink-soft);font-weight:300;margin-top:-.5rem;margin-bottom:1rem">No credit card required at this stage — payment is arranged after your discovery call.</p>
-      <div class="modal-foot">
-        <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
-        <button class="btn btn-primary" onclick="goStep(4)">Review →</button>
-      </div>
-    </div>
-
-    <div class="step-panel" id="step4">
       <span class="step-label">Confirm your booking</span>
       <div class="confirm-box" id="confirm-box"></div>
       <p style="font-size:.79rem;color:var(--ink-soft);font-weight:300;line-height:1.7;margin-bottom:1.25rem">A Google Meet link will be sent to your email. No payment is taken for the discovery call. Vik will be in touch to confirm.</p>
       <div class="modal-foot">
-        <button class="btn btn-ghost" onclick="goStep(3)">← Back</button>
+        <button class="btn btn-ghost" onclick="goStep(2)">← Back</button>
         <button class="btn btn-primary" onclick="submitBooking()">Confirm Booking ✓</button>
       </div>
     </div>
@@ -1266,9 +1257,11 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       </div>
       <div class="field" style="margin-bottom:.75rem"><label>Email</label><input type="email" id="a-email"></div>
       <div class="field" style="margin-bottom:.75rem"><label>Current situation</label>
-        <select id="a-sit"><option value="">Select one</option><option>Unemployed / seeking work</option><option>Receiving income support / Centrelink</option><option>Significant financial hardship</option><option>Student with limited income</option><option>Other</option></select>
+        <textarea id="a-sit" placeholder="Briefly describe your current financial situation." style="min-height:72px"></textarea>
       </div>
-      <div class="field" style="margin-bottom:.75rem"><label>What support are you looking for?</label><textarea id="a-reason" placeholder="Brief description of what you'd like to work on."></textarea></div>
+      <div class="field" style="margin-bottom:.75rem"><label>What support are you looking for?</label>
+        <select id="a-reason"><option value="">Select one</option><option>Therapeutic support / counselling</option><option>Career coaching &amp; readiness</option><option>Life transitions &amp; clarity work</option><option>A combination of the above</option><option>Not sure yet</option></select>
+      </div>
       <div class="field" style="margin-bottom:.75rem"><label>Rate you can afford ($/hr)</label><input type="text" id="a-rate" placeholder="e.g. 40"></div>
       <button class="btn btn-primary" onclick="submitApp()">Submit application</button>
     </div>
@@ -1643,10 +1636,12 @@ function openBooking() {
   goStep(1);
   initFcTzSelect();
   renderCal();
-  // Reset slot area
+  // Reset slot area and hint
   document.getElementById('slots-wrap').style.display = 'none';
   const btn = document.getElementById('step1-next');
   btn.disabled = true; btn.style.opacity = '.4';
+  const hint = document.getElementById('step1-hint');
+  if (hint) hint.style.visibility = 'visible';
 }
 function closeBooking() { document.getElementById('booking-overlay').classList.remove('open'); }
 function handleOverlay(e,id) { if(e.target.id===id) document.getElementById(id).classList.remove('open'); }
@@ -1723,6 +1718,8 @@ function selectTime(hour, label, el) {
   el.classList.add('selected');
   const btn = document.getElementById('step1-next');
   btn.disabled = false; btn.style.opacity = '1';
+  const hint = document.getElementById('step1-hint');
+  if (hint) hint.style.visibility = 'hidden';
 }
 
 function validateStep2AndContinue() {
@@ -1740,19 +1737,19 @@ function validateStep2AndContinue() {
   }
   document.getElementById('b-fname').style.borderColor = '';
   document.getElementById('b-email').style.borderColor = '';
-  goStep(3);
+  goStep(3); // step 3 is now confirm
 }
 
 function goStep(n) {
-  for(let i=1;i<=4;i++) { const p=document.getElementById('step'+i); if(p) p.classList.remove('active'); }
+  for(let i=1;i<=3;i++) { const p=document.getElementById('step'+i); if(p) p.classList.remove('active'); }
   const done=document.getElementById('step-done'); if(done) done.classList.remove('active');
-  const target=document.getElementById(n<=4?'step'+n:'step-done');
+  const target=document.getElementById(n<=3?'step'+n:'step-done');
   if(target) target.classList.add('active');
-  for(let i=1;i<=4;i++) {
+  for(let i=1;i<=3;i++) {
     const sp=document.getElementById('sp'+i);
     if(sp) { sp.classList.remove('active','done'); if(i<n) sp.classList.add('done'); else if(i===n) sp.classList.add('active'); }
   }
-  if(n===4) buildConfirm();
+  if(n===3) buildConfirm();
 }
 
 function updateTierUI() {
@@ -1769,13 +1766,11 @@ function buildConfirm() {
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const dp = B.date ? B.date.split('-') : null;
   const dateStr = dp ? parseInt(dp[2])+' '+months[parseInt(dp[1])-1]+' '+dp[0] : '—';
-  const tierLabel = {standard:'Accessible Rate ($65–$150/hr)',sustaining:'Sustaining ($150–$250/hr)',concession:'Concession ($25–$65/hr)'};
   const rows = [
     ['Service','Career & Wellness Coaching — Discovery Call'],
     ['Format','Online (Google Meet)'],
     ['Date', dateStr],
     ['Time', B.timeLabel||'—'],
-    ['Ongoing rate', tierLabel[B.tier]||'—'],
     ['Name', ((B.fname+' '+B.lname).trim())||'—'],
     ['Email', B.email||'—']
   ];
