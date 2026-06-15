@@ -445,15 +445,22 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   .price-card { padding: 1.35rem; }
   .price-amount { font-size: 1.85rem; }
 
-  /* Booking modal */
+  /* Booking modal — bottom sheet */
   .modal { border-radius: 10px 10px 0 0; max-height: 95vh; margin-top: auto; }
   .overlay { align-items: flex-end; padding: 0; }
   .modal-top { padding: 1.25rem 1.5rem 1rem; }
   .modal-body { padding: 1.25rem 1.5rem; }
 
-  /* Slots */
+  /* Larger close button touch target */
+  .modal-close-btn { width: 36px; height: 36px; font-size: 1.1rem; }
+
+  /* Modal footer — primary button expands, ghost stays compact */
+  .modal-foot { gap: .65rem; flex-wrap: wrap; }
+  .modal-foot .btn-primary { flex: 1; text-align: center; }
+
+  /* Slots — taller touch targets */
   .slots-grid { gap: .35rem; }
-  .time-slot { padding: .35rem .75rem; font-size: .78rem; }
+  .time-slot { padding: .6rem .75rem; font-size: .8rem; min-height: 2.5rem; display: inline-flex; align-items: center; justify-content: center; }
 
   /* Footer */
   .footer-grid { grid-template-columns: 1fr; gap: 1.75rem; }
