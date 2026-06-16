@@ -34,13 +34,14 @@
   .session-opts{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.25rem}
   .session-opt{display:flex;align-items:flex-start;gap:.75rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s}
   .session-opt:hover,.session-opt.selected{border-color:var(--clay)}
-  .session-opt input{accent-color:var(--clay);margin-top:3px;cursor:pointer}
+  .session-opt input{accent-color:var(--clay);margin-top:3px;cursor:pointer;width:auto}
   .session-opt-name{font-size:.87rem;font-weight:500}
   .session-opt-desc{font-size:.75rem;color:var(--ink-soft);margin-top:.15rem}
   .tier-opts{display:flex;flex-direction:column;gap:.5rem;margin-bottom:1rem}
   .tier-opt{display:flex;align-items:flex-start;gap:.75rem;padding:.85rem 1rem;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:border-color .15s}
   .tier-opt:hover,.tier-opt.selected{border-color:var(--clay)}
-  .tier-opt input{accent-color:var(--clay);margin-top:3px}
+  .tier-opt input{accent-color:var(--clay);margin-top:3px;width:auto}
+  .tier-opt > div{flex:1;min-width:0}
   .tier-opt-name{font-size:.87rem;font-weight:500}
   .tier-opt-price{font-size:.75rem;color:var(--ink-soft);margin-top:.15rem}
   .slider-wrap{margin:1rem 0}
