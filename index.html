@@ -1658,6 +1658,8 @@ function handleOverlay(e,id) { if(e.target.id===id) document.getElementById(id).
 function openApplication() { document.getElementById('app-overlay').classList.add('open'); }
 function closeApp() { document.getElementById('app-overlay').classList.remove('open'); }
 
+function getAvail() { return DEFAULT_AVAIL; }
+
 function renderCal() {
   const avail = getAvail();
   const now = new Date(); now.setHours(0,0,0,0);
