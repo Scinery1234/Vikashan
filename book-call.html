@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Book Your Discovery Call — Vikashan</title>
+<meta name="description" content="Choose a time for your free twenty-minute discovery call with Vikashan.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/funnel.css">
+</head>
+<body>
+
+<header>
+  <nav class="site-nav">
+    <a href="/" class="brand" aria-label="Vikashan home">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path d="M100 176.5 Q94.4 110 103.5 71.5" fill="none" stroke="#1E4B47" stroke-width="9" stroke-linecap="round"/><path d="M96.5 106.5 Q142 70 152.5 61 Q123 102 96.5 106.5 Z" fill="#5C9E66"/><path d="M100 124 Q63 90 51 85.5 Q90.5 110 100 124 Z" fill="#E8775E"/><circle cx="103.5" cy="71.5" r="6" fill="#5C9E66"/></svg>
+      <span class="wordmark">Vikashan</span>
+    </a>
+    <a href="/apply" class="nav-back">← Back</a>
+  </nav>
+</header>
+
+<main class="wrap section" style="max-width:760px">
+
+  <section class="center fade-in">
+    <p class="eyebrow">Step 2 of 2 · Book your call</p>
+    <h1>Choose a time that <em>suits you.</em></h1>
+    <p class="lead" style="max-width:50ch">This is a free, twenty-minute conversation, fully online and
+      with no pressure at all. It is simply a chance to talk through where you are and whether the
+      program feels like the right fit.</p>
+  </section>
+
+  <!-- Calendly inline widget.
+       Replace the data-url below with the real Calendly scheduling link when it is ready. -->
+  <section class="fade-in" style="margin-top:1.5rem">
+    <div class="calendly-inline-widget"
+         id="calendly"
+         data-url="https://calendly.com/vikashan/discovery-call?hide_gdpr_banner=1&primary_color=e8775e"></div>
+    <noscript><p class="center muted">Please enable JavaScript to load the booking calendar, or email
+      <a href="mailto:vik@vikashan.org">vik@vikashan.org</a> to arrange a time.</p></noscript>
+  </section>
+
+  <section class="center" style="margin-top:1.5rem">
+    <p class="muted" style="font-size:.85rem">Once your call is booked you will be taken to a
+      confirmation page. If the calendar does not load, you can
+      <a href="/thank-you">continue here</a> or email
+      <a href="mailto:vik@vikashan.org">vik@vikashan.org</a>.</p>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <p>Vikashan · Grow with Purpose · <a href="/">Home</a> · <a href="/program">Program</a></p>
+</footer>
+
+<!-- Calendly assets -->
+<link href="https://assets.calendly.com/assets/external/widget.css" rel="stylesheet">
+<script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+<script>
+// Prefill name/email from the application step
+(function(){
+  const params = new URLSearchParams(location.search);
+  const el = document.getElementById('calendly');
+  let url = el.getAttribute('data-url');
+  const name = params.get('name'), email = params.get('email');
+  const extra = [];
+  if (name)  extra.push('name='  + encodeURIComponent(name));
+  if (email) extra.push('email=' + encodeURIComponent(email));
+  if (extra.length) url += '&' + extra.join('&');
+  el.setAttribute('data-url', url);
+})();
+
+// When Calendly confirms a booking, move the visitor to the thank-you page
+window.addEventListener('message', function(e){
+  if (e.data && e.data.event === 'calendly.event_scheduled') {
+    window.location.href = '/thank-you';
+  }
+});
+</script>
+</body>
+</html>

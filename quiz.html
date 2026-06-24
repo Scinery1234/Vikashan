@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Career Clarity Quiz — Vikashan</title>
+<meta name="description" content="A free two-minute quiz to help you understand where you are in your career and what your next step could be.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/funnel.css">
+</head>
+<body>
+
+<header>
+  <nav class="site-nav">
+    <a href="/" class="brand" aria-label="Vikashan home">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path d="M100 176.5 Q94.4 110 103.5 71.5" fill="none" stroke="#1E4B47" stroke-width="9" stroke-linecap="round"/><path d="M96.5 106.5 Q142 70 152.5 61 Q123 102 96.5 106.5 Z" fill="#5C9E66"/><path d="M100 124 Q63 90 51 85.5 Q90.5 110 100 124 Z" fill="#E8775E"/><circle cx="103.5" cy="71.5" r="6" fill="#5C9E66"/></svg>
+      <span class="wordmark">Vikashan</span>
+    </a>
+    <a href="/" class="nav-back">← Back to site</a>
+  </nav>
+</header>
+
+<main class="wrap section">
+
+  <!-- Intro -->
+  <section id="intro" class="center fade-in">
+    <p class="eyebrow">Career Clarity Quiz</p>
+    <h1>When everything is shifting, <em>start with clarity.</em></h1>
+    <p class="lead">Five short questions, around two minutes. There are no right or wrong
+      answers here — simply choose the response that feels most honest, and we will help you
+      make sense of where you are and what your next step could be.</p>
+    <button class="btn btn-lg" onclick="startQuiz()">Begin the quiz</button>
+    <div class="trust">
+      <span>2 minutes</span><span>Free</span><span>No sign-up to start</span>
+    </div>
+  </section>
+
+  <!-- Quiz -->
+  <section id="quiz" class="hidden">
+    <div class="progress" aria-hidden="true"><span id="bar" style="width:0%"></span></div>
+    <p class="step-count" id="counter">Question 1 of 5</p>
+    <h2 class="question" id="question">…</h2>
+    <div class="options" id="options"></div>
+    <div style="margin-top:1.75rem;display:flex;justify-content:space-between;align-items:center">
+      <button class="nav-back" id="backBtn" onclick="prev()" style="background:none;border:none;cursor:pointer;font-family:var(--sans)">← Back</button>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <p>Vikashan · Grow with Purpose · <a href="/">Home</a> · <a href="/program">Program</a></p>
+</footer>
+
+<script>
+const QUESTIONS = [
+  {
+    q: "What brought you here today?",
+    a: [
+      { t: "I have recently been made redundant, or my role is coming to an end.", k: "redundancy" },
+      { t: "I feel drained, and lately I am mostly going through the motions at work.", k: "burnout" },
+      { t: "My career is stable, yet I sense I am meant for something more.", k: "meaning" },
+      { t: "I have a direction in mind, and I want help making it real.", k: "build" }
+    ]
+  },
+  {
+    q: "When you imagine the year ahead, what feels most true?",
+    a: [
+      { t: "I need to find my footing again and land somewhere steady.", k: "redundancy" },
+      { t: "I need rest, and a gentler, more sustainable relationship with work.", k: "burnout" },
+      { t: "I want my work to reflect what genuinely matters to me.", k: "meaning" },
+      { t: "I am ready to take a considered, strategic leap.", k: "build" }
+    ]
+  },
+  {
+    q: "Which of these would help you most right now?",
+    a: [
+      { t: "A clear plan and practical tools to guide my job search.", k: "redundancy" },
+      { t: "Space to understand my burnout and slowly rebuild my energy.", k: "burnout" },
+      { t: "Clarity about my values and the direction that truly fits them.", k: "meaning" },
+      { t: "A sounding board and a strategy for the path I am shaping.", k: "build" }
+    ]
+  },
+  {
+    q: "How are you feeling about the change ahead?",
+    a: [
+      { t: "Unsettled, partly by how suddenly it has arrived.", k: "redundancy" },
+      { t: "Tired, and unsure how much longer I can continue as I am.", k: "burnout" },
+      { t: "Restless, with a quiet pull toward something different.", k: "meaning" },
+      { t: "Energised, and keen to move forward with intention.", k: "build" }
+    ]
+  },
+  {
+    q: "What would success look like six months from now?",
+    a: [
+      { t: "A role that feels secure, and genuinely right for me.", k: "redundancy" },
+      { t: "Working in a way that is sustainable and kind to myself.", k: "burnout" },
+      { t: "Days that feel meaningful and aligned with who I am.", k: "meaning" },
+      { t: "Real, measured progress toward the work I am building.", k: "build" }
+    ]
+  }
+];
+
+let current = 0;
+const answers = new Array(QUESTIONS.length).fill(null);
+
+function startQuiz(){
+  document.getElementById('intro').classList.add('hidden');
+  document.getElementById('quiz').classList.remove('hidden');
+  render();
+}
+
+function render(){
+  const item = QUESTIONS[current];
+  document.getElementById('counter').textContent = `Question ${current+1} of ${QUESTIONS.length}`;
+  document.getElementById('bar').style.width = `${(current/QUESTIONS.length)*100}%`;
+  document.getElementById('question').textContent = item.q;
+  document.getElementById('backBtn').style.visibility = current === 0 ? 'hidden' : 'visible';
+
+  const wrap = document.getElementById('options');
+  wrap.innerHTML = '';
+  wrap.classList.add('fade-in');
+  item.a.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option' + (answers[current] === i ? ' selected' : '');
+    btn.innerHTML = `<span class="dot"></span><span>${opt.t}</span>`;
+    btn.onclick = () => choose(i);
+    wrap.appendChild(btn);
+  });
+  // retrigger animation
+  wrap.style.animation = 'none'; void wrap.offsetWidth; wrap.style.animation = '';
+}
+
+function choose(i){
+  answers[current] = i;
+  render();
+  setTimeout(next, 280);
+}
+
+function next(){
+  if (answers[current] === null) return;
+  if (current < QUESTIONS.length - 1){ current++; render(); }
+  else finish();
+}
+
+function prev(){
+  if (current > 0){ current--; render(); }
+}
+
+function finish(){
+  const tally = { redundancy:0, burnout:0, meaning:0, build:0 };
+  answers.forEach((choice, qi) => {
+    if (choice !== null) tally[QUESTIONS[qi].a[choice].k]++;
+  });
+  // highest score wins; ties resolved by the order keys appear (question priority)
+  const order = ['redundancy','burnout','meaning','build'];
+  let best = order[0];
+  order.forEach(k => { if (tally[k] > tally[best]) best = k; });
+  try {
+    localStorage.setItem('vikashan_profile', best);
+    localStorage.setItem('vikashan_quiz_tally', JSON.stringify(tally));
+  } catch(e){}
+  window.location.href = `/results?p=${best}`;
+}
+</script>
+</body>
+</html>

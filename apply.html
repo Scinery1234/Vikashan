@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apply for the Program — Vikashan</title>
+<meta name="description" content="A short application so we can understand your situation before your free discovery call.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/funnel.css">
+</head>
+<body>
+
+<header>
+  <nav class="site-nav">
+    <a href="/" class="brand" aria-label="Vikashan home">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path d="M100 176.5 Q94.4 110 103.5 71.5" fill="none" stroke="#1E4B47" stroke-width="9" stroke-linecap="round"/><path d="M96.5 106.5 Q142 70 152.5 61 Q123 102 96.5 106.5 Z" fill="#5C9E66"/><path d="M100 124 Q63 90 51 85.5 Q90.5 110 100 124 Z" fill="#E8775E"/><circle cx="103.5" cy="71.5" r="6" fill="#5C9E66"/></svg>
+      <span class="wordmark">Vikashan</span>
+    </a>
+    <a href="/results" class="nav-back">← Back</a>
+  </nav>
+</header>
+
+<main class="wrap section">
+
+  <section class="center fade-in">
+    <p class="eyebrow">Step 1 of 2 · Application</p>
+    <h1>Tell us a little about <em>where you are.</em></h1>
+    <p class="lead" style="max-width:50ch">A few short questions help us understand your situation,
+      so that your free discovery call can be genuinely useful from the very first minute.</p>
+  </section>
+
+  <section class="card fade-in" style="margin-top:1rem">
+    <form id="applyForm" class="stack">
+      <div class="field"><label for="name">Your name</label>
+        <input id="name" name="name" type="text" required autocomplete="name" placeholder="First and last name"></div>
+
+      <div class="field"><label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@example.com"></div>
+
+      <div class="field"><label for="stage">Which best describes where you are right now?</label>
+        <select id="stage" name="stage" required>
+          <option value="" disabled selected>Choose one…</option>
+          <option>I have been made redundant, or my role is ending</option>
+          <option>I am burning out and need a more sustainable path</option>
+          <option>I am stable but seeking more meaningful work</option>
+          <option>I have a direction and want help making it real</option>
+          <option>Something else</option>
+        </select></div>
+
+      <div class="field"><label for="goal">What would you most like to be different six months from now?</label>
+        <textarea id="goal" name="goal" required placeholder="Share as much or as little as feels right."></textarea></div>
+
+      <div class="field"><label for="support">Which kind of support are you drawn to?</label>
+        <select id="support" name="support" required>
+          <option value="" disabled selected>Choose one…</option>
+          <option>Career coaching and strategy</option>
+          <option>Wellbeing support alongside the career work</option>
+          <option>The done-for-you Apply-For-You add-on</option>
+          <option>I am not yet sure, and would like to talk it through</option>
+        </select></div>
+
+      <div class="field"><label for="timing">How soon are you hoping to begin?</label>
+        <select id="timing" name="timing" required>
+          <option value="" disabled selected>Choose one…</option>
+          <option>As soon as possible</option>
+          <option>Within the next month</option>
+          <option>In the next few months</option>
+          <option>Just exploring for now</option>
+        </select></div>
+
+      <div class="field" style="display:flex;align-items:flex-start;gap:.6rem">
+        <input id="concession" name="concession" type="checkbox" style="width:auto;margin-top:.35rem">
+        <label for="concession" style="font-weight:400;color:var(--muted)">I would like to ask about the
+          sliding scale, as cost is a consideration for me.</label></div>
+
+      <button class="btn btn-block btn-lg" type="submit" id="submitBtn">Continue to booking →</button>
+      <p class="form-note" id="formNote">Your answers are only used to prepare for your discovery call.</p>
+    </form>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <p>Vikashan · Grow with Purpose · <a href="/">Home</a> · <a href="/program">Program</a></p>
+</footer>
+
+<script>
+// Prefill the stage from the quiz profile, if present
+try {
+  const map = { redundancy:0, burnout:1, meaning:2, build:3 };
+  const k = localStorage.getItem('vikashan_profile');
+  if (k && map[k] !== undefined) document.getElementById('stage').selectedIndex = map[k] + 1;
+} catch(e){}
+
+document.getElementById('applyForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const form = e.target;
+  if (!form.checkValidity()) { form.reportValidity(); return; }
+  const data = {
+    name: form.name.value.trim(),
+    email: form.email.value.trim(),
+    stage: form.stage.value,
+    goal: form.goal.value.trim(),
+    support: form.support.value,
+    timing: form.timing.value,
+    concession: form.concession.checked
+  };
+  try { localStorage.setItem('vikashan_application', JSON.stringify(data)); } catch(err){}
+  // Carry name + email to the booking page so the call can be pre-filled
+  const params = new URLSearchParams({ name: data.name, email: data.email });
+  window.location.href = `/book-call?${params.toString()}`;
+});
+</script>
+</body>
+</html>

@@ -7,23 +7,28 @@
 <link rel="apple-touch-icon" href="/favicon.png">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vikashan — Career Counselling & Holistic Wellbeing</title>
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400;1,500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500;1,600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --clay:#C4724E;
-  --clay-mid:#D4896A;
-  --clay-pale:#FBF0EA;
-  --sage:#7A9B72;
-  --sage-pale:#EDF2EC;
-  --ink:#2C2420;
-  --ink-mid:#5C4D45;
-  --ink-soft:#9A8880;
-  --sand:#F5EFE6;
+  --teal:#1E4B47;
+  --coral:#E8775E;
+  --green:#5C9E66;
+  --aqua:#5BB5AB;
+  --muted:#7F938E;
+  --clay:#E8775E;
+  --clay-mid:#D85F44;
+  --clay-pale:#FBEDE8;
+  --sage:#5C9E66;
+  --sage-pale:#ECF3ED;
+  --ink:#1E4B47;
+  --ink-mid:#45625D;
+  --ink-soft:#7F938E;
+  --sand:#E8E0D5;
   --cream:#FAF8F4;
-  --border:#E8E0D5;
+  --border:#E0D8CC;
   --white:#FFFFFF;
-  --serif:'Playfair Display',Georgia,serif;
+  --serif:'Cormorant Garamond',Georgia,serif;
   --sans:'DM Sans',system-ui,sans-serif;
   --r:10px;
 }
@@ -40,13 +45,13 @@ body.content-ready{opacity:1}
 .admin-bar button{padding:.35rem .9rem;border:1px solid rgba(255,255,255,.25);border-radius:4px;background:transparent;color:#fff;font-family:var(--sans);font-size:.75rem;cursor:pointer;transition:all .15s}
 .admin-bar button:hover{background:rgba(255,255,255,.1)}
 .admin-bar .save-btn{background:var(--clay);border-color:var(--clay);font-weight:600}
-.admin-bar .save-btn:hover{background:#b5623f}
-body.admin-mode [data-edit]{outline:2px dashed rgba(196,114,78,.4);outline-offset:2px;cursor:text;border-radius:3px;min-height:1em;transition:outline .15s}
-body.admin-mode [data-edit]:hover{outline-color:var(--clay);background:rgba(196,114,78,.04)}
-body.admin-mode [data-edit]:focus{outline-color:var(--clay);outline-style:solid;background:rgba(196,114,78,.06)}
+.admin-bar .save-btn:hover{background:#D85F44}
+body.admin-mode [data-edit]{outline:2px dashed rgba(232,119,94,.4);outline-offset:2px;cursor:text;border-radius:3px;min-height:1em;transition:outline .15s}
+body.admin-mode [data-edit]:hover{outline-color:var(--clay);background:rgba(232,119,94,.04)}
+body.admin-mode [data-edit]:focus{outline-color:var(--clay);outline-style:solid;background:rgba(232,119,94,.06)}
 
 /* SETTINGS PANEL */
-#settings-panel{display:none;position:fixed;inset:0;z-index:8000;background:rgba(44,36,32,.6);align-items:center;justify-content:center;padding:1rem}
+#settings-panel{display:none;position:fixed;inset:0;z-index:8000;background:rgba(30,75,71,.6);align-items:center;justify-content:center;padding:1rem}
 #settings-panel.open{display:flex}
 .settings-box{background:var(--white);border-radius:14px;width:100%;max-width:560px;max-height:88vh;overflow-y:auto}
 .settings-head{padding:1.5rem 1.75rem 1rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
@@ -63,7 +68,7 @@ body.admin-mode [data-edit]:focus{outline-color:var(--clay);outline-style:solid;
 .sfield input:focus,.sfield textarea:focus{border-color:var(--clay)}
 .sfield textarea{resize:vertical;min-height:72px}
 .settings-save{background:var(--clay);color:#fff;border:none;padding:.7rem 1.75rem;border-radius:6px;font-family:var(--sans);font-size:.875rem;font-weight:600;cursor:pointer;transition:background .15s;margin-top:.5rem}
-.settings-save:hover{background:#b5623f}
+.settings-save:hover{background:#D85F44}
 .s-close{background:none;border:1px solid var(--border);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:.9rem;color:var(--ink-soft)}
 
 /* AVAIL PANEL */
@@ -92,12 +97,12 @@ nav.admin-offset{top:36px}
 .nav-links a{font-size:.82rem;font-weight:400;color:var(--ink-mid);text-decoration:none;transition:color .15s}
 .nav-links a:hover{color:var(--clay)}
 .nav-cta{background:var(--clay)!important;color:#fff!important;padding:.45rem 1.2rem;border-radius:6px;font-weight:500!important;transition:background .15s!important}
-.nav-cta:hover{background:#b5623f!important}
+.nav-cta:hover{background:#D85F44!important}
 
 /* BUTTONS */
 .btn{display:inline-block;padding:.75rem 1.75rem;border-radius:6px;font-family:var(--sans);font-size:.88rem;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none;border:none;text-align:center}
 .btn-primary{background:var(--clay);color:#fff}
-.btn-primary:hover{background:#b5623f;transform:translateY(-1px)}
+.btn-primary:hover{background:#D85F44;transform:translateY(-1px)}
 .btn-ghost{background:transparent;color:var(--ink);border:1.5px solid var(--border)}
 .btn-ghost:hover{border-color:var(--clay);color:var(--clay)}
 .btn-outline{background:transparent;color:var(--clay);border:1.5px solid var(--clay)}
@@ -130,7 +135,7 @@ hr.soft{border:none;border-top:1px solid var(--border);margin:2rem 0}
 .hero-trust-item{font-size:.71rem;font-weight:500;color:var(--ink-soft);letter-spacing:.03em;display:flex;align-items:center;gap:.35rem}
 .hero-trust-item::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--clay);flex-shrink:0;opacity:.7}
 .hero-photo-side{display:flex;align-items:center;justify-content:center;position:relative}
-.hero-photo-frame{width:300px;height:390px;border-radius:150px 150px 12px 12px;overflow:hidden;background:var(--border);box-shadow:0 8px 40px rgba(44,36,32,.12);flex-shrink:0}
+.hero-photo-frame{width:300px;height:390px;border-radius:150px 150px 12px 12px;overflow:hidden;background:var(--border);box-shadow:0 8px 40px rgba(30,75,71,.12);flex-shrink:0}
 .hero-photo-frame img{width:100%;height:100%;object-fit:cover;object-position:center 8%}
 
 /* FUNNEL CTA STRIP */
@@ -148,7 +153,7 @@ hr.soft{border:none;border-top:1px solid var(--border);margin:2rem 0}
 .services-note strong{color:var(--ink);font-weight:500}
 .svc-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
 .svc-card{border:1px solid var(--border);border-radius:var(--r);padding:1.75rem;transition:border-color .2s,box-shadow .2s;background:var(--white)}
-.svc-card:hover{border-color:var(--clay);box-shadow:0 4px 24px rgba(196,114,78,.08)}
+.svc-card:hover{border-color:var(--clay);box-shadow:0 4px 24px rgba(232,119,94,.08)}
 .svc-card:first-child{grid-column:1/-1;background:var(--sand)}
 .svc-icon{width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:1rem;background:var(--clay-pale)}
 .svc-card h3{font-family:var(--serif);font-size:1.15rem;font-weight:500;color:var(--ink);margin-bottom:.5rem}
@@ -204,7 +209,7 @@ hr.soft{border:none;border-top:1px solid var(--border);margin:2rem 0}
 .mail-success{color:var(--clay-mid);font-size:.85rem}
 
 /* FOOTER */
-footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
+footer{background:#163A37;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
 .footer-grid{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:3rem}
 .footer-brand .f-logo{display:flex;align-items:center;gap:.55rem;margin-bottom:.9rem}
 .footer-brand .f-logo-text{font-family:var(--serif);font-style:italic;font-size:1.2rem;color:#fff;font-weight:400}
@@ -216,7 +221,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
 .footer-bottom{max-width:1060px;margin:2rem auto 0;padding-top:1.5rem;border-top:1px solid rgba(255,255,255,.07);display:flex;justify-content:space-between;font-size:.74rem}
 
 /* OVERLAY */
-.overlay{display:none;position:fixed;inset:0;background:rgba(44,36,32,.55);z-index:500;align-items:center;justify-content:center;padding:1rem}
+.overlay{display:none;position:fixed;inset:0;background:rgba(30,75,71,.55);z-index:500;align-items:center;justify-content:center;padding:1rem}
 .overlay.open{display:flex}
 
 /* BOOKING MODAL */
@@ -325,7 +330,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   padding: 1.25rem 1.5rem 1.5rem;
   flex-direction: column;
   gap: .15rem;
-  box-shadow: 0 8px 24px rgba(44,36,32,.1);
+  box-shadow: 0 8px 24px rgba(30,75,71,.1);
 }
 .mobile-nav.open { display: flex; }
 .mobile-nav a {
@@ -522,7 +527,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
 }
 .svc-category:hover {
   border-color: var(--clay);
-  box-shadow: 0 4px 24px rgba(196,114,78,.07);
+  box-shadow: 0 4px 24px rgba(232,119,94,.07);
 }
 .svc-cat-head {
   display: flex;
@@ -819,24 +824,16 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
 <!-- NAV -->
 <nav id="main-nav">
   <a href="#" class="nav-logo">
-    <span class="logo-mark"><svg width="42" height="34" viewBox="0 0 42 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <line x1="21" y1="15" x2="21" y2="1.5" stroke="#C4724E" stroke-width="1.7" stroke-linecap="round"/>
-  <line x1="21" y1="15" x2="32.5" y2="5.5" stroke="#C4724E" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
-  <line x1="21" y1="15" x2="9.5" y2="5.5" stroke="#C4724E" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
-  <line x1="21" y1="15" x2="38.5" y2="15" stroke="#C4724E" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
-  <line x1="21" y1="15" x2="3.5" y2="15" stroke="#C4724E" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
-  <path d="M11.5 15 A9.5 9.5 0 0 1 30.5 15" stroke="#C4724E" stroke-width="1.7" fill="none" stroke-linecap="round"/>
-  <path d="M2 22 Q7 19 12 22 Q17 25 22 22 Q27 19 32 22 Q37 25 41 22" stroke="#8BA888" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-  <path d="M4 28 Q9 25 14 28 Q19 31 24 28 Q29 25 34 28 Q37 30 41 28" stroke="#8BA888" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".5"/>
-</svg></span>
+    <span class="logo-mark"><svg width="34" height="34" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path d="M100 176.5 Q94.4 110 103.5 71.5" fill="none" stroke="#1E4B47" stroke-width="9" stroke-linecap="round"/><path d="M96.5 106.5 Q142 70 152.5 61 Q123 102 96.5 106.5 Z" fill="#5C9E66"/><path d="M100 124 Q63 90 51 85.5 Q90.5 110 100 124 Z" fill="#E8775E"/><circle cx="103.5" cy="71.5" r="6" fill="#5C9E66"/></svg></span>
     <span class="logo-text">Vikashan</span>
   </a>
   <ul class="nav-links">
+    <li><a href="/program">Program</a></li>
     <li><a href="#services">Services</a></li>
     <li><a href="#about">About</a></li>
     <li><a href="#pricing">Pricing</a></li>
-    <li><a href="#contact">Contact</a></li>
-    <li><a href="#" class="nav-cta" onclick="openBooking();return false">Free Discovery Call</a></li>
+    <li><a href="/quiz">Quiz</a></li>
+    <li><a href="/book-call" class="nav-cta">Free Discovery Call</a></li>
   </ul>
   <button class="nav-hamburger" id="hamburger" onclick="toggleMobileNav()" aria-label="Menu">
     <span></span><span></span><span></span>
@@ -844,11 +841,12 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
 </nav>
 <!-- MOBILE NAV DRAWER -->
 <div class="mobile-nav" id="mobile-nav">
+  <a href="/program">Program</a>
   <a href="#services" onclick="closeMobileNav()">Services</a>
   <a href="#about" onclick="closeMobileNav()">About</a>
   <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
-  <a href="#contact" onclick="closeMobileNav()">Contact</a>
-  <a href="#" class="m-cta" onclick="closeMobileNav();openBooking();return false">Free Discovery Call</a>
+  <a href="/quiz">Quiz</a>
+  <a href="/book-call" class="m-cta">Free Discovery Call</a>
 </div>
 
 <!-- HERO -->
@@ -857,19 +855,20 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   <div class="hero-inner">
 
     <div class="hero-content">
-      <div class="hero-eyebrow">Career Coaching &amp; Holistic Wellbeing &nbsp;·&nbsp; Online &nbsp;·&nbsp; Sydney</div>
-      <h1 data-edit="hero-h1">Career coaching<br>for <span class="word-flip" id="word-flip"><span class="word-flip-inner">Changemakers</span></span><br>who want work that <em>means something.</em></h1>
-      <p class="hero-sub" data-edit="hero-sub">Psychological depth, practical strategy, and holistic support — for professionals at a crossroads, in transition, or building something that actually matters.</p>
+      <div class="hero-eyebrow">Career Coaching &amp; Holistic Wellbeing &nbsp;·&nbsp; Fully Online</div>
+      <h1 data-edit="hero-h1">When everything is shifting, <em>start with clarity.</em></h1>
+      <p class="hero-sub" data-edit="hero-sub">Maybe you have been made redundant, maybe you are quietly burning out, or maybe you simply sense it is time for work that means more. Wherever you are, the first step is understanding it clearly.</p>
       <div class="hero-cta-group">
-        <button class="btn btn-primary btn-lg" onclick="openBooking()">Book a Free Discovery Call</button>
-        <span class="hero-cta-note">20 minutes &nbsp;·&nbsp; free &nbsp;·&nbsp; fully online</span>
+        <a class="btn btn-primary btn-lg" href="/quiz">Take the free 2-minute quiz</a>
+        <a class="btn btn-ghost btn-lg" href="/book-call">Book a free discovery call</a>
+        <span class="hero-cta-note">2 minutes &nbsp;·&nbsp; free &nbsp;·&nbsp; no sign-up to start</span>
       </div>
       <div class="hero-trust">
 
         <span class="hero-trust-item">B Psych (Hons), UNSW</span>
-        <span class="hero-trust-item">10+ Years&apos; Experience</span>
+        <span class="hero-trust-item">10+ Years</span>
+        <span class="hero-trust-item">Fully Online</span>
         <span class="hero-trust-item">Sliding Scale</span>
-        <span class="hero-trust-item">Social Enterprise</span>
       </div>
     </div>
 
@@ -1110,14 +1109,14 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
     <div class="footer-brand">
       <div class="f-logo">
         <svg width="42" height="34" viewBox="0 0 42 34" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <line x1="21" y1="15" x2="21" y2="1.5" stroke="#C4724E" stroke-width="1.7" stroke-linecap="round"/>
-  <line x1="21" y1="15" x2="32.5" y2="5.5" stroke="#C4724E" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
-  <line x1="21" y1="15" x2="9.5" y2="5.5" stroke="#C4724E" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
-  <line x1="21" y1="15" x2="38.5" y2="15" stroke="#C4724E" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
-  <line x1="21" y1="15" x2="3.5" y2="15" stroke="#C4724E" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
-  <path d="M11.5 15 A9.5 9.5 0 0 1 30.5 15" stroke="#C4724E" stroke-width="1.7" fill="none" stroke-linecap="round"/>
-  <path d="M2 22 Q7 19 12 22 Q17 25 22 22 Q27 19 32 22 Q37 25 41 22" stroke="#8BA888" stroke-width="1.6" fill="none" stroke-linecap="round"/>
-  <path d="M4 28 Q9 25 14 28 Q19 31 24 28 Q29 25 34 28 Q37 30 41 28" stroke="#8BA888" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".5"/>
+  <line x1="21" y1="15" x2="21" y2="1.5" stroke="#E8775E" stroke-width="1.7" stroke-linecap="round"/>
+  <line x1="21" y1="15" x2="32.5" y2="5.5" stroke="#E8775E" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
+  <line x1="21" y1="15" x2="9.5" y2="5.5" stroke="#E8775E" stroke-width="1.5" stroke-linecap="round" opacity=".8"/>
+  <line x1="21" y1="15" x2="38.5" y2="15" stroke="#E8775E" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+  <line x1="21" y1="15" x2="3.5" y2="15" stroke="#E8775E" stroke-width="1.3" stroke-linecap="round" opacity=".45"/>
+  <path d="M11.5 15 A9.5 9.5 0 0 1 30.5 15" stroke="#E8775E" stroke-width="1.7" fill="none" stroke-linecap="round"/>
+  <path d="M2 22 Q7 19 12 22 Q17 25 22 22 Q27 19 32 22 Q37 25 41 22" stroke="#5C9E66" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  <path d="M4 28 Q9 25 14 28 Q19 31 24 28 Q29 25 34 28 Q37 30 41 28" stroke="#5C9E66" stroke-width="1.1" fill="none" stroke-linecap="round" opacity=".5"/>
 </svg>
         <span class="f-logo-text">Vikashan</span>
       </div>
@@ -1148,7 +1147,9 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
     <div class="footer-col">
       <h5>Connect</h5>
       <ul>
-        <li><a href="#" onclick="openBooking();return false">Book a Call</a></li>
+        <li><a href="/book-call">Book a Call</a></li>
+        <li><a href="/quiz">Career Clarity Quiz</a></li>
+        <li><a href="/program">The Program</a></li>
         <li><a id="f-ig" href="https://instagram.com/_vikashan">Instagram</a></li>
         <li><a id="f-li" href="https://linkedin.com/in/vikashan/">LinkedIn</a></li>
         <li><a href="#mailing">Newsletter</a></li>
@@ -1158,7 +1159,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   </div>
   <div class="footer-bottom">
     <span>© 2025 Vikashan. ABN XX XXX XXX XXX</span>
-    <span><a href="/privacy" style="color:rgba(255,255,255,.3);text-decoration:none" onmouseover="this.style.color='#D4896A'" onmouseout="this.style.color='rgba(255,255,255,.3)'">Privacy</a> · <a href="/terms" style="color:rgba(255,255,255,.3);text-decoration:none" onmouseover="this.style.color='#D4896A'" onmouseout="this.style.color='rgba(255,255,255,.3)'">Terms</a></span>
+    <span><a href="/privacy" style="color:rgba(255,255,255,.3);text-decoration:none" onmouseover="this.style.color='#ED9079'" onmouseout="this.style.color='rgba(255,255,255,.3)'">Privacy</a> · <a href="/terms" style="color:rgba(255,255,255,.3);text-decoration:none" onmouseover="this.style.color='#ED9079'" onmouseout="this.style.color='rgba(255,255,255,.3)'">Terms</a></span>
   </div>
 </footer>
 
