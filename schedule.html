@@ -52,7 +52,7 @@
   .time-slots{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem}
   .recur-pill{display:inline-flex;align-items:center;gap:.35rem;padding:.35rem .75rem;border:1.5px solid var(--border);border-radius:20px;font-size:.8rem;cursor:pointer;background:#fff;white-space:nowrap;transition:border-color .15s,background .15s}
   .recur-pill:has(input:checked){border-color:var(--clay);background:var(--clay-pale);font-weight:500}
-  .recur-pill input{accent-color:var(--clay)}
+  .recur-pill input{accent-color:var(--clay);width:auto;flex-shrink:0}
   .time-slot{padding:.55rem;text-align:center;border:1.5px solid var(--border);border-radius:6px;font-size:.8rem;cursor:pointer;transition:all .15s}
   .time-slot:hover{border-color:var(--clay)}
   .time-slot.selected{background:var(--clay);color:#fff;border-color:var(--clay)}
@@ -82,6 +82,7 @@
     .session-opt{padding:.75rem .85rem}
     .btn-primary{width:100%}
     .btn-row{flex-wrap:wrap}
+    .recur-pill{width:100%}
   }
 </style>
 </head>
