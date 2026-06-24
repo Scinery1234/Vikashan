@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Program — Vikashan</title>
+<meta name="description" content="A career transition program with the psychological depth and practical tools to help you unfold into your next chapter.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/funnel.css">
+<style>
+  .grid{display:grid;gap:1.25rem}
+  @media(min-width:640px){.grid-2{grid-template-columns:1fr 1fr}}
+  .component{background:var(--white);border:1px solid var(--border);border-radius:14px;padding:1.75rem;box-shadow:var(--shadow)}
+  .component .tag{display:inline-block;font-size:.7rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--green);margin-bottom:.6rem}
+  .component.premium{background:var(--teal);color:var(--cream)}
+  .component.premium h3,.component.premium p{color:var(--cream)}
+  .component.premium .tag{color:var(--aqua)}
+  .tiers{display:grid;gap:1.25rem;margin-top:1.5rem}
+  @media(min-width:820px){.tiers{grid-template-columns:repeat(3,1fr);align-items:start}}
+  .tier{background:var(--white);border:1.5px solid var(--border);border-radius:16px;padding:2rem 1.6rem;position:relative;display:flex;flex-direction:column}
+  .tier.featured{border-color:var(--coral);box-shadow:0 16px 50px rgba(232,119,94,.18);transform:translateY(-6px)}
+  @media(max-width:819px){.tier.featured{transform:none}}
+  .tier .ribbon{position:absolute;top:-13px;left:50%;transform:translateX(-50%);background:var(--coral);color:var(--cream);font-size:.68rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;padding:.35rem .9rem;border-radius:99px;white-space:nowrap}
+  .tier h3{margin-bottom:.35rem}
+  .tier .price{font-family:var(--serif);font-style:italic;font-size:1.6rem;color:var(--coral);margin:.25rem 0 1rem}
+  .tier ul{list-style:none;display:grid;gap:.6rem;margin:0 0 1.5rem;flex:1}
+  .tier li{position:relative;padding-left:1.5rem;font-size:.92rem}
+  .tier li::before{content:'';position:absolute;left:0;top:.5em;width:7px;height:7px;border-radius:50%;background:var(--green)}
+  .splitstep{display:grid;gap:1rem;margin-top:1.5rem}
+  @media(min-width:640px){.splitstep{grid-template-columns:repeat(2,1fr)}}
+  .miniband{background:var(--sand);border-radius:14px;padding:1.5rem;text-align:center}
+</style>
+</head>
+<body>
+
+<header>
+  <nav class="site-nav">
+    <a href="/" class="brand" aria-label="Vikashan home">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path d="M100 176.5 Q94.4 110 103.5 71.5" fill="none" stroke="#1E4B47" stroke-width="9" stroke-linecap="round"/><path d="M96.5 106.5 Q142 70 152.5 61 Q123 102 96.5 106.5 Z" fill="#5C9E66"/><path d="M100 124 Q63 90 51 85.5 Q90.5 110 100 124 Z" fill="#E8775E"/><circle cx="103.5" cy="71.5" r="6" fill="#5C9E66"/></svg>
+      <span class="wordmark">Vikashan</span>
+    </a>
+    <a href="/quiz" class="btn" style="padding:.6rem 1.2rem;font-size:.85rem">Take the quiz</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- Hero -->
+  <section class="wrap section center fade-in">
+    <p class="eyebrow">The Program</p>
+    <h1>Your career transition, <em>supported with care and strategy.</em></h1>
+    <p class="lead" style="max-width:56ch">Whether you are seeking clarity, facing redundancy, or simply
+      sensing it is time for more, you will find the psychological depth and practical tools to help you
+      unfold into your next chapter.</p>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center">
+      <a class="btn btn-lg" href="/quiz">Take the free 2-minute quiz</a>
+      <a class="btn btn-ghost btn-lg" href="/book-call">Book a free discovery call</a>
+    </div>
+    <div class="trust">
+      <span>B Psych (Hons), UNSW</span><span>10+ years</span><span>Fully online</span><span>Sliding scale</span>
+    </div>
+  </section>
+
+  <!-- Four components -->
+  <section class="wrap section">
+    <div class="center" style="margin-bottom:1.75rem">
+      <p class="eyebrow">What is included</p>
+      <h2>Four parts that work together</h2>
+      <p class="lead" style="max-width:50ch">Each element of the program supports the others, so that your
+        transition is held with both genuine care and a clear strategy.</p>
+    </div>
+    <div class="grid grid-2">
+      <div class="component">
+        <span class="tag">Career Coaching Program</span>
+        <h3 style="margin-bottom:.5rem">Coaching with psychological depth</h3>
+        <p class="muted" style="margin-bottom:0">Regular one-to-one sessions that bring together career
+          strategy and psychological insight, helping you find clarity about your direction and move toward
+          it with steadiness and confidence.</p>
+      </div>
+      <div class="component">
+        <span class="tag">AI Tools</span>
+        <h3 style="margin-bottom:.5rem">Practical tools for the everyday work</h3>
+        <p class="muted" style="margin-bottom:0">Thoughtfully designed tools that take the friction out of
+          resumes, applications, and interview preparation, so the practical side of your search feels far
+          lighter and genuinely supported.</p>
+      </div>
+      <div class="component">
+        <span class="tag">Wellbeing Program</span>
+        <h3 style="margin-bottom:.5rem">Care for the person, not just the career</h3>
+        <p class="muted" style="margin-bottom:0">Space to tend to your wellbeing alongside the career work,
+          so that you can rebuild your energy, soften the stress of change, and move through this season in a
+          way that is kind to yourself.</p>
+      </div>
+      <div class="component premium">
+        <span class="tag">Premium add-on</span>
+        <h3 style="margin-bottom:.5rem">Apply-For-You, done for you</h3>
+        <p style="margin-bottom:0;opacity:.92">For those who would rather keep their energy for the
+          conversations that matter, our team can take on the searching and applying on your behalf, handling
+          the legwork so you can stay focused on what comes next.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing tiers -->
+  <section class="wrap section" id="pricing">
+    <div class="center" style="margin-bottom:.5rem">
+      <p class="eyebrow">Ways to work together</p>
+      <h2>Choose the depth of support that fits</h2>
+      <p class="lead" style="max-width:50ch">Three ways to begin, each built around where you are and how much
+        support feels right. Final pricing is confirmed together on your discovery call.</p>
+    </div>
+    <div class="tiers">
+      <div class="tier">
+        <h3>Clarity</h3>
+        <p class="price">Price to be confirmed</p>
+        <ul>
+          <li>A focused block of one-to-one career coaching</li>
+          <li>Clarity on your values, strengths, and direction</li>
+          <li>Access to the AI Tools for resumes and applications</li>
+          <li>A grounded plan for your next step</li>
+        </ul>
+        <a class="btn btn-ghost btn-block" href="/quiz">Start with the quiz</a>
+      </div>
+      <div class="tier featured">
+        <span class="ribbon">Most chosen</span>
+        <h3>Transition</h3>
+        <p class="price">Price to be confirmed</p>
+        <ul>
+          <li>Everything in Clarity, with more coaching sessions</li>
+          <li>The full Wellbeing Program alongside your career work</li>
+          <li>Ongoing support through your search and interviews</li>
+          <li>Priority access and check-ins between sessions</li>
+        </ul>
+        <a class="btn btn-block" href="/apply">Apply for the program</a>
+      </div>
+      <div class="tier">
+        <h3>Transition + Apply-For-You</h3>
+        <p class="price">Price to be confirmed</p>
+        <ul>
+          <li>Everything in the Transition tier</li>
+          <li>The done-for-you Apply-For-You service</li>
+          <li>We handle the searching and applying for you</li>
+          <li>The most hands-off, fully supported path</li>
+        </ul>
+        <a class="btn btn-ghost btn-block" href="/apply">Apply for the program</a>
+      </div>
+    </div>
+
+    <div class="splitstep">
+      <div class="miniband">
+        <h3 style="margin-bottom:.4rem">A sliding scale</h3>
+        <p class="muted" style="margin-bottom:0">As a social enterprise, we offer a sliding scale so that
+          cost is never the only thing standing between you and the support you need. You are warmly
+          welcome to ask about it.</p>
+      </div>
+      <div class="miniband">
+        <h3 style="margin-bottom:.4rem">A free discovery call</h3>
+        <p class="muted" style="margin-bottom:0">Every journey begins with a free, twenty-minute discovery
+          call, a relaxed conversation to explore where you are and whether this feels like the right fit
+          for you.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Closing CTA -->
+  <section class="section" style="background:var(--teal);color:var(--cream)">
+    <div class="wrap center">
+      <h2 style="color:var(--cream)">When everything is shifting, <em>start with clarity.</em></h2>
+      <p class="lead" style="color:rgba(250,248,244,.8);max-width:48ch">Take the free two-minute quiz to
+        understand where you are, or book a discovery call whenever you feel ready.</p>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;justify-content:center">
+        <a class="btn btn-lg" href="/quiz">Take the free 2-minute quiz</a>
+        <a class="btn btn-ghost btn-lg" href="/book-call" style="color:var(--cream);border-color:rgba(250,248,244,.4)">Book a discovery call</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <p>Vikashan · Grow with Purpose · <a href="/">Home</a> · <a href="/quiz">Quiz</a> · <a href="mailto:vik@vikashan.org">vik@vikashan.org</a></p>
+</footer>
+
+</body>
+</html>

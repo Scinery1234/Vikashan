@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Career Clarity Profile — Vikashan</title>
+<meta name="description" content="Your tailored career clarity profile, and a grounded next step toward work that means more.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="stylesheet" href="/funnel.css">
+</head>
+<body>
+
+<header>
+  <nav class="site-nav">
+    <a href="/" class="brand" aria-label="Vikashan home">
+      <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><path d="M100 176.5 Q94.4 110 103.5 71.5" fill="none" stroke="#1E4B47" stroke-width="9" stroke-linecap="round"/><path d="M96.5 106.5 Q142 70 152.5 61 Q123 102 96.5 106.5 Z" fill="#5C9E66"/><path d="M100 124 Q63 90 51 85.5 Q90.5 110 100 124 Z" fill="#E8775E"/><circle cx="103.5" cy="71.5" r="6" fill="#5C9E66"/></svg>
+      <span class="wordmark">Vikashan</span>
+    </a>
+    <a href="/" class="nav-back">← Back to site</a>
+  </nav>
+</header>
+
+<main class="wrap section">
+
+  <section class="center fade-in">
+    <p class="profile-badge">Your career clarity profile</p>
+    <h1 class="profile-name" id="profileName">…</h1>
+    <p class="lead" id="profileLead" style="max-width:52ch"></p>
+  </section>
+
+  <section class="panel fade-in" style="margin-top:1rem">
+    <h3 style="margin-bottom:.5rem">What tends to help most from here</h3>
+    <ul class="profile-list" id="profileList"></ul>
+    <p class="muted" id="profileSupport" style="margin-bottom:0"></p>
+  </section>
+
+  <!-- Email opt-in -->
+  <section class="card fade-in" style="margin-top:1.75rem;text-align:center" id="optinCard">
+    <h2 style="margin-bottom:.5rem">Take your profile with you</h2>
+    <p class="muted" style="max-width:46ch;margin:0 auto 1.5rem">Leave your email and we will send
+      a short, tailored guide for your profile, along with the occasional grounded reflection on
+      career and wellbeing. You can unsubscribe at any time.</p>
+    <form id="optin" style="max-width:420px;margin:0 auto">
+      <div class="field"><label for="name">First name</label>
+        <input id="name" name="name" type="text" autocomplete="given-name" placeholder="Your first name"></div>
+      <div class="field"><label for="email">Email</label>
+        <input id="email" name="email" type="email" required autocomplete="email" placeholder="you@example.com"></div>
+      <button class="btn btn-block" type="submit" id="optinBtn">Send me my guide</button>
+      <p class="form-note" id="optinNote"></p>
+    </form>
+  </section>
+
+  <!-- Next step -->
+  <section class="center fade-in" style="margin-top:2.5rem">
+    <h2>Ready to talk it through with someone?</h2>
+    <p class="lead" style="max-width:50ch">When you feel ready, the next step is a short application
+      so we can understand your situation before a free twenty-minute discovery call.</p>
+    <a class="btn btn-lg" href="/apply">Apply for the program</a>
+    <p style="margin-top:1rem"><a href="/program" class="nav-back">Or explore the program first →</a></p>
+  </section>
+
+</main>
+
+<footer class="site-foot">
+  <p>Vikashan · Grow with Purpose · <a href="/">Home</a> · <a href="/program">Program</a> · <a href="/quiz">Retake the quiz</a></p>
+</footer>
+
+<script>
+const PROFILES = {
+  redundancy: {
+    name: "Navigating Redundancy",
+    lead: "Your role is ending, or has already ended, and you are standing at an unexpected threshold. This is a disorienting place to be, and it is also one where the right support can help you move from uncertainty toward a steady, considered next chapter.",
+    list: [
+      "A clear, manageable plan for your search so the road ahead feels less overwhelming.",
+      "Practical tools for your resume, applications, and interviews, refined to reflect your strengths.",
+      "Space to process the change itself, so you can move forward with your confidence intact."
+    ],
+    support: "The Career Coaching Program and AI Tools are built for exactly this moment, helping you turn a difficult transition into a deliberate step toward work that fits."
+  },
+  burnout: {
+    name: "The Quiet Burnout",
+    lead: "From the outside things may look fine, and yet you are running on empty and quietly going through the motions. You deserve a way of working that is sustainable, and the path back begins with understanding what has worn you down.",
+    list: [
+      "A gentle, honest look at what has been depleting you and why.",
+      "Ways to rebuild your energy and set boundaries that genuinely hold.",
+      "A direction for your work that asks less of you while giving more back."
+    ],
+    support: "The Wellbeing Program and Career Coaching work hand in hand here, tending to both your recovery and the shape of the work you return to."
+  },
+  meaning: {
+    name: "Seeking Deeper Meaning",
+    lead: "Your career is stable, and still there is a quiet pull toward something that matters more. That restlessness is worth listening to, and with a little structure it can become a clear sense of where you are meant to go next.",
+    list: [
+      "Clarity about the values that are most important to you in your work.",
+      "A grounded sense of the directions that would genuinely fit who you are.",
+      "A considered plan to move toward more meaningful work without losing your footing."
+    ],
+    support: "The Career Coaching Program is designed to turn that quiet pull into a direction you can act on, with the psychological depth to make it last."
+  },
+  build: {
+    name: "Ready to Build",
+    lead: "You already sense the direction you want to move in, and what you are looking for now is a thinking partner and a strategy to make it real. With the right structure around you, the leap ahead can feel both ambitious and grounded.",
+    list: [
+      "A trusted sounding board for the ideas and decisions in front of you.",
+      "A clear, strategic plan to move from intention to real momentum.",
+      "Support to stay steady and resourced as you build something that matters."
+    ],
+    support: "The Career Coaching Program, paired with the done-for-you Apply-For-You add-on, can give you both the strategy and the practical lift to move quickly."
+  }
+};
+
+function getKey(){
+  const params = new URLSearchParams(location.search);
+  let k = params.get('p');
+  if (!k) { try { k = localStorage.getItem('vikashan_profile'); } catch(e){} }
+  return PROFILES[k] ? k : 'meaning';
+}
+
+const profile = PROFILES[getKey()];
+document.getElementById('profileName').textContent = profile.name;
+document.getElementById('profileLead').textContent = profile.lead;
+document.getElementById('profileSupport').textContent = profile.support;
+const list = document.getElementById('profileList');
+profile.list.forEach(t => { const li = document.createElement('li'); li.textContent = t; list.appendChild(li); });
+
+// Email opt-in → /api/subscribe (degrades gracefully)
+document.getElementById('optin').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = document.getElementById('optinBtn');
+  const note = document.getElementById('optinNote');
+  const email = document.getElementById('email').value.trim();
+  const name = document.getElementById('name').value.trim();
+  if (!email.includes('@')) { note.textContent = 'Please enter a valid email address.'; return; }
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    await fetch('/api/subscribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name, source: `quiz_results_${getKey()}` })
+    });
+  } catch(err) { /* keep the funnel moving even if the network call fails */ }
+  document.getElementById('optinCard').innerHTML =
+    '<h2 style="margin-bottom:.5rem">Thank you, your guide is on its way.</h2>' +
+    '<p class="muted" style="max-width:46ch;margin:0 auto">Keep an eye on your inbox over the next ' +
+    'few minutes. Whenever you feel ready, the next step is just below.</p>';
+});
+</script>
+</body>
+</html>
