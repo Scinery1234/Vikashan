@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs'
 import { signToken } from '../../lib/auth.js'
 import { checkLockout, recordFailedLogin, clearLoginAttempts } from '../../lib/security.js'
 
@@ -12,22 +11,18 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: 'Too many failed attempts. Try again in 15 minutes.' })
   }
 
-  const { email, password } = req.body
+  const { password } = req.body
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password required' })
+  if (!password) {
+    return res.status(400).json({ error: 'Password required' })
   }
 
-  const emailMatch = email === process.env.ADMIN_EMAIL
-  const hashToCheck = emailMatch ? process.env.ADMIN_PASSWORD_HASH : '$2a$10$invalidhashpadding000000000000000000000000000000000000'
-  const valid = await bcrypt.compare(password, hashToCheck)
-
-  if (!emailMatch || !valid) {
+  if (password !== process.env.ADMIN_PASSWORD) {
     recordFailedLogin(ip)
-    return res.status(401).json({ error: 'Invalid credentials' })
+    return res.status(401).json({ error: 'Invalid password' })
   }
 
   clearLoginAttempts(ip)
-  const token = signToken({ email, role: 'admin' })
+  const token = signToken({ role: 'admin' })
   res.json({ token })
 }
