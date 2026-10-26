@@ -140,7 +140,7 @@ It looks like a highlighter stroke across the lower half of the words. Use it on
 
 ## 8. Voice and tone
 
-**Warm, plain, a little bit cheeky. Talk like a good coach across a table, not a brochure.** Australian English: "organise", "colour", "programme" is wrong (use "program"), "mum".
+**Warm, plain, a little bit cheeky. Talk like a good coach across a table, not a brochure.** Use Australian spelling ("organise", "colour"), but always write "program", not "programme".
 
 - Short sentences. Active voice. Second person ("you").
 - Be specific. Say exactly what the person will get and do ("a 4-week plan", "a 60-minute 1:1 session with Vik").
