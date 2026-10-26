@@ -110,3 +110,76 @@ CREATE TABLE IF NOT EXISTS newpage_waitlist (
 );
 ALTER TABLE newpage_waitlist ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_leads ADD COLUMN IF NOT EXISTS launch_notified_at timestamptz;
+
+-- ── New Page member app (/newpage/app) ───────────────────────────
+-- Members sign in with an emailed link. Access is granted from
+-- newpage/admin (or, later, by the New Page checkout).
+CREATE TABLE IF NOT EXISTS newpage_members (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  email text UNIQUE NOT NULL,
+  name text,
+  status text DEFAULT 'active' CHECK (status IN ('active','paused','ended')),
+  source text DEFAULT 'manual' CHECK (source IN ('purchase','scholarship','manual')),
+  quadrant text CHECK (quadrant IN ('recharge','explore','unstick','launch')),
+  answers jsonb,
+  personal jsonb DEFAULT '{}',
+  lead_id uuid,
+  plan_started_at timestamptz DEFAULT now(),
+  session_booked boolean DEFAULT false,
+  last_login_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS newpage_progress (
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  week integer NOT NULL,
+  step integer NOT NULL,
+  done_at timestamptz DEFAULT now(),
+  PRIMARY KEY (member_id, week, step)
+);
+
+CREATE TABLE IF NOT EXISTS newpage_tasks (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  due date,
+  done boolean DEFAULT false,
+  source text DEFAULT 'you' CHECK (source IN ('you','coach')),
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_tasks_member_idx ON newpage_tasks (member_id);
+
+CREATE TABLE IF NOT EXISTS newpage_checkins (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  clarity integer NOT NULL,
+  capacity integer NOT NULL,
+  quadrant text NOT NULL,
+  answers jsonb,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_checkins_member_idx ON newpage_checkins (member_id, created_at);
+
+CREATE TABLE IF NOT EXISTS newpage_messages (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  role text NOT NULL CHECK (role IN ('user','assistant')),
+  content text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_messages_member_idx ON newpage_messages (member_id, id);
+
+CREATE TABLE IF NOT EXISTS newpage_memory (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  note text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_memory_member_idx ON newpage_memory (member_id);
+
+ALTER TABLE newpage_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_checkins ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_memory ENABLE ROW LEVEL SECURITY;

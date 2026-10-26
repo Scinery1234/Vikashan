@@ -26,6 +26,22 @@
       </form>
     </section>
 
+    <section class="screen" id="members" hidden>
+      <h2>Members</h2>
+      <p>People who can sign in to the New Page app at <b>/newpage/app</b>. Adding someone sends them a welcome email. If they took the quiz, their plan starts from their result.</p>
+      <form id="grant-form" class="card" novalidate>
+        <div class="field"><label for="g-email">Email</label><input id="g-email" type="email" autocomplete="off" required></div>
+        <div class="field"><label for="g-name">Name (optional)</label><input id="g-name" type="text" autocomplete="off" maxlength="80"></div>
+        <div class="field"><label for="g-source">How they joined</label>
+          <select id="g-source" style="min-height:50px;border:1.5px solid #C9D3E3;border-radius:12px;padding:10px 14px;background:#fff;font-size:17px"><option value="purchase">Paid</option><option value="scholarship">Scholarship</option><option value="manual">Other</option></select></div>
+        <label class="check" for="g-welcome"><input id="g-welcome" type="checkbox" checked><span>Send the welcome email</span></label>
+        <p class="error" id="g-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit">Give access</button>
+        <p id="g-status" role="status"></p>
+      </form>
+      <div class="card"><span class="label">Everyone with access</span><div id="member-list"><p class="muted small">Loading…</p></div></div>
+    </section>
+
     <section class="screen" id="launch" hidden>
       <h2>Launch email</h2>
       <p>Sends “New Page is open” once to everyone who tapped “Tell me when it opens”, on the quiz or the program page. People who unsubscribed are skipped, and nobody gets it twice.</p>
