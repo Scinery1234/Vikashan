@@ -1,7 +1,7 @@
 -- New Page quiz (Phase 1). Run once in the Supabase SQL editor.
 
 -- Quiz sign-ups can now join the mailing list. Skipped if the site's main
--- tables (CLAUDE_CODE_SPEC.md, "Database setup") haven't been created yet;
+-- tables (sql/schema.sql) haven't been created yet;
 -- run this file again after creating them.
 DO $$
 BEGIN
