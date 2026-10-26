@@ -200,3 +200,21 @@ p { margin: 0; }
 .faq summary { cursor: pointer; font-weight: 700; min-height: 52px; display: flex; align-items: center; list-style-position: inside; }
 .faq details p { padding: 0 0 14px; }
 .prog-final { align-items: flex-start; }
+
+/* Wide layout for the program page on larger screens. */
+.sec-head, .sec-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+@media (min-width: 900px) {
+  .paper.wide .col, .paper.wide .top-in { max-width: 1120px; }
+  .paper.wide .col { padding-left: 88px; padding-right: 40px; }
+  .paper.wide .top-in { padding-left: 88px; padding-right: 40px; }
+  .paper.wide .margin-line { left: max(40px, calc(50% - 560px + 52px)); }
+  .prog-hero { max-width: 780px; padding-top: 48px; padding-bottom: 56px; }
+  .prog-hero h1 { font-size: 64px; }
+  .prog-hero .lead { font-size: 20px; max-width: 640px; }
+  .cta-row .btn { flex: 0 1 auto; padding-left: 28px; padding-right: 28px; }
+  .prog-section { display: grid; grid-template-columns: 280px minmax(0, 1fr); column-gap: 56px; padding: 48px 0; }
+  .prog-section h2 { font-size: 30px; }
+  .included { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .prog-final { display: flex; align-items: flex-start; padding-bottom: 64px; }
+}
+@media (min-width: 900px) { #wl-form, #wl-done { max-width: 520px; } }
