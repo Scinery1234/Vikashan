@@ -1980,6 +1980,9 @@ document.addEventListener('click', function(e) {
   setInterval(flip, 2600);
 })();
 
+// Links from the New Page quiz (/#book-call) open the free discovery call booking.
+if (location.hash === '#book-call') window.addEventListener('load', () => openBooking());
+
 </script>
 </body>
 </html>
