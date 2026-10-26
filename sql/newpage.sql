@@ -1,9 +1,16 @@
 -- New Page quiz (Phase 1). Run once in the Supabase SQL editor.
 
--- Quiz sign-ups can now join the mailing list.
-ALTER TABLE subscribers DROP CONSTRAINT IF EXISTS subscribers_source_check;
-ALTER TABLE subscribers ADD CONSTRAINT subscribers_source_check
-  CHECK (source IN ('booking','footer_form','followup','manual','quiz'));
+-- Quiz sign-ups can now join the mailing list. Skipped if the site's main
+-- tables (CLAUDE_CODE_SPEC.md, "Database setup") haven't been created yet;
+-- run this file again after creating them.
+DO $$
+BEGIN
+  IF to_regclass('public.subscribers') IS NOT NULL THEN
+    ALTER TABLE subscribers DROP CONSTRAINT IF EXISTS subscribers_source_check;
+    ALTER TABLE subscribers ADD CONSTRAINT subscribers_source_check
+      CHECK (source IN ('booking','footer_form','followup','manual','quiz'));
+  END IF;
+END $$;
 
 -- One row per "Send my plan". A retake marks earlier rows for the same email
 -- as superseded, so only the latest result gets follow-up emails.
