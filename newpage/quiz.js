@@ -172,7 +172,7 @@ function resultScreen() {
     h('div', { class: 'card' },
       h('span', { class: 'label' }, 'Your first week'),
       h('p', {}, Q.week1),
-      r.burnout && h('p', { class: 'small muted' }, 'You mentioned feeling burnt out, so your full plan includes a session with the Recovery Coach.')),
+      r.burnout && h('p', { class: 'small muted' }, 'You mentioned feeling burnt out, so your full plan keeps every step small and puts rest first.')),
     r.lowMood && h('p', {}, 'You mentioned you’ve been feeling low. Go easy on yourself with this plan, and if things get heavier, Lifeline is there on 13 11 14, any time.'),
     h('button', { class: 'btn btn-primary', type: 'button', onclick: () => { track('personalise_open'); go('email', { intent: 'plan' }) } }, 'Get my full 4-week plan'),
     !r.struggling && newPageCard('result'),

@@ -68,7 +68,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const mail = planEmail({ name, quadrant: result.quadrant, answers, personal, introCall, token })
+    const mail = planEmail({ name, quadrant: result.quadrant, answers, personal, introCall, token, struggling: result.struggling })
     await resend.emails.send({
       from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
       to: email,

@@ -2,6 +2,8 @@
 // Shared by the browser (newpage/quiz.js) and the API (api/newpage/*), so the
 // server can re-score answers itself instead of trusting the client.
 
+import { PLANS } from './plans.js'
+
 export const SCALE = ['Not like me', 'A little like me', 'Mostly like me', 'Very like me']
 
 // Clarity: statements 1, 3, 5, 7. Capacity: 2, 4, 6, 8. Statement 4 is reversed.
@@ -148,25 +150,7 @@ export const QUADRANTS = {
     meaning: 'You’re running low on energy and the way forward isn’t clear yet. That’s a really common place to be, and it’s not a sign you’re doing anything wrong. When you’re depleted, pushing for big decisions usually backfires. Rest and steadiness come first. Clarity tends to follow.',
     oneLine: 'running low on energy, with the way forward not clear yet',
     week1: 'Pick one small daily reset that takes 10 minutes or less, like a walk, a proper lunch break or an earlier night, and keep it for seven days. That’s it. That’s week one.',
-    weeks: [
-      { title: 'Steady', steps: [
-        'Keep your one daily reset for seven days.',
-        'Have one conversation with the Recovery Coach about how you’re really going. (Recovery Coach)',
-        'Add your reset to your planner so it shows up each day. (MadeHappen)'
-      ] },
-      { title: 'Lighten the load', steps: [
-        'Pick the career worry that weighs most and work through it with Reducing the Charge. (Reducing the Charge)',
-        'Drop or delay one thing on your plate that doesn’t need to be there.'
-      ] },
-      { title: 'A gentle look ahead', steps: [
-        'Do the Values step of The Compass, and only that step. (The Compass)',
-        'Notice one moment this week when you felt like yourself. Write it down.'
-      ] },
-      { title: 'Check in', steps: [
-        'Retake the quiz. Many people move toward Explore or Unstick after a few weeks of steadying.',
-        'Choose your next small step, with your coach. (Career Coach)'
-      ] }
-    ]
+    weeks: PLANS.recharge,
   },
   explore: {
     name: 'Explore',
@@ -176,24 +160,7 @@ export const QUADRANTS = {
     meaning: 'You’ve got energy to put into a change. What’s missing is a clear direction to point it at. That’s a good problem to have. The risk is spending that energy on scattered applications or endless research. The next step is getting clear on what you value and what you’re good at, then testing a few ideas in the real world.',
     oneLine: 'full of energy for a change, but without a clear direction yet',
     week1: 'Write down the five things that matter most to you in work, in order. Then list three things you know, three things you can do well, and three things you love. Keep them somewhere you’ll see them.',
-    weeks: [
-      { title: 'Know yourself', steps: [
-        'Work through The Compass from Values to Strengths: what matters, who you are, your North Star, what you need from work and what you bring. (The Compass, steps 1 to 5)',
-        'Talk through anything surprising with your coach. (Career Coach)'
-      ] },
-      { title: 'Generate options', steps: [
-        'Mix your strengths into at least five career ideas, including some that feel a bit wild. (The Compass, Mix ideas)',
-        'Pick your top two. If you’re torn, use the Clarity Compass. (Clarity Compass)'
-      ] },
-      { title: 'Test in the real world', steps: [
-        'Run three small experiments: a coffee chat with someone in the field, a free short course or taster, and a close read of five job ads. (Planner)',
-        'After each one, note what gave you energy and what didn’t.'
-      ] },
-      { title: 'Choose and plan', steps: [
-        'Choose your direction and write your plan: now, building, making the move. (The Compass, Plan and First steps)',
-        'Put your three first steps in your calendar. Retake the quiz. You may well be in Launch.'
-      ] }
-    ]
+    weeks: PLANS.explore,
   },
   unstick: {
     name: 'Unstick',
@@ -203,24 +170,7 @@ export const QUADRANTS = {
     meaning: 'You have a fair idea of where you want to go, but getting started feels harder than it should. That’s not laziness. It’s usually a mix of low energy, too many moving parts and something underneath that makes the first step feel heavy. The way through is smaller steps than you think, and some support with what’s in the way.',
     oneLine: 'fairly clear on where you want to go, but finding it hard to get started',
     week1: 'Name the one career task you keep putting off. Then shrink it until it takes 15 minutes, like “open my resume and fix the first section”. Do that one thing this week.',
-    weeks: [
-      { title: 'Find what’s in the way', steps: [
-        'Do your 15-minute task.',
-        'Talk to the Action Coach about what makes starting hard. You’ll be surprised what comes up. (Action Coach)'
-      ] },
-      { title: 'Make it smaller', steps: [
-        'Break your goal into three to five milestones with the Executive Function Coach. (Executive Function Coach)',
-        'Book three 30-minute blocks in your week for the first milestone. (Planner)'
-      ] },
-      { title: 'Keep the streak', steps: [
-        'Show up to your blocks, even if you only do 10 minutes. Use the focus timer. (Planner)',
-        'If a block slips, tell the Action Coach what happened, not why you failed. (Action Coach)'
-      ] },
-      { title: 'Finish something you can see', steps: [
-        'Finish one visible thing: an updated resume, a LinkedIn profile, or one application sent. (Resume Generator)',
-        'Count your wins for the month. Retake the quiz.'
-      ] }
-    ]
+    weeks: PLANS.unstick,
   },
   launch: {
     name: 'Launch',
@@ -230,25 +180,7 @@ export const QUADRANTS = {
     meaning: 'You know where you’re heading and you’ve got the energy to go for it. Now it’s about doing it well: applications that are tailored, not sprayed, a steady weekly rhythm, and good preparation for interviews. A system beats bursts of effort.',
     oneLine: 'clear on where you’re heading and ready to go for it',
     week1: 'Choose your target role in one line, then find three real job ads for it. Highlight the words that come up in all three. Those are what your resume needs to show.',
-    weeks: [
-      { title: 'Sharpen your story', steps: [
-        'Build a resume tailored to your target role, using the words from your three job ads. (Resume Generator)',
-        'Write a one-paragraph answer to “why this role, why now”. (Career Coach)'
-      ] },
-      { title: 'Build your pipeline', steps: [
-        'Find ten roles worth applying for and pick your best five.',
-        'Write a cover letter for the first two. (Cover Letter Generator)',
-        'Put an application slot in your calendar twice a week. (Planner)'
-      ] },
-      { title: 'Apply and follow up', steps: [
-        'Send your five applications. Follow up on any older ones.',
-        'Reach out to two people at companies you’d like to work for.'
-      ] },
-      { title: 'Prepare to say yes', steps: [
-        'Practise your answers to five common interview questions with your coach. (Career Coach)',
-        'Do your weekly review: what’s moving, what’s stuck, what’s next. Retake the quiz.'
-      ] }
-    ]
+    weeks: PLANS.launch,
   }
 }
 
@@ -256,8 +188,8 @@ export const QUADRANTS = {
 export const BLOCKER_TIPS = {
   confidence: 'Keep a wins list as you go, and add a strengths step to week one.',
   time: 'Keep every step to 30 minutes or less, and book the time in your calendar first.',
-  options: 'The Compass’s “Mix ideas” step is made for this. Do it early.',
-  energy: 'Go gently. A session with the Recovery Coach is a good first step.',
+  options: 'Do the week-two options exercise early: ten ideas in 20 minutes, with no filtering.',
+  energy: 'Go gently: keep each step to its smallest version and put rest first.',
   apps: 'Check your resume against three job ads, and write a tailored cover letter for your next application.'
 }
 
@@ -282,6 +214,6 @@ export function planTweaks(answers, personal = {}, result = score(answers)) {
 
   // Burnout gets its own line below.
   if (personal.block !== 'energy' && BLOCKER_TIPS[personal.block]) tweaks.push(BLOCKER_TIPS[personal.block])
-  if (result.burnout || personal.block === 'energy') tweaks.push('You mentioned feeling burnt out, so your plan includes a session with the Recovery Coach.')
+  if (result.burnout || personal.block === 'energy') tweaks.push('You mentioned feeling burnt out, so put rest first and keep every step small. If it’s been going on for weeks, it’s worth talking to your GP or a counsellor.')
   return tweaks
 }

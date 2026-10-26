@@ -81,13 +81,14 @@ test('plan tweaks follow situation, satisfaction and blockers', () => {
   const happy = planTweaks(answers(2, 2, { sit: 'employed', sat: 4 }))
   assert.match(happy[0], /growth where you are/)
   const burnt = planTweaks(answers(2, 2), { block: 'energy' })
-  assert.ok(burnt.some(t => /Recovery Coach/.test(t)))
+  assert.ok(burnt.some(t => /burnt out/.test(t) && /rest first/.test(t)))
+  assert.ok(!burnt.some(t => /Coach|Compass|planner/i.test(t)), 'free plan tweaks name no paid tools')
 })
 
 test('every quadrant has a full 4-week program', () => {
   for (const q of Object.values(QUADRANTS)) {
     assert.equal(q.weeks.length, 4)
-    assert.ok(q.weeks.every(w => w.steps.length >= 2))
+    assert.ok(q.weeks.every(w => w.steps.length >= 2 && w.why && w.withNewPage))
   }
 })
 
@@ -148,4 +149,28 @@ test('launch email links to checkout when given, else the program page, and esca
   assert.match(withCheckout.html, /7 days/)
   const noCheckout = launchEmail({ name: 'Jo' })
   assert.ok(noCheckout.html.includes('/newpage/program'))
+})
+
+test('free plan steps stand alone: only the optional note names New Page tools', () => {
+  const tools = /(Recovery Coach|Action Coach|Executive Function Coach|Career Coach|Reducing the Charge|Clarity Compass|The Compass|Resume Generator|Cover Letter Generator|planner|MadeHappen)/i
+  for (const q of Object.values(QUADRANTS)) {
+    for (const w of q.weeks) {
+      for (const step of w.steps) assert.ok(!tools.test(step), `${q.name} "${w.title}": ${step.slice(0, 60)}`)
+      assert.match(w.withNewPage, tools, `${q.name} "${w.title}" optional note names a tool`)
+    }
+  }
+})
+
+test('plan email shows each week, its optional New Page note, and no sales P.S. for someone struggling', () => {
+  const base = { name: 'Sam', quadrant: 'explore', answers: answers(1, 4), personal: {}, introCall: false, token: 'a'.repeat(32) }
+  const normal = planEmail(base)
+  assert.equal((normal.html.match(/Optional, with New Page:/g) || []).length, 4)
+  assert.match(normal.html, /works on its own, with nothing to buy/)
+  assert.match(normal.html, /that’s what New Page is for/)
+  const struggling = planEmail({ ...base, struggling: true })
+  assert.ok(!/that’s what New Page is for/.test(struggling.html))
+  assert.ok(!/book a free 20-minute call/.test(struggling.html))
+  assert.match(struggling.html, /Lifeline is there on 13 11 14/)
+  assert.ok(!/They’re optional extras/.test(struggling.html))
+  assert.ok(!/Optional, with New Page:/.test(struggling.html), 'no product notes for someone struggling')
 })
