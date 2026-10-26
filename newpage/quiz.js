@@ -194,7 +194,9 @@ function newPageCard(where) {
       h('li', {}, 'Your plan, loaded into a planner with reminders'),
       h('li', {}, 'AI coaches for when you’re stuck, low on energy, or deciding'),
       h('li', {}, 'A 60-minute 1:1 session with Vik')),
-    h('p', { class: 'small muted' }, `${CONFIG.price} · full refund within 30 days if your session hasn’t happened${CONFIG.programOpen ? '' : ' · opening soon'}`),
+    h('p', { class: 'small muted' }, `${CONFIG.price} for 4 weeks${CONFIG.programOpen ? '' : ' · opening soon'}`),
+    h('p', { class: 'small' }, h('b', {}, 'Change your mind within 7 days? '), 'Full refund. ',
+      h('b', {}, 'Do the four weeks and don’t move forward? '), 'Your next month is on us.'),
     action,
     h('button', { class: 'link-btn blue', type: 'button', onclick: () => { track('scholarship_open', { where }); go('scholarship') } }, 'Can’t afford it right now? Apply for a scholarship')
   )
