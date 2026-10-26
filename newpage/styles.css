@@ -79,9 +79,11 @@ button, input { font: inherit; color: inherit; }
 .progress-bar { height: 8px; border-radius: 99px; background: var(--ink); width: 0; transition: width .25s ease; }
 
 /* Screens */
-.screen { display: flex; flex-direction: column; gap: 16px; padding: 24px 0 48px; animation: in .25s ease both; }
+.screen { display: flex; flex-direction: column; gap: 16px; padding: 24px 0 48px; }
+/* Only when moving to a new screen, not on every re-render within one. */
+.screen.enter { animation: in .25s ease both; }
 @keyframes in { from { opacity: .001; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .screen { animation: none; } .progress-bar { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .screen.enter { animation: none; } .progress-bar { transition: none; } }
 
 .note { font-family: var(--hand); font-weight: 600; color: var(--note); font-size: 28px; line-height: 1; transform: rotate(-3deg); transform-origin: left center; align-self: flex-start; margin: 8px 0 -4px; }
 h1, h2 { font-family: var(--display); font-weight: 700; margin: 0; text-wrap: balance; }
@@ -128,21 +130,6 @@ p { margin: 0; }
 .chip[aria-pressed="true"] { background: var(--hl); border: 2px solid var(--ink); font-weight: 700; }
 
 /* Quadrants */
-/* Start-screen preview: a small, unlabelled chart (not tappable) beside a
-   sentence that names the four places. */
-.quad-preview { display: flex; align-items: center; gap: 16px; margin: 4px 0; }
-.quad-preview p { flex: 1 1 0; min-width: 0; font-size: 16px; line-height: 1.6; }
-.quad-preview .hl { background: linear-gradient(transparent 18%, var(--hlc) 18%, var(--hlc) 90%, transparent 90%); padding: 0 2px; border-radius: 3px; }
-.mini-map { flex: 0 0 auto; display: grid; grid-template-columns: auto 92px; grid-template-rows: 92px auto; gap: 4px; }
-.mini-grid { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; border-left: 2px solid var(--ink); border-bottom: 2px solid var(--ink); padding: 0 0 3px 3px; }
-.mini-grid div { border-radius: 4px; }
-.mini-dot {
-  position: absolute; left: 58%; top: 36%; width: 22px; height: 22px; border-radius: 50%;
-  border: 2px dashed var(--ink); background: #FFFFFF; font-family: var(--hand); font-size: 17px; line-height: 18px; text-align: center; color: var(--note);
-}
-.mini-axis { font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); }
-.mini-axis.y { writing-mode: vertical-rl; transform: rotate(180deg); text-align: center; }
-.mini-axis.x { grid-column: 2; text-align: center; }
 .grid-wrap { display: flex; flex-direction: column; gap: 6px; }
 .grid { position: relative; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; height: 250px; }
 .grid .cell { border-radius: 12px; padding: 10px 12px; font-family: var(--display); font-weight: 700; font-size: 15px; display: flex; }
@@ -158,7 +145,9 @@ p { margin: 0; }
 /* Cards */
 .card { background: #FFFFFF; border: 1.5px solid var(--rule); border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
 .soft { background: var(--paper-2); border-radius: 12px; padding: 12px 14px; font-size: 16px; }
-.offer { border-top: 1.5px dashed var(--rule); padding-top: 16px; display: flex; flex-direction: column; gap: 10px; }
+.np-card { background: var(--paper-2); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+.np-card ul { margin: 0; padding-left: 20px; font-size: 16px; }
+.np-card li { margin-bottom: 4px; }
 .offer-title { font-family: var(--display); font-weight: 700; font-size: 19px; }
 .call-card { border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 10px; }
 .call-card .offer-title { font-size: 21px; }

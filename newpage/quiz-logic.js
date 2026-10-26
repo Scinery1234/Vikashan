@@ -25,7 +25,11 @@ export const SITUATIONS = [
   { v: 'other', l: 'Something else' }
 ]
 
-export const FEELINGS = ['Mostly good', 'Up and down', 'Mostly low', 'I’m really struggling']
+// Value 4 adds a gentle support line to the result; 5 shows the support
+// screen first and turns off all sales prompts and emails.
+export const FEELINGS = ['Really good', 'Mostly good', 'Up and down', 'Mostly low', 'I’m really struggling']
+export const FEEL_LOW = 4
+export const FEEL_STRUGGLING = 5
 
 export const TIMEFRAMES = [
   { v: 'exploring', l: 'I’m just exploring' },
@@ -93,7 +97,7 @@ export function validateAnswers(answers) {
     if (!isScale(answers.sat)) return null
     clean.sat = answers.sat
   }
-  if (!isScale(answers.feel)) return null
+  if (!(Number.isInteger(answers.feel) && answers.feel >= 1 && answers.feel <= FEELINGS.length)) return null
   clean.feel = answers.feel
   return clean
 }
@@ -110,22 +114,16 @@ export function score(answers) {
     else capacity += pts
   }
   const quadrant = quadrantFor(clarity >= HIGH, capacity >= HIGH)
-  const nearClarity = clarity === HIGH - 1 || clarity === HIGH
-  const nearCapacity = capacity === HIGH - 1 || capacity === HIGH
-  let neighbour = null
-  if (nearClarity) neighbour = quadrantFor(clarity < HIGH, capacity >= HIGH)
-  else if (nearCapacity) neighbour = quadrantFor(clarity >= HIGH, capacity < HIGH)
   return {
     clarity,
     capacity,
     quadrant,
-    neighbour,
     // Position on the grid, 0 to 100 on each axis.
     x: Math.round(((capacity - 4) / 12) * 100),
     y: Math.round(((clarity - 4) / 12) * 100),
     burnout: answers.s4 >= 3,
-    lowMood: answers.feel === 3,
-    struggling: answers.feel === 4
+    lowMood: answers.feel === FEEL_LOW,
+    struggling: answers.feel === FEEL_STRUGGLING
   }
 }
 
@@ -254,6 +252,15 @@ export const QUADRANTS = {
   }
 }
 
+// One tip per answer to "What's most in the way?".
+export const BLOCKER_TIPS = {
+  confidence: 'Keep a wins list as you go, and add a strengths step to week one.',
+  time: 'Keep every step to 30 minutes or less, and book the time in your calendar first.',
+  options: 'The Compass’s “Mix ideas” step is made for this. Do it early.',
+  energy: 'Go gently. A session with the Recovery Coach is a good first step.',
+  apps: 'Check your resume against three job ads, and write a tailored cover letter for your next application.'
+}
+
 // Extra lines added to the plan from the situation and personalise answers.
 export function planTweaks(answers, personal = {}, result = score(answers)) {
   const tweaks = []
@@ -273,13 +280,8 @@ export function planTweaks(answers, personal = {}, result = score(answers)) {
   if (personal.time === 'exploring') tweaks.push('Take this at a softer pace. One step a week is plenty.')
   if (personal.time === 'asap') tweaks.push('Want to move fast? Start on your resume in week one.')
 
-  const byBlocker = {
-    confidence: 'Keep a wins list as you go, and add a strengths step to week one.',
-    time: 'Keep every step to 30 minutes or less, and book the time in your calendar first.',
-    options: 'The Compass’s “Mix ideas” step is made for this. Do it early.',
-    apps: 'Check your resume against three job ads, and write a tailored cover letter for your next application.'
-  }
-  if (byBlocker[personal.block]) tweaks.push(byBlocker[personal.block])
+  // Burnout gets its own line below.
+  if (personal.block !== 'energy' && BLOCKER_TIPS[personal.block]) tweaks.push(BLOCKER_TIPS[personal.block])
   if (result.burnout || personal.block === 'energy') tweaks.push('You mentioned feeling burnt out, so your plan includes a session with the Recovery Coach.')
   return tweaks
 }

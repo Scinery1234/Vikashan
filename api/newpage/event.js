@@ -5,7 +5,7 @@ import { rateLimit } from '../../lib/security.js'
 // a random per-tab session id, the step, and the traffic source.
 const EVENTS = new Set([
   'view', 'start', 'answer', 'result', 'safety_shown', 'personalise_open',
-  'waitlist_click', 'buy_click', 'call_click', 'scholarship_open'
+  'waitlist_click', 'buy_click', 'call_click', 'scholarship_open', 'personal_saved'
 ])
 const QUADS = new Set(['recharge', 'explore', 'unstick', 'launch'])
 const clip = (v, n) => (typeof v === 'string' ? v.slice(0, n) : null)

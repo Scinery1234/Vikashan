@@ -13,10 +13,15 @@ const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : null)
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).end()
-  if (!rateLimit(req, res, { max: 10, windowMs: 60 * 60 * 1000, key: 'np-lead' })) return
-  if (isBot(req.body || {})) return res.json({ ok: true }) // silent reject
-
   const body = req.body || {}
+  // Taps on the confirmation screen have their own, looser limit.
+  if (body.update) {
+    if (!rateLimit(req, res, { max: 60, windowMs: 60 * 60 * 1000, key: 'np-lead-update' })) return
+    return updateLead(body, res)
+  }
+  if (!rateLimit(req, res, { max: 10, windowMs: 60 * 60 * 1000, key: 'np-lead' })) return
+  if (isBot(body)) return res.json({ ok: true }) // silent reject
+
   const answers = validateAnswers(body.answers)
   if (!answers) return res.status(400).json({ error: 'Some quiz answers are missing. Please retake the quiz.' })
 
@@ -24,23 +29,11 @@ export default async function handler(req, res) {
   if (!email || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'Add your email so we can send your plan.' })
 
   const name = clip(body.name, 80) || ''
-  const personal = {
-    time: pickEnum(body.personal?.time, TIMEFRAMES),
-    block: pickEnum(body.personal?.block, BLOCKERS),
-    coach: pickEnum(body.personal?.coach, COACH)
-  }
+  const personal = cleanPersonal(body.personal)
   const intent = body.intent === 'waitlist' ? 'waitlist' : 'plan'
   const optIn = body.optIn === true
   const result = score(answers)
   const introCall = offersIntroCall(personal, result)
-
-  // "Join the waitlist" from the confirmation screen: they already have
-  // their plan, so just flag the latest lead.
-  if (body.resend === false) {
-    await supabase.from('newpage_leads').update({ wants_program: true })
-      .eq('email', email).eq('superseded', false)
-    return res.json({ ok: true, introCall })
-  }
 
   const s = body.source || {}
   const source = {
@@ -90,7 +83,40 @@ export default async function handler(req, res) {
     return res.status(502).json({ error: 'Your result is saved, but the email didn’t send. Please try again in a minute.' })
   }
 
-  res.json({ ok: true, introCall })
+  res.json({ ok: true, introCall, leadId: lead.id })
+}
+
+function cleanPersonal(p) {
+  return {
+    time: pickEnum(p?.time, TIMEFRAMES),
+    block: pickEnum(p?.block, BLOCKERS),
+    coach: pickEnum(p?.coach, COACH)
+  }
+}
+
+// Changes after the plan is sent, from the confirmation screen:
+//   update: 'personal'  the optional taps (timeframe, blocker, coach)
+//   update: 'waitlist'  "Tell me when it opens"
+// The lead id comes from the earlier response; the email must match it.
+async function updateLead(body, res) {
+  const id = typeof body.leadId === 'string' && /^[0-9a-f-]{36}$/i.test(body.leadId) ? body.leadId : null
+  const email = clip(body.email, 200)?.toLowerCase()
+  if (!id || !email) return res.status(400).json({ error: 'Missing lead' })
+
+  const { data: lead } = await supabase.from('newpage_leads').select('id, answers').eq('id', id).eq('email', email).maybeSingle()
+  if (!lead) return res.status(404).json({ error: 'Lead not found' })
+
+  if (body.update === 'waitlist') {
+    await supabase.from('newpage_leads').update({ wants_program: true }).eq('id', id)
+    return res.json({ ok: true })
+  }
+  if (body.update === 'personal') {
+    const personal = cleanPersonal(body.personal)
+    const introCall = offersIntroCall(personal, score(lead.answers))
+    await supabase.from('newpage_leads').update({ personal, intro_call_offered: introCall }).eq('id', id)
+    return res.json({ ok: true, introCall })
+  }
+  return res.status(400).json({ error: 'Unknown update' })
 }
 
 // Add the person to the client list as a lead, tagged with their quadrant.

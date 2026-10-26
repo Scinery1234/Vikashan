@@ -14,7 +14,7 @@ export default async function handler(req, res) {
 
   const now = Date.now()
   const { data: leads, error } = await supabase.from('newpage_leads')
-    .select('id, email, name, quadrant, created_at, last_followup_day, unsubscribe_token')
+    .select('id, email, name, quadrant, personal, created_at, last_followup_day, unsubscribe_token')
     .eq('superseded', false).eq('opt_in', true).eq('struggling', false)
     .is('unsubscribed_at', null).is('converted_at', null)
     .gte('created_at', new Date(now - 43 * DAY).toISOString())
@@ -28,7 +28,7 @@ export default async function handler(req, res) {
     if (!day) continue
     const base = process.env.NEXT_PUBLIC_URL || 'https://vikashan.com.au'
     const mail = followupEmail({
-      day, quadrant: lead.quadrant, name: lead.name, token: lead.unsubscribe_token,
+      day, quadrant: lead.quadrant, name: lead.name, token: lead.unsubscribe_token, personal: lead.personal || {},
       stayUrl: `${base}/api/newpage/unsubscribe?t=${lead.unsubscribe_token}&stay=1`
     })
     if (mail) {

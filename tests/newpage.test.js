@@ -34,17 +34,22 @@ test('statement 4 (burnout) is scored in reverse', () => {
   assert.equal(score(a).burnout, false)
 })
 
-test('11 is high, 10 is low, and both are "close to" the line', () => {
+test('11 out of 16 is high, 10 is low', () => {
   const tenClarity = { ...answers(1, 4), s1: 3, s3: 3, s5: 2, s7: 2 }
-  const r10 = score(tenClarity)
-  assert.equal(r10.clarity, 10)
-  assert.equal(r10.quadrant, 'explore')
-  assert.equal(r10.neighbour, 'launch')
-  const r11 = score({ ...tenClarity, s7: 3 })
-  assert.equal(r11.clarity, 11)
-  assert.equal(r11.quadrant, 'launch')
-  assert.equal(r11.neighbour, 'explore')
-  assert.equal(score(answers(4, 4)).neighbour, null)
+  assert.equal(score(tenClarity).clarity, 10)
+  assert.equal(score(tenClarity).quadrant, 'explore')
+  const elevenClarity = { ...tenClarity, s7: 3 }
+  assert.equal(score(elevenClarity).clarity, 11)
+  assert.equal(score(elevenClarity).quadrant, 'launch')
+})
+
+test('wellbeing has five options; 4 is low, 5 is struggling', () => {
+  assert.equal(buildQuestions({}).at(-1).opts.length, 5)
+  assert.equal(score(answers(2, 2, { feel: 4 })).lowMood, true)
+  assert.equal(score(answers(2, 2, { feel: 4 })).struggling, false)
+  assert.equal(score(answers(2, 2, { feel: 5 })).struggling, true)
+  assert.ok(validateAnswers(answers(2, 2, { feel: 5 })))
+  assert.equal(validateAnswers(answers(2, 2, { feel: 6 })), null)
 })
 
 test('the dot spans 0 to 100', () => {
@@ -67,7 +72,7 @@ test('intro call is offered to keen people, never after the safety screen', () =
   assert.equal(offersIntroCall({ coach: 'yes' }, ok), true)
   assert.equal(offersIntroCall({ time: 'asap' }, ok), true)
   assert.equal(offersIntroCall({ coach: 'no', time: 'soon' }, ok), false)
-  assert.equal(offersIntroCall({ coach: 'yes' }, score(answers(4, 4, { feel: 4 }))), false)
+  assert.equal(offersIntroCall({ coach: 'yes' }, score(answers(4, 4, { feel: 5 }))), false)
 })
 
 test('plan tweaks follow situation, satisfaction and blockers', () => {
@@ -123,4 +128,13 @@ test('every follow-up day has an email for every quadrant, except day 21 without
       }
     }
   }
+})
+
+test('day-2 follow-up adds a tip for their main blocker', () => {
+  const withTip = followupEmail({ day: 2, quadrant: 'launch', name: 'Sam', token: 'b'.repeat(32), personal: { block: 'time' } })
+  assert.match(withTip.html, /You said time is most in the way/)
+  const without = followupEmail({ day: 2, quadrant: 'launch', name: 'Sam', token: 'b'.repeat(32) })
+  assert.ok(!/most in the way/.test(without.html))
+  const later = followupEmail({ day: 7, quadrant: 'launch', name: 'Sam', token: 'b'.repeat(32), personal: { block: 'time' } })
+  assert.ok(!/most in the way/.test(later.html))
 })
