@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { buildQuestions, validateAnswers, score, offersIntroCall, planTweaks, QUADRANTS } from '../newpage/quiz-logic.js'
-import { planEmail, followupEmail, dueDay, weekOneICS, FOLLOWUP_DAYS } from '../lib/newpage-emails.js'
+import { planEmail, followupEmail, dueDay, weekOneICS, launchEmail, FOLLOWUP_DAYS } from '../lib/newpage-emails.js'
 
 // Statements: clarity s1 s3 s5 s7, capacity s2 s4(reversed) s6 s8.
 const answers = (c, p, extra = {}) => ({
@@ -137,4 +137,15 @@ test('day-2 follow-up adds a tip for their main blocker', () => {
   assert.ok(!/most in the way/.test(without.html))
   const later = followupEmail({ day: 7, quadrant: 'launch', name: 'Sam', token: 'b'.repeat(32), personal: { block: 'time' } })
   assert.ok(!/most in the way/.test(later.html))
+})
+
+test('launch email links to checkout when given, else the program page, and escapes names', () => {
+  const withCheckout = launchEmail({ name: '<i>Jo</i>', checkoutUrl: 'https://buy.stripe.com/abc', token: 'c'.repeat(32) })
+  assert.equal(withCheckout.subject, 'New Page is open')
+  assert.ok(withCheckout.html.includes('https://buy.stripe.com/abc'))
+  assert.ok(withCheckout.html.includes('&lt;i&gt;Jo&lt;/i&gt;'))
+  assert.ok(withCheckout.html.includes('unsubscribe?t='))
+  assert.match(withCheckout.html, /7 days/)
+  const noCheckout = launchEmail({ name: 'Jo' })
+  assert.ok(noCheckout.html.includes('/newpage/program'))
 })

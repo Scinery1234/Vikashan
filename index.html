@@ -134,6 +134,14 @@ hr.soft{border:none;border-top:1px solid var(--border);margin:2rem 0}
 .hero-photo-frame img{width:100%;height:100%;object-fit:cover;object-position:center 8%}
 
 /* FUNNEL CTA STRIP */
+.newpage-strip{background:var(--cream);padding:3.5rem 2.5rem;border-top:1px solid var(--border)}
+.newpage-strip-inner{max-width:1100px;margin:0 auto;display:flex;gap:2.5rem;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.newpage-strip-inner>div:first-child{flex:1 1 420px;min-width:0}
+.newpage-strip-eyebrow{font-size:.7rem;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--clay);margin-bottom:.6rem}
+.newpage-strip h2{font-family:var(--serif);font-weight:400;font-size:clamp(1.4rem,2.4vw,1.9rem);color:var(--ink);margin-bottom:.6rem;line-height:1.25}
+.newpage-strip p{font-size:.92rem;color:var(--ink-mid);max-width:560px;line-height:1.75;font-weight:300}
+.newpage-strip-ctas{display:flex;flex-direction:column;gap:.75rem;align-items:flex-start}
+.newpage-strip-link{color:var(--clay);font-weight:500;font-size:.9rem;text-decoration:none}
 .funnel-strip{background:var(--clay);padding:4rem 2.5rem;text-align:center}
 .funnel-strip h2{font-family:var(--serif);font-size:clamp(1.6rem,2.8vw,2.2rem);font-weight:400;color:#fff;margin-bottom:.65rem;font-style:italic}
 .funnel-strip p{font-size:.95rem;color:rgba(255,255,255,.78);max-width:480px;margin:0 auto 1.75rem;font-weight:300;line-height:1.8}
@@ -834,6 +842,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
   <ul class="nav-links">
     <li><a href="#services">Services</a></li>
     <li><a href="#about">About</a></li>
+    <li><a href="/newpage/program">New Page</a></li>
     <li><a href="#pricing">Pricing</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#" class="nav-cta" onclick="openBooking();return false">Free Discovery Call</a></li>
@@ -846,6 +855,7 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
 <div class="mobile-nav" id="mobile-nav">
   <a href="#services" onclick="closeMobileNav()">Services</a>
   <a href="#about" onclick="closeMobileNav()">About</a>
+  <a href="/newpage/program">New Page</a>
   <a href="#pricing" onclick="closeMobileNav()">Pricing</a>
   <a href="#contact" onclick="closeMobileNav()">Contact</a>
   <a href="#" class="m-cta" onclick="closeMobileNav();openBooking();return false">Free Discovery Call</a>
@@ -962,6 +972,21 @@ footer{background:#1C1411;color:rgba(255,255,255,.4);padding:3.5rem 2.5rem 2rem}
       <span style="margin-left:.5rem"><a href="#" onclick="openBooking();return false" style="color:var(--clay);font-weight:500;text-decoration:none">Book a free call →</a></span>
     </div>
 
+  </div>
+</section>
+
+<!-- NEW PAGE PROGRAM -->
+<section class="newpage-strip" aria-labelledby="np-strip-title">
+  <div class="newpage-strip-inner">
+    <div>
+      <div class="newpage-strip-eyebrow">New · a 4-week career program</div>
+      <h2 id="np-strip-title">New Page: work out where you’re at, and start where you’re going.</h2>
+      <p>A personal 4-week plan, coaches for the hard parts, a planner that keeps you moving, and a 1:1 session with Vik. It starts with a free 3-minute quiz.</p>
+    </div>
+    <div class="newpage-strip-ctas">
+      <a class="btn btn-primary" href="/newpage">Take the free quiz</a>
+      <a class="newpage-strip-link" href="/newpage/program">About New Page</a>
+    </div>
   </div>
 </section>
 

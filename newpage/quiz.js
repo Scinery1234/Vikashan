@@ -198,6 +198,7 @@ function newPageCard(where) {
     h('p', { class: 'small' }, h('b', {}, 'Change your mind within 7 days? '), 'Full refund. ',
       h('b', {}, 'Do the four weeks and don’t move forward? '), 'Your next month is on us.'),
     action,
+    h('a', { class: 'link-btn blue', href: '/newpage/program' }, 'Learn more about New Page'),
     h('button', { class: 'link-btn blue', type: 'button', onclick: () => { track('scholarship_open', { where }); go('scholarship') } }, 'Can’t afford it right now? Apply for a scholarship')
   )
 }
@@ -290,7 +291,7 @@ function doneScreen() {
         chipGroup('Would you like support from a coach?', COACH, 'coach')),
       call && h('div', { class: 'call-card', style: { background: Q.tint } },
         h('span', { class: 'offer-title' }, 'Since you’d like some support'),
-        h('p', {}, 'Book a free 15-minute call with Vik. You’ll talk about where you’re at and whether New Page is the right fit. No pressure either way.'),
+        h('p', {}, 'Book a free 20-minute call with Vik. You’ll talk about where you’re at and whether New Page is the right fit. No pressure either way.'),
         h('a', { class: 'btn btn-primary', href: CONFIG.introCallUrl, onclick: () => track('call_click') }, 'Book a free call')),
       newPageCard('done')
     ],

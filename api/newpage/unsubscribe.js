@@ -8,7 +8,9 @@ export default async function handler(req, res) {
   const stay = req.query.stay === '1'
   if (!/^[a-f0-9]{32}$/.test(token)) return page(res, 400, 'That link doesn’t look right', 'Reply to any of our emails and we’ll sort it out.')
 
-  const { data: lead } = await supabase.from('newpage_leads').select('email').eq('unsubscribe_token', token).maybeSingle()
+  // Tokens come from quiz leads or from the program page's waitlist.
+  let { data: lead } = await supabase.from('newpage_leads').select('email').eq('unsubscribe_token', token).maybeSingle()
+  if (!lead) ({ data: lead } = await supabase.from('newpage_waitlist').select('email').eq('unsubscribe_token', token).maybeSingle())
   if (!lead) return page(res, 404, 'That link has expired', 'Reply to any of our emails and we’ll sort it out.')
 
   const now = new Date().toISOString()
@@ -17,6 +19,7 @@ export default async function handler(req, res) {
     return page(res, 200, 'Thanks, you’re staying in touch', 'You’ll hear from Vik now and then. You can unsubscribe from any email.')
   }
   await supabase.from('newpage_leads').update({ unsubscribed_at: now, opt_in: false }).eq('email', lead.email)
+  await supabase.from('newpage_waitlist').update({ unsubscribed_at: now }).eq('email', lead.email)
   await supabase.from('subscribers').update({ unsubscribed_at: now }).eq('email', lead.email)
   await supabase.from('clients').update({ mailing_opt_in: false, updated_at: now }).eq('email', lead.email)
   return page(res, 200, 'You’re unsubscribed', 'You won’t get any more emails from New Page. Your plan is still yours to keep.')

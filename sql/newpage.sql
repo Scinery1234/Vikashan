@@ -95,3 +95,18 @@ FROM newpage_events
 WHERE event = 'answer' AND created_at > now() - interval '30 days'
 GROUP BY idx, question
 ORDER BY idx;
+
+-- "Tell me when it opens" from the program page (people who haven't taken
+-- the quiz), and when each person was sent the launch email.
+CREATE TABLE IF NOT EXISTS newpage_waitlist (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  email text UNIQUE NOT NULL,
+  name text,
+  source jsonb DEFAULT '{}',
+  unsubscribe_token text UNIQUE NOT NULL,
+  launch_notified_at timestamptz,
+  unsubscribed_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE newpage_waitlist ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_leads ADD COLUMN IF NOT EXISTS launch_notified_at timestamptz;
