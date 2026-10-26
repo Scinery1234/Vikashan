@@ -30,7 +30,7 @@ Things New Page is not:
 | **New Page** | The program. Title case in sentences ("Join New Page"). The logo wordmark is always lowercase: **new page**. |
 | **Vik** | The coach (Vikashan). Use "Vik" in friendly copy and emails, which are signed "Vik". |
 | **Purposefields** | Vikashan's not-for-profit arm. Mention it only for scholarships ("supported by Purposefields"). |
-| Tools | Keep their own names: The Compass, MadeHappen (planner), Resume Generator, Cover Letter Generator, Career Coach, CBT Coach, Action Coach, Executive Function Coach, Reducing the Charge, Recovery Coach, Clarity Compass. |
+| Tools | Keep their own names: The Compass, Planner, Resume writer, Cover letter writer, Career Coach, CBT Coach, Action Coach, Executive Function Coach, Reducing the Charge, Recovery Coach, Clarity Compass. |
 | Quadrants | **Recharge, Explore, Unstick, Launch.** Only reveal these after someone finishes the quiz. Don't name them, or say there are four, on the quiz start screen or in ads. |
 
 ## 3. Logo

@@ -1,4 +1,8 @@
 import { STATEMENTS, SCALE, FEELINGS, QUADRANTS } from '/newpage/quiz-logic.js'
+import { h, todayStr } from './ui.js'
+import { plannerScreen } from './planner.js'
+import { compassScreen, compassStatus, COMPASS_STEPS } from './compass.js'
+import { docsScreen } from './docs.js'
 
 const KEY = 'np_app_session'
 const app = document.getElementById('app')
@@ -9,26 +13,10 @@ let session = null
 try { session = localStorage.getItem(KEY) } catch {}
 
 const S = {
-  screen: 'loading', tab: 'today', me: null, error: '', info: '',
+  screen: 'loading', tab: 'today', tool: null, coach: 'career', me: null, error: '', info: '',
   email: '', sending: false, busy: false,
   coachDraft: '', coachSending: false, crisis: false, coachError: '',
   checkin: {}, checkinResult: null, newTask: ''
-}
-
-// ── Tiny DOM helper (text only, never innerHTML) ────────────────
-function h(tag, attrs, ...kids) {
-  const el = document.createElement(tag)
-  for (const [k, v] of Object.entries(attrs || {})) {
-    if (v == null || v === false) continue
-    if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v)
-    else if (k === 'style' && typeof v === 'object') for (const [p, val] of Object.entries(v)) el.style.setProperty(p, val)
-    else el.setAttribute(k, v === true ? '' : v)
-  }
-  for (const kid of kids.flat(Infinity)) {
-    if (kid == null || kid === false) continue
-    el.append(kid.nodeType ? kid : document.createTextNode(String(kid)))
-  }
-  return el
 }
 
 async function call(url, body, token = session) {
@@ -44,7 +32,7 @@ async function call(url, body, token = session) {
 
 async function act(action, body = {}) {
   try {
-    const data = await call('/api/newpage/app', { action, ...body })
+    const data = await call('/api/newpage/app', { action, coach: S.coach, ...body })
     S.me = data
     S.error = ''
     return data
@@ -58,7 +46,7 @@ async function act(action, body = {}) {
 function signOut() {
   session = null
   try { localStorage.removeItem(KEY) } catch {}
-  Object.assign(S, { me: null, screen: 'login', tab: 'today', error: '', info: '', checkinResult: null })
+  Object.assign(S, { me: null, screen: 'login', tab: 'today', tool: null, coach: 'career', error: '', info: '', checkinResult: null })
   render()
   return null
 }
@@ -137,7 +125,7 @@ function gridCard(me) {
 }
 
 function taskList(tasks, limit) {
-  const open = tasks.filter(t => !t.done)
+  const open = tasks.filter(t => !t.done).sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'))
   const shown = limit ? open.slice(0, limit) : tasks
   return h('div', { class: 'tasks' },
     shown.length ? shown.map(t => h('div', { class: 'task' },
@@ -162,9 +150,25 @@ function taskList(tasks, limit) {
       h('button', { class: 'btn btn-secondary', type: 'submit' }, 'Add')))
 }
 
-function askCoach(text) {
+function askCoach(text, coach = 'career') {
   S.coachDraft = text
+  openCoach(coach)
+}
+
+async function openCoach(id) {
+  S.coach = id; S.coachError = ''; S.crisis = false
+  if (S.me) S.me.messages = []
   go('coach')
+  try { await act('me') } catch (e) { S.error = e.message }
+  render(); scrollChat()
+}
+
+const ctx = {
+  get S() { return S },
+  call: (url, body) => call(url, body),
+  beacon: (url, body) => { try { fetch(url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` }, body: JSON.stringify(body) }) } catch {} },
+  act, render: () => render(), go: (tab, sub) => go(tab, sub),
+  askCoach: (coach, text) => askCoach(text, coach)
 }
 
 // ── Today ────────────────────────────────────────────────────────
@@ -197,7 +201,7 @@ function todayScreen() {
     h('div', { class: 'card' },
       h('span', { class: 'label' }, 'Your next steps'),
       taskList(me.tasks, 5),
-      me.tasks.filter(t => !t.done).length > 5 && h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('plan') }, 'See all your tasks')))
+      h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'planner') }, 'Open your planner')))
 }
 
 function sessionCard(me) {
@@ -226,13 +230,14 @@ function planScreen() {
         h('div', {}, h('p', { class: 'muted small' }, w.why), h('ul', { class: 'steps-list' }, w.steps.map((s, j) => stepRow(n, j, s)))))
     })),
     plan.tweaks.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Just for you'), h('ul', { style: { margin: 0, 'padding-left': '20px' } }, plan.tweaks.map(t => h('li', {}, t)))),
-    h('div', { class: 'card' }, h('span', { class: 'label' }, 'All your tasks'), taskList(me.tasks, 0)))
+    h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your tasks'), taskList(me.tasks, 8), h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'planner') }, 'Open your planner')))
 }
 
 // ── Coach ────────────────────────────────────────────────────────
 function coachScreen() {
   const me = S.me
-  const starters = ['I don’t know where to start.', 'Help me plan this week.', 'I’m feeling stuck.', 'Can we talk through a decision?']
+  const info = me.coaches.find(c => c.id === S.coach) || me.coaches[0]
+  const starters = info.starters
   const send = async text => {
     text = text.trim()
     if (!text || S.coachSending) return
@@ -241,7 +246,7 @@ function coachScreen() {
     S.coachDraft = ''
     render(); scrollChat()
     try {
-      const data = await act('coach', { message: text })
+      const data = await act('coach', { message: text, coach: S.coach })
       if (data?.crisis) S.crisis = true
     } catch (err) {
       me.messages = me.messages.slice(0, -1)
@@ -252,14 +257,16 @@ function coachScreen() {
     render(); scrollChat()
   }
   return h('section', { class: 'screen chat' },
-    h('div', {}, h('span', { class: 'note' }, 'your coach'), h('h2', {}, 'Career Coach'),
-      h('p', { class: 'small muted' }, 'An AI that knows your plan. It’s coaching, not therapy, and it can’t replace your session with Vik.')),
+    h('div', {}, h('span', { class: 'note' }, 'your coaches'), h('h2', {}, info.name),
+      h('p', { class: 'small muted' }, `${info.blurb} An AI that shares what it knows with your other coaches. It’s coaching, not therapy, and it can’t replace your session with Vik.`)),
+    h('div', { class: 'chips coach-pick', role: 'group', 'aria-label': 'Choose a coach' }, me.coaches.map(c =>
+      h('button', { class: 'chip', type: 'button', 'aria-pressed': String(c.id === S.coach), onclick: () => { if (c.id !== S.coach) openCoach(c.id) } }, c.name))),
     !me.coachOn && h('p', { class: 'soft' }, 'The coach isn’t switched on yet. Everything else in New Page works.'),
     S.crisis && h('div', { class: 'crisis', role: 'alert' }, h('b', {}, 'Support is available right now'),
       h('p', {}, 'Lifeline 13 11 14 (24/7) · Beyond Blue 1300 22 4636 · Emergency 000')),
     h('div', { class: 'msgs', id: 'msgs' },
       me.messages.length ? me.messages.map(m => h('div', { class: `msg ${m.role}` }, m.content))
-        : h('div', { class: 'msg assistant' }, `Hi${me.member.name ? ' ' + me.member.name.split(' ')[0] : ''}. I’m your Career Coach. I know your plan and what’s on your list. What’s on your mind?`),
+        : h('div', { class: 'msg assistant' }, `Hi${me.member.name ? ' ' + me.member.name.split(' ')[0] : ''}. ${info.open}`),
       S.coachSending && h('div', { class: 'msg assistant typing', 'aria-label': 'Coach is typing' }, '···')),
     !me.messages.length && h('div', { class: 'starters' }, starters.map(s => h('button', { class: 'chip', type: 'button', onclick: () => send(s) }, s))),
     S.coachError && h('p', { class: 'error', role: 'alert' }, S.coachError),
@@ -267,10 +274,37 @@ function coachScreen() {
       h('textarea', { id: 'coach-box', rows: '1', maxlength: '2000', placeholder: 'Type a message…', 'aria-label': 'Message your coach', disabled: S.coachSending || !me.coachOn, oninput: e => { S.coachDraft = e.target.value; e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; const sendBtn = document.getElementById('coach-send'); if (sendBtn) sendBtn.disabled = S.coachSending || !S.coachDraft.trim() },
         onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(S.coachDraft) } } }, S.coachDraft),
       h('button', { id: 'coach-send', class: 'btn btn-primary', type: 'submit', disabled: S.coachSending || !me.coachOn || !S.coachDraft.trim() }, 'Send')),
-    me.messages.length > 0 && h('button', { class: 'link-btn', type: 'button', onclick: async () => { if (!S.confirmClear) { S.confirmClear = true; render(); return } S.confirmClear = false; try { await act('coach_clear') } catch (err) { S.error = err.message } render() } },
+    me.messages.length > 0 && h('button', { class: 'link-btn', type: 'button', onclick: async () => { if (!S.confirmClear) { S.confirmClear = true; render(); return } S.confirmClear = false; try { await act('coach_clear', { coach: S.coach }) } catch (err) { S.error = err.message } render() } },
       S.confirmClear ? 'Tap again to clear this conversation' : 'Clear this conversation'))
 }
 function scrollChat() { const m = document.getElementById('msgs'); if (m) m.lastElementChild?.scrollIntoView({ block: 'end' }) }
+
+// ── Tools ────────────────────────────────────────────────────────
+const TOOLS = [
+  ['planner', 'Planner', 'Tasks, time blocks, goals and a morning reminder. Add anything to your calendar.'],
+  ['compass', 'The Compass', 'Ten short steps from what matters to you to three first steps.'],
+  ['resume', 'Resume writer', 'A tailored resume from your own work history and a job ad.'],
+  ['cover', 'Cover letter writer', 'A short letter in your voice for one specific job.']
+]
+let compassNote = ''
+function toolsScreen() {
+  if (S.tool === 'planner') return plannerScreen(ctx)
+  if (S.tool === 'compass') return compassScreen(ctx)
+  if (S.tool === 'resume' || S.tool === 'cover') return docsScreen(ctx, S.tool)
+  const me = S.me
+  const open = me.tasks.filter(t => !t.done).length
+  const due = me.tasks.filter(t => !t.done && t.due && t.due <= todayStr()).length
+  compassStatus(ctx).then(c => { const n = c ? (c.done ? 'Finished' : c.step > 0 || c.values.length ? `Step ${c.step + 1} of 10: ${COMPASS_STEPS[c.step]}` : '') : ''; if (n !== compassNote) { compassNote = n; if (S.tab === 'tools' && !S.tool) render() } })
+  const status = { planner: due ? `${due} due today` : open ? `${open} open` : '', compass: compassNote, resume: '', cover: '' }
+  return h('section', { class: 'screen' },
+    h('div', {}, h('span', { class: 'note' }, 'your toolkit'), h('h2', {}, 'Tools'), h('p', { class: 'muted' }, 'These save to your account, and your coaches know about your tasks.')),
+    h('div', { class: 'toolgrid' }, TOOLS.map(([id, name, blurb]) =>
+      h('button', { class: 'toolcard', type: 'button', onclick: () => go('tools', id) },
+        h('b', {}, name), h('span', {}, blurb), status[id] && h('small', {}, status[id])))),
+    h('div', { class: 'card' }, h('span', { class: 'label' }, 'Need to talk something through?'),
+      h('p', { class: 'small' }, 'Your coaches are in the Coach tab: Career, Recovery, Action, Executive Function, Reducing the Charge, CBT and the Clarity Compass.'),
+      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('coach') }, 'Go to your coaches')))
+}
 
 // ── Me ───────────────────────────────────────────────────────────
 function meScreen() {
@@ -330,13 +364,15 @@ const ICONS = {
   today: '<path d="M4 11l8-7 8 7v9a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
   plan: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/>',
   coach: '<path d="M21 12a8 8 0 0 1-11.5 7.2L4 20l1-4.5A8 8 0 1 1 21 12z"/>',
+  tools: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.6-.6-.6-2.6z"/>',
   me: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'
 }
-const TABS = [['today', 'Today'], ['plan', 'Plan'], ['coach', 'Coach'], ['me', 'Me']]
+const TABS = [['today', 'Today'], ['plan', 'Plan'], ['coach', 'Coach'], ['tools', 'Tools'], ['me', 'Me']]
 
-function go(tab) {
+function go(tab, sub) {
   S.tab = tab; S.error = ''
-  try { history.replaceState(null, '', `#${tab}`) } catch {}
+  S.tool = tab === 'tools' ? sub || null : null
+  try { history.replaceState(null, '', `#${tab}${S.tool ? '/' + S.tool : ''}`) } catch {}
   render(); window.scrollTo({ top: 0 })
   if (tab === 'coach') setTimeout(scrollChat, 0)
 }
@@ -365,7 +401,7 @@ function render() {
   else if (S.screen === 'login') node = loginScreen()
   else if (S.screen === 'sent') node = sentScreen()
   else if (S.screen === 'noaccess') node = noAccessScreen()
-  else node = ({ today: todayScreen, plan: planScreen, coach: coachScreen, me: meScreen }[S.tab] || todayScreen)()
+  else node = ({ today: todayScreen, plan: planScreen, coach: coachScreen, tools: toolsScreen, me: meScreen }[S.tab] || todayScreen)()
   app.replaceChildren(node)
   renderTabs()
   if (active) { const el = document.getElementById(active); if (el) { el.focus(); if (sel != null && el.setSelectionRange) try { el.setSelectionRange(sel, sel) } catch {} } }
@@ -389,8 +425,9 @@ async function start() {
   render()
   try {
     await act('me')
-    const wanted = location.hash.slice(1)
+    const [wanted, sub] = location.hash.slice(1).split('/')
     S.tab = TABS.some(([k]) => k === wanted) ? wanted : 'today'
+    S.tool = S.tab === 'tools' && TOOLS.some(([k]) => k === sub) ? sub : null
     S.screen = 'app'
   } catch (e) {
     S.screen = 'login'; S.info = e.message

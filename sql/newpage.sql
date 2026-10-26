@@ -183,3 +183,50 @@ ALTER TABLE newpage_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_checkins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_memory ENABLE ROW LEVEL SECURITY;
+
+-- ── Member app tools: specialist coaches, planner, Compass, resume ──
+ALTER TABLE newpage_messages ADD COLUMN IF NOT EXISTS coach text NOT NULL DEFAULT 'career';
+CREATE INDEX IF NOT EXISTS newpage_messages_coach_idx ON newpage_messages (member_id, coach, id);
+
+ALTER TABLE newpage_tasks ADD COLUMN IF NOT EXISTS block_start time;
+ALTER TABLE newpage_tasks ADD COLUMN IF NOT EXISTS block_mins integer;
+ALTER TABLE newpage_tasks ADD COLUMN IF NOT EXISTS goal_id uuid;
+ALTER TABLE newpage_tasks DROP CONSTRAINT IF EXISTS newpage_tasks_source_check;
+ALTER TABLE newpage_tasks ADD CONSTRAINT newpage_tasks_source_check CHECK (source IN ('you','coach','compass'));
+
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS reminders boolean DEFAULT true;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS last_reminder_on date;
+
+CREATE TABLE IF NOT EXISTS newpage_goals (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  target date,
+  done boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_goals_member_idx ON newpage_goals (member_id);
+
+-- One saved state per member per tool: 'compass' answers, 'profile' (resume background).
+CREATE TABLE IF NOT EXISTS newpage_tools (
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  tool text NOT NULL,
+  data jsonb NOT NULL DEFAULT '{}',
+  updated_at timestamptz DEFAULT now(),
+  PRIMARY KEY (member_id, tool)
+);
+
+-- Resumes and cover letters the member has generated.
+CREATE TABLE IF NOT EXISTS newpage_docs (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  kind text NOT NULL CHECK (kind IN ('resume','cover')),
+  title text NOT NULL,
+  content jsonb NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_docs_member_idx ON newpage_docs (member_id, created_at);
+
+ALTER TABLE newpage_goals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_tools ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_docs ENABLE ROW LEVEL SECURITY;

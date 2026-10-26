@@ -119,7 +119,7 @@ export const PLANS = {
         'Work in 25-minute stretches with a timer, then take a 5-minute break.',
         'If a block slips, don’t ask why you failed. Ask what got in the way, and what would make it easier next time. Move the block to another day instead of skipping it.'
       ],
-      withNewPage: 'The planner has a built-in focus timer, and the Action Coach is there when a block slips.'
+      withNewPage: 'Your planner holds the blocks and emails you a reminder each morning, and the Action Coach is there when a block slips.'
     },
     {
       title: 'Finish something you can see',
@@ -129,7 +129,7 @@ export const PLANS = {
         'Write down your wins from the month, including the small ones. Then pick your next milestone and book its blocks.',
         'Retake the quiz and see where you are.'
       ],
-      withNewPage: 'The Resume Generator tailors a resume to a job ad in minutes.'
+      withNewPage: 'The resume writer tailors a resume to a job ad in minutes.'
     }
   ],
 
@@ -143,7 +143,7 @@ export const PLANS = {
         'Update your resume so each of those words appears honestly, with a specific example behind it: what you did, and the result.',
         'Write a one-paragraph answer to “Why this role, and why now?” It becomes the base of your cover letters and interview answers.'
       ],
-      withNewPage: 'The Resume Generator tailors your resume to each ad, and your Career Coach helps you sharpen your “why”.'
+      withNewPage: 'The resume writer tailors your resume to each ad, and your Career Coach helps you sharpen your “why”.'
     },
     {
       title: 'Build your pipeline',
@@ -153,7 +153,7 @@ export const PLANS = {
         'For the first two, write a short cover letter, half a page at most: why this role, one example of relevant results, and why this organisation.',
         'Put two application slots a week in your calendar.'
       ],
-      withNewPage: 'The Cover Letter Generator drafts a tailored letter from the job ad and your background, and your planner holds the application slots.'
+      withNewPage: 'The cover letter writer drafts a tailored letter from the job ad and your background, and your planner holds the application slots.'
     },
     {
       title: 'Apply and follow up',
