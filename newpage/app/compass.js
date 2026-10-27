@@ -105,7 +105,7 @@ function missing(C, step) {
 
 export function compassScreen(ctx) {
   ensureLoaded(ctx)
-  const back = h('button', { class: 'link-btn', type: 'button', onclick: () => ctx.go('tools') }, '← Tools')
+  const back = h('button', { class: 'link-btn back', type: 'button', onclick: () => ctx.go('tools') }, '← Tools')
   if (!T.C) return h('section', { class: 'screen' }, back, h('h2', {}, 'The Compass'), T.err ? h('p', { class: 'error' }, T.err) : h('p', { class: 'loading' }, 'Loading…'))
 
   hook(ctx)
@@ -149,19 +149,19 @@ export function compassScreen(ctx) {
     const G = C.strengths
     const cats = [['know', 'Things I know', 'Topics, places, cultures, industries, life experience', 'e.g. Gardening, NDIS, Tamil culture'], ['do', 'Things I can do', 'Skills, practical or people-based', 'e.g. Calm people down, fix bikes, write'], ['love', 'Things I love', 'What makes your heart sing, or your blood boil', 'e.g. Kids’ wellbeing, live music, fairness'], ['other', 'Other things I bring (optional)', 'People you know, places you can access, things you own', 'e.g. A big local network, a ute']]
     body.push(h('h3', {}, 'Your strengths'), h('p', { class: 'muted' }, 'Three groups: what you know, what you can do, and what you love. At least three in each. More is better.'),
-      cats.map(([k, label, hint, ph]) => h('div', { class: 'card' }, h('span', { class: 'label' }, label, k !== 'other' && h('small', {}, ` ${G[k].length}/3`)), h('p', { class: 'small muted' }, hint), tagList(G[k], rr), addRow(ctx, 'cp-s-' + k, ph, v => { if (G[k].length < 20 && !G[k].includes(v)) G[k].push(v); save(ctx) }))))
+      h('div', { class: 'mixgrid' }, cats.map(([k, label, hint, ph]) => h('div', { class: 'card' }, h('span', { class: 'label' }, label, k !== 'other' && h('small', {}, ` ${G[k].length}/3`)), h('p', { class: 'small muted' }, hint), tagList(G[k], rr), addRow(ctx, 'cp-s-' + k, ph, v => { if (G[k].length < 20 && !G[k].includes(v)) G[k].push(v); save(ctx) })))))
   } else if (step === 5) {
     const G = C.strengths
     if (!T.trios.length || T.trios.some(t => !G.know.includes(t.know) || !G.do.includes(t.do) || !G.love.includes(t.love))) T.trios = makeTrios(G)
     const addIdea = (v, t) => { if (v && !C.ideas.includes(v) && C.ideas.length < 30) { C.ideas.push(v); if (t) t.added.push(v) } }
     body.push(h('h3', {}, 'Mix and match'), h('p', { class: 'muted' }, 'Each card mixes one thing you know, one you can do and one you love. Ask: what job or kind of work could bring these together? Skip any that don’t spark anything. Add the ideas you already had too.'),
-      T.trios.map((t, j) => h('div', { class: 'card mix' },
+      h('div', { class: 'mixgrid' }, T.trios.map((t, j) => h('div', { class: 'card mix' },
         h('div', { class: 'trio' }, h('span', {}, t.know), '+', h('span', {}, t.do), '+', h('span', {}, t.love)),
         t.added.length > 0 && h('div', { class: 'tags' }, t.added.map(v => h('span', { class: 'tag got' }, '✓ ' + v))),
         h('div', { class: 'add-row' },
           h('input', { id: 'cp-mix-' + j, type: 'text', maxlength: '100', placeholder: t.added.length ? 'Another idea?' : 'What work could this be?', 'aria-label': `Idea for mix ${j + 1}`, value: t.idea, oninput: e => { t.idea = e.target.value }, onkeydown: e => { if (e.key === 'Enter') { e.preventDefault(); addIdea(t.idea.trim(), t); t.idea = ''; rr() } } }),
           h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { addIdea(t.idea.trim(), t); t.idea = ''; rr() } }, 'Add')),
-        h('button', { class: 'link-btn blue', type: 'button', disabled: !!T.busy, onclick: async () => { const r = await suggest(ctx, 'mixIdea', { know: t.know, do: t.do, love: t.love, avoid: [...t.added, ...C.ideas] }, 'mix' + j); if (r?.idea) { t.idea = r.idea; ctx.render() } } }, T.busy === 'mix' + j ? 'Thinking…' : 'Suggest an idea for this mix'))),
+        h('button', { class: 'link-btn blue', type: 'button', disabled: !!T.busy, onclick: async () => { const r = await suggest(ctx, 'mixIdea', { know: t.know, do: t.do, love: t.love, avoid: [...t.added, ...C.ideas] }, 'mix' + j); if (r?.idea) { t.idea = r.idea; ctx.render() } } }, T.busy === 'mix' + j ? 'Thinking…' : 'Suggest an idea for this mix')))),
       h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { T.trios = makeTrios(G); ctx.render(); window.scrollTo({ top: 0 }) } }, 'Remix: 10 new mixes'),
       h('div', { class: 'card' }, h('span', { class: 'label' }, `Your ideas (${C.ideas.length})`),
         tagList(C.ideas, rr) || h('p', { class: 'muted small' }, 'Ideas you add appear here.'),
@@ -212,7 +212,7 @@ export function compassScreen(ctx) {
   function refreshFooter(force) {
     const m = missing(C, step)
     const hint = document.getElementById('cp-hint'), next = document.getElementById('cp-next')
-    if (hint) hint.textContent = m.length ? (force || step === 2 || step === 3 ? 'Still needed: ' + m.join(', ') : '') : ''
+    if (hint) hint.textContent = m.length ? 'Still needed: ' + m.join(', ') : ''
     if (next) next.setAttribute('aria-disabled', String(m.length > 0))
   }
   setTimeout(refreshFooter, 0)

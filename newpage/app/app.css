@@ -134,3 +134,24 @@
   .doc-page, .doc-page * { visibility: visible !important; }
   .doc-page { position: absolute; left: 0; top: 0; width: 100%; border: 0; padding: 0; }
 }
+
+/* ── Layout fixes ── */
+.back { display: flex; margin: 0 0 6px; }
+.top { background: #fff; }
+.cp-body h3 { margin: 0; } .cp-body p { margin: 0; }
+.cp-footer { background: #fff; margin: 0; padding: 10px 0; box-shadow: 0 -10px 14px -10px rgba(21,32,59,.22); border-top: 1px solid var(--rule); z-index: 4; }
+.mixgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.plan-cols, .docs-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.plan-cols .col-a, .plan-cols .col-b { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.docs-cols > div { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.docs-empty { display: none; }
+@media (min-width: 900px) {
+  .paper.wide .tabbar-in, .tabbar-in { max-width: 600px; }
+  .mixgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-cols { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 24px; }
+  .docs-cols { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; }
+  .docs-empty { display: flex; align-items: center; justify-content: center; border: 1.5px dashed var(--rule); border-radius: 16px; min-height: 240px; }
+  .cp-body { max-width: 860px; }
+  .cp-steps, .compass > p { max-width: 860px; }
+  .paper.wide .cp-footer { max-width: 860px; }
+}

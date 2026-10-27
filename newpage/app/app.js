@@ -403,6 +403,7 @@ function render() {
   else if (S.screen === 'noaccess') node = noAccessScreen()
   else node = ({ today: todayScreen, plan: planScreen, coach: coachScreen, tools: toolsScreen, me: meScreen }[S.tab] || todayScreen)()
   app.replaceChildren(node)
+  document.querySelector('.paper')?.classList.toggle('wide', S.screen === 'app' && S.tab === 'tools' && !!S.tool)
   renderTabs()
   if (active) { const el = document.getElementById(active); if (el) { el.focus(); if (sel != null && el.setSelectionRange) try { el.setSelectionRange(sel, sel) } catch {} } }
 }

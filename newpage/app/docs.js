@@ -83,7 +83,7 @@ export function docsScreen(ctx, kind) {
   load(ctx)
   const isResume = kind === 'resume'
   const title = isResume ? 'Resume writer' : 'Cover letter writer'
-  const head = h('div', {}, h('button', { class: 'link-btn', type: 'button', onclick: () => ctx.go('tools') }, '← Tools'), h('h2', {}, title),
+  const head = h('div', {}, h('button', { class: 'link-btn back', type: 'button', onclick: () => ctx.go('tools') }, '← Tools'), h('h2', {}, title),
     h('p', { class: 'muted' }, isResume ? 'Paste your work history and, if you have one, the job ad. You get a tailored resume built only from your own facts.' : 'Paste your work history and the job ad. You get a short letter in your voice, built only from your own facts.'))
   if (L.background === null) return h('section', { class: 'screen' }, head, h('p', { class: 'loading' }, 'Loading…'))
 
@@ -126,5 +126,5 @@ export function docsScreen(ctx, kind) {
     mine.map(d => h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.current = d; ctx.render(); document.getElementById('doc-result')?.scrollIntoView({ block: 'start' }) } }, `${d.title} · ${new Date(d.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`),
       h('button', { class: 'x', type: 'button', 'aria-label': `Delete ${d.title}`, onclick: async () => { try { await ctx.call('/api/newpage/app', { action: 'doc_delete', id: d.id }); L.docs = L.docs.filter(x => x.id !== d.id); if (L.current?.id === d.id) L.current = null } catch (e) { L.err = e.message } ctx.render() } }, '×'))))
 
-  return h('section', { class: 'screen docs' }, head, form, result, saved)
+  return h('section', { class: 'screen docs' }, head, h('div', { class: 'docs-cols' }, h('div', {}, form, saved), result || h('div', { class: 'docs-empty muted small' }, 'Your document appears here.')))
 }
