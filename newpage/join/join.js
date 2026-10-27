@@ -53,24 +53,54 @@ $('join-form').addEventListener('submit', async e => {
   S.busy = true; render()
   try {
     const d = await post({ action: 'start', name, email, hours: S.hours, code: S.codeOk ? S.code : undefined, website: $('j-website').value })
-    if (d.joined) { showDone(true, email); return }
+    if (d.joined) { showDone({ scholarship: true, email, session: d.session }); return }
     if (d.url) { location.href = d.url; return }
     throw new Error('Something went wrong. Please try again.')
   } catch (e2) { text(err, e2.message); err.hidden = false }
   S.busy = false; render()
 })
 
-function showDone(scholarship, email) {
+function signIn(session) { try { localStorage.setItem('np_app_session', session); return true } catch { return false } }
+
+// The thank-you screen. If we can sign them in, the button takes them straight into the app.
+function showDone({ scholarship = false, email = '', session = null, checking = false, problem = '' } = {}) {
   $('form-screen').hidden = true; $('cancel-screen').hidden = true; $('done-screen').hidden = false
-  text($('done-title'), 'You’re in.')
-  text($('done-text'), scholarship
-    ? `Your scholarship is confirmed. A welcome email is on its way to ${email}. Open it, or go straight to New Page and sign in with that email to get your sign-in link.`
-    : 'Thank you. Your payment is done and your welcome email is on its way. Go to New Page and sign in with the email you used, and we’ll send you a sign-in link.')
+  const signedIn = session ? signIn(session) : false
+  text($('done-title'), checking ? 'Thanks. One moment…' : 'You’re in. Welcome to New Page.')
+  text($('done-text'), problem || (checking ? 'We’re confirming your payment.'
+    : scholarship ? 'Your scholarship is confirmed, and you’re signed in.'
+      : 'Your payment went through' + (signedIn ? ', and you’re signed in.' : '.')))
+  const next = $('done-next'); next.replaceChildren()
+  if (!checking && !problem) {
+    const steps = [
+      signedIn ? 'Tap the button below to open your New Page.' : `Open the welcome email we’ve sent${email ? ' to ' + email : ''}. Its button signs you straight in. (Check your junk folder if it’s not there in a few minutes.)`,
+      'Do your 2-minute check-in, or open Today if you’ve taken the quiz. That’s your plan for the four weeks.',
+      'Book your 60-minute session with Vik in week 2 or 3, under Tools.'
+    ]
+    steps.forEach(t => { const li = document.createElement('li'); li.textContent = t; next.append(li) })
+  }
+  const go = $('done-go'); go.hidden = !!checking
+  go.textContent = signedIn ? 'Open New Page' : 'Sign in to New Page'
+  go.setAttribute('href', signedIn ? '/newpage/app#today' : '/newpage/app')
   window.scrollTo({ top: 0 })
 }
 
+async function claim(sid) {
+  showDone({ checking: true })
+  for (let i = 0; i < 4; i++) {
+    try {
+      const d = await post({ action: 'claim', sid })
+      showDone({ email: d.email, session: d.session }); return
+    } catch (e) {
+      if (e.code !== 'not_paid') { showDone({ problem: e.message }); return }
+      await new Promise(r => setTimeout(r, 2500))
+    }
+  }
+  showDone({ problem: 'Your payment is still being confirmed. Your welcome email will arrive in a few minutes with a link to sign in.' })
+}
+
 const q = new URLSearchParams(location.search)
-if (q.get('done')) showDone(false)
+if (q.get('done')) { const sid = q.get('sid'); history.replaceState(null, '', location.pathname); sid ? claim(sid) : showDone() }
 else if (q.get('cancelled')) { $('form-screen').hidden = true; $('cancel-screen').hidden = false }
 $('cancel-back').addEventListener('click', () => { $('cancel-screen').hidden = true; $('form-screen').hidden = false })
 const pre = q.get('code'); if (pre) { $('j-code').value = pre; $('code-apply').click() }

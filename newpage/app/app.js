@@ -182,7 +182,8 @@ function todayScreen() {
       h('span', { class: 'note' }, 'welcome'),
       h('h1', {}, first ? `Hi ${first}.` : 'Welcome.'),
       h('p', { class: 'lead' }, 'Let’s find your starting point. The check-in takes about two minutes, and gives you your plan for the four weeks.'),
-      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => go('me') }, 'Start the check-in'))
+      h('button', { class: 'btn btn-primary', type: 'button', onclick: () => go('me') }, 'Start the check-in'),
+      gettingStarted(me))
   }
   const week = plan.weeks[p.week - 1]
   const pct = p.totalThisWeek ? Math.round((p.doneThisWeek / p.totalThisWeek) * 100) : 0
@@ -191,6 +192,7 @@ function todayScreen() {
       h('span', { class: 'note' }, p.complete ? 'four weeks done' : `day ${p.day} of 28`),
       h('h1', {}, first ? `Hi ${first}.` : 'Welcome back.')),
     S.info && h('div', { class: 'soft', role: 'status' }, S.info),
+    gettingStarted(me),
     p.complete && h('div', { class: 'soft' }, h('b', {}, 'You’ve done your four weeks. '), 'Retake the check-in to see how far you’ve moved, and talk to your coach about what’s next.'),
     h('div', { class: 'week-card' },
       h('div', { class: 'week-head' }, h('h2', {}, `Week ${p.week}: ${week.title}`), h('span', { class: 'pill' }, `${p.doneThisWeek} of ${p.totalThisWeek} done`)),
@@ -212,6 +214,22 @@ async function buy(action, body = {}) {
   S.busy = true; S.error = ''; render()
   try { const d = await act(action, body, true); if (d?.url) { location.href = d.url; return } } catch (e) { S.error = e.message }
   S.busy = false; render()
+}
+
+const GS_KEY = 'np_gs_hidden'
+function gettingStarted(me) {
+  let hidden = false
+  try { hidden = !!localStorage.getItem(GS_KEY) } catch {}
+  if (hidden || me.program.day > 7) return null
+  const done = me.progress.length > 0
+  const row = (ok, text, label, onclick) => h('li', { class: ok ? 'gs-done' : '' }, h('span', { 'aria-hidden': 'true' }, ok ? '✓' : '○'), h('span', {}, text), !ok && h('button', { class: 'link-btn blue', type: 'button', onclick }, label))
+  return h('div', { class: 'card gs' },
+    h('div', { class: 'week-head' }, h('span', { class: 'label' }, 'Getting started'), h('button', { class: 'link-btn', type: 'button', onclick: () => { try { localStorage.setItem(GS_KEY, '1') } catch {} render() } }, 'Hide')),
+    h('ul', { class: 'gs-list' },
+      row(!!me.plan, 'Do your 2-minute check-in', 'Start', () => go('me')),
+      row(done, 'Tick off your first step below', 'See it', () => window.scrollTo({ top: 0, behavior: 'smooth' })),
+      row(me.messages.length > 0 || !!S.coachUsed, 'Say hello to your Career Coach', 'Say hello', () => go('coach')),
+      row(me.sessions.upcoming.length > 0, 'Book your 1:1 with Vik (best in week 2 or 3)', 'Book', () => go('tools', 'session'))))
 }
 
 function renewCard(me) {
@@ -264,7 +282,7 @@ function coachScreen() {
   const send = async text => {
     text = text.trim()
     if (!text || S.coachSending) return
-    S.coachSending = true; S.coachError = ''; S.crisis = false
+    S.coachSending = true; S.coachError = ''; S.crisis = false; S.coachUsed = true
     me.messages = [...me.messages, { role: 'user', content: text }]
     S.coachDraft = ''
     render(); scrollChat()

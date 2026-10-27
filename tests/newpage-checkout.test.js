@@ -33,7 +33,7 @@ test('the join checkout charges $500 plus $250 an hour, in AUD, with the details
   assert.equal(p.metadata.kind, 'newpage_join')
   assert.equal(p.metadata.hours, '2')
   assert.equal(p.payment_intent_data.metadata.kind, 'newpage_join')
-  assert.equal(p.success_url, 'https://example.org/newpage/join?done=1')
+  assert.equal(p.success_url, 'https://example.org/newpage/join?done=1&sid={CHECKOUT_SESSION_ID}')
   assert.equal(joinSessionParams({ email: 'a@b.co', name: '', hours: 0 }).line_items.length, 1)
 })
 
@@ -44,4 +44,15 @@ test('renewal and extra hours checkouts', () => {
   const h = hoursSessionParams({ member: { id: 'm1', email: 'a@b.co' }, hours: 3 })
   assert.deepEqual([h.line_items[0].price_data.unit_amount, h.line_items[0].quantity], [25000, 3])
   assert.equal(h.metadata.hours, '3')
+})
+
+test('the welcome email has a one-click sign-in link and explains the first steps', async () => {
+  process.env.JWT_SECRET = 'x'
+  const { memberWelcomeEmail } = await import('../lib/newpage-emails.js')
+  const withPlan = memberWelcomeEmail({ name: 'Sam <b>', link: 'https://example.org/newpage/app?t=abc', hasPlan: true })
+  assert.ok(withPlan.html.includes('href="https://example.org/newpage/app?t=abc"'))
+  assert.ok(withPlan.html.includes('Your first 15 minutes') && withPlan.html.includes('1:1 session') && withPlan.html.includes('13 11 14') && withPlan.html.includes('full refund'))
+  assert.ok(withPlan.html.includes('plan is already there') && !withPlan.html.includes('2-minute check-in. It places'))
+  assert.ok(!withPlan.html.includes('Sam <b>') && withPlan.html.includes('Sam'))
+  assert.ok(memberWelcomeEmail({ name: 'Sam' }).html.includes('2-minute check-in'))
 })
