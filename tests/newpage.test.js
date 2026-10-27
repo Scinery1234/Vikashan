@@ -174,3 +174,21 @@ test('plan email shows each week, its optional New Page note, and no sales P.S. 
   assert.ok(!/They’re optional extras/.test(struggling.html))
   assert.ok(!/Optional, with New Page:/.test(struggling.html), 'no product notes for someone struggling')
 })
+
+test('the Compass features in every plan, in the week Vik chose: Launch 1, Unstick 2, Explore 3, Recharge 4', () => {
+  const week = { launch: 0, unstick: 1, explore: 2, recharge: 3 }
+  for (const [k, i] of Object.entries(week)) {
+    const weeks = QUADRANTS[k].weeks
+    const featured = weeks.map((w, n) => (w.tool === 'compass' ? n : -1)).filter(n => n >= 0)
+    assert.deepEqual(featured, [i], `${k} features the Compass once, in week ${i + 1}`)
+    assert.match(weeks[i].withNewPage, /The Compass/, `${k} week ${i + 1} note names it`)
+    assert.ok(weeks[i].steps.some(s => /top five values/i.test(s)), `${k} week ${i + 1} has a stand-alone values step`)
+    weeks.forEach((w, n) => { if (n !== i) assert.doesNotMatch(w.withNewPage, /The Compass/, `${k} week ${n + 1} should not push the Compass`) })
+  }
+})
+
+test('the member app plan carries the featured tool for each week', async () => {
+  const { planFor } = await import('../lib/newpage-app.js')
+  const plan = planFor({ quadrant: 'explore', answers: null, personal: {} })
+  assert.deepEqual(plan.weeks.map(w => w.tool), [null, null, 'compass', null])
+})

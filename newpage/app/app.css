@@ -176,3 +176,7 @@
   .today-grid .two { grid-template-columns: minmax(0, 1fr); }
   .weeks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
+
+.tool-callout { display: flex; flex-direction: column; gap: 10px; background: var(--hl); border: 2px solid var(--ink); border-radius: 14px; padding: 14px 16px; }
+.tool-callout p { margin: 2px 0 0; }
+.tool-callout .btn { background: #fff; }

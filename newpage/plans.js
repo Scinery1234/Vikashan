@@ -31,17 +31,19 @@ export const PLANS = {
         'Finish this sentence three times, quickly, without editing: “I’d like more of…”',
         'Look at what repeats. That’s a clue, not a decision.'
       ],
-      withNewPage: 'The Compass walks you through your values, strengths and direction in small steps, at your pace.'
+      withNewPage: 'Your Career Coach helps you put words to what you notice, and the Recovery Coach is there if it’s a heavy week.'
     },
     {
       title: 'Check in',
       why: 'See what has shifted, and choose a next step that fits your energy.',
       steps: [
         'Retake the quiz at vikashan.com.au/newpage and see where your dot has moved. Many people move toward Explore or Unstick after a few weeks of steadying.',
+        'Make a gentle map, with no decisions needed. Write your top five values, then a short paragraph picturing your number one value fully lived in an ordinary week. Notice which way it points. It’s a direction to hold, not a decision to make.',
         'Choose your next small step. If you feel steadier, try the Explore plan. If you’re still low on energy, repeat weeks 1 and 2 and be kind to yourself. That’s pacing, not failing.',
         'If you’ve felt flat or exhausted for more than a few weeks, it’s worth talking to your GP or a counsellor.'
       ],
-      withNewPage: 'Your Career Coach helps you choose the next step, and the 1:1 session with Vik is a good place to talk it through.'
+      withNewPage: 'The Compass takes you through that map in ten short steps, at your own pace. It saves to your account, and your coaches know what you find. Your Career Coach helps you choose the next step, and the 1:1 session with Vik is a good place to talk it through.',
+      tool: 'compass'
     }
   ],
 
@@ -54,7 +56,7 @@ export const PLANS = {
         'Strengths: write three things you know (subjects, industries, how things work), three things you can do well (skills people ask you for) and three things you love doing, even if you’re not paid for them.',
         'Ask two people who know you well: “When do you see me at my best?” Write down what they say, word for word.'
       ],
-      withNewPage: 'The Compass takes you through your values, who you are, your North Star and what you need from work, and your Career Coach talks through anything that surprises you.'
+      withNewPage: 'Your Career Coach talks through anything that surprises you, and your planner keeps the two conversations in your calendar.'
     },
     {
       title: 'Generate options',
@@ -65,17 +67,19 @@ export const PLANS = {
         'Score each idea from 1 to 5 on three things: the energy it gives you, how well it fits your values, and how realistic it feels right now. Circle your top two.',
         'If you’re torn between two, write what you’d gain and give up with each, then notice which one you hope wins.'
       ],
-      withNewPage: 'The Compass mixes your strengths into ideas you might not have thought of, and the Clarity Compass guides you through a hard choice.'
+      withNewPage: 'The Clarity Compass coach guides you through a hard choice, and your planner schedules each idea you want to look into.'
     },
     {
       title: 'Test in the real world',
       why: 'You find out what fits by trying small versions of it, not by thinking harder.',
       steps: [
+        'Put weeks 1 and 2 on one page: your top five values, your strengths, and your top two ideas. Under each idea, write a short paragraph describing a good ordinary day in that work. That’s what your experiments are checking for.',
         'Run three small experiments on your top two ideas. Have a 20-minute coffee chat with someone doing the work (ask what a normal week looks like, and what they’d change). Try a free taster: a short course, a webinar or a day of volunteering. Read five job ads closely, and note which tasks excite you and which drain you.',
         'Put each experiment in your calendar with a date.',
         'After each one, write two lines: what gave you energy, and what didn’t.'
       ],
-      withNewPage: 'Your planner schedules each experiment, and your Career Coach helps you make sense of what you learned.'
+      withNewPage: 'The Compass pulls your values, strengths and ideas into one map, helps you choose a direction, and turns it into a plan and three first steps. It saves to your account, and your coaches know what you find. Your planner schedules each experiment, and your Career Coach helps you make sense of what you learned.',
+      tool: 'compass'
     },
     {
       title: 'Choose and plan',
@@ -106,10 +110,12 @@ export const PLANS = {
       why: 'Big goals stay vague. Small milestones give you something to schedule.',
       steps: [
         'Write your goal as one sentence, like “Get a role as … by …”. Break it into three to five milestones, each something you could finish in a week or two.',
+        'Find the reason behind it. Write your top five values, then a short paragraph picturing your number one value fully lived. Next to each milestone, write which value it serves. Starting is easier when you can see what it’s for.',
         'For the first milestone, book three 30-minute blocks in your calendar this week, and write what you’ll do in each.',
         'Add an “if–then” for the hardest moment: “If I feel like skipping, then I’ll do just 10 minutes.”'
       ],
-      withNewPage: 'The Executive Function Coach helps you break goals down, and your planner holds the blocks, with reminders.'
+      withNewPage: 'The Compass takes you through your values, who you are and your North Star, so your goal has a reason behind it. It saves to your account, and your coaches know what you find. The Executive Function Coach helps you break goals down, and your planner holds the blocks, with reminders.',
+      tool: 'compass'
     },
     {
       title: 'Keep the streak',
@@ -139,11 +145,13 @@ export const PLANS = {
       why: 'Tailored applications get far more replies than mass ones.',
       steps: [
         'Write your target role in one line: “I’m looking for … roles in …”.',
+        'Check the role fits your life. Write your top five values in order, three “I am…” statements about the whole of you, and your must-haves: the lowest pay you’d accept, the most hours a week, how much stress is okay, and where you’ll work. Does this role honour them? If not, write what you’d change.',
         'Find three real job ads for it. Highlight the words and skills that appear in all three. Those are what screeners look for.',
         'Update your resume so each of those words appears honestly, with a specific example behind it: what you did, and the result.',
         'Write a one-paragraph answer to “Why this role, and why now?” It becomes the base of your cover letters and interview answers.'
       ],
-      withNewPage: 'The resume writer tailors your resume to each ad, and your Career Coach helps you sharpen your “why”.'
+      withNewPage: 'The Compass takes you through that check in ten short steps: your values, who you are, your North Star and what you need from work. It saves to your account, and your coaches know what you find. The resume writer tailors your resume to each ad, and your Career Coach helps you sharpen your “why”.',
+      tool: 'compass'
     },
     {
       title: 'Build your pipeline',

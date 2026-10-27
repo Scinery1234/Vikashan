@@ -100,6 +100,14 @@ function noAccessScreen() {
 const fmtDate = d => new Date(d + (d.length === 10 ? 'T00:00:00' : '')).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
 const stepDone = (week, i) => S.me.progress.includes(`${week}-${i}`)
 
+// This week's tool, when the plan features one.
+function toolCallout(w) {
+  if (w.tool !== 'compass') return null
+  return h('div', { class: 'tool-callout' },
+    h('div', {}, h('b', {}, 'This week’s tool: the Compass'), h('p', { class: 'small' }, 'Ten short steps from what matters to you to three first steps. It saves as you go, and your coaches will know what you find.')),
+    h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('tools', 'compass') }, 'Open the Compass'))
+}
+
 function stepRow(week, i, text) {
   return h('li', {}, h('label', { class: 'step' },
     h('input', { type: 'checkbox', checked: stepDone(week, i), onchange: async e => {
@@ -200,6 +208,7 @@ function todayScreen() {
       h('p', { class: 'muted' }, week.why),
       h('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'This week’s progress' }, h('i', { style: { width: pct + '%' } })),
       h('ul', { class: 'steps-list' }, week.steps.map((s, i) => stepRow(p.week, i, s))),
+      toolCallout(week),
       h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`I’m on week ${p.week}, “${week.title}”. `) }, 'Stuck? Ask your coach about this week')),
     h('div', { class: 'two' },
       gridCard(me),
@@ -269,7 +278,7 @@ function planScreen() {
     h('div', { class: 'weeks' }, plan.weeks.map((w, i) => {
       const n = i + 1, done = w.steps.filter((_, j) => stepDone(n, j)).length
       return h('details', { open: n === me.program.week }, h('summary', {}, h('span', {}, `Week ${n}: ${w.title}`), h('small', {}, `${done}/${w.steps.length}`)),
-        h('div', {}, h('p', { class: 'muted small' }, w.why), h('ul', { class: 'steps-list' }, w.steps.map((s, j) => stepRow(n, j, s)))))
+        h('div', {}, h('p', { class: 'muted small' }, w.why), h('ul', { class: 'steps-list' }, w.steps.map((s, j) => stepRow(n, j, s))), toolCallout(w)))
     })),
     plan.tweaks.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Just for you'), h('ul', { style: { margin: 0, 'padding-left': '20px' } }, plan.tweaks.map(t => h('li', {}, t)))),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your tasks'), taskList(me.tasks, 8), h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'planner') }, 'Open your planner')))
