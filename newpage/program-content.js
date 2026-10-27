@@ -15,6 +15,8 @@
 // Tools: compass, planner, resume, cover, linkedin, outreach, report, brief, progress, session
 // Coaches: career, recovery, action, exec, charge, cbt, clarity, interview, offer
 
+import { READINGS } from './program-readings.js'
+
 export const TOOL_IDS = ['compass', 'planner', 'resume', 'cover', 'linkedin', 'outreach', 'report', 'brief', 'progress', 'session']
 
 export const PROGRAM = {
@@ -716,6 +718,19 @@ export const PROGRAM = {
       tool: 'compass'
     }
   ]
+}
+
+// About 170 words a minute, so the label is honest about reading time.
+export const readingMinutes = body => Math.max(2, Math.round(body.join(' ').split(/\s+/).length / 170))
+
+// Each lesson above carries a short summary; the full reading lives in program-readings.js.
+for (const weeks of Object.values(PROGRAM)) {
+  for (const w of weeks) {
+    for (const l of w.lessons) {
+      const full = READINGS[l.id]
+      if (full) { l.body = full.body; l.minutes = readingMinutes(full.body) }
+    }
+  }
 }
 
 export const lessonById = (quadrant, id) => {

@@ -5,6 +5,7 @@ import { SHARED_LIBRARY, LIBRARY, libraryFor } from '../newpage/program-library.
 import { COACH_IDS } from '../lib/newpage-coaches.js'
 import { SECTION_KINDS, cleanSections, cleanFields, memberContext, SECTIONS_SCHEMA, SECTION_SYSTEM } from '../lib/newpage-tools.js'
 import { PLANS } from '../newpage/plans.js'
+import { READINGS } from '../newpage/program-readings.js'
 
 const TYPES = ['launch', 'unstick', 'explore', 'recharge']
 const COMPASS_WEEK = { launch: 0, unstick: 1, explore: 2, recharge: 3 }
@@ -17,7 +18,7 @@ test('the paid program is a full four-week course for every type, separate from 
       const at = `${q} week ${i + 1}`
       assert.ok(w.title && w.goal.length > 40, at)
       assert.ok(w.deliverables.length >= 3, `${at} says what they will have`)
-      assert.ok(w.lessons.length >= 2 && w.lessons.every(l => l.body.length >= 4 && l.minutes >= 3), `${at} has real readings`)
+      assert.ok(w.lessons.length >= 2 && w.lessons.every(l => l.body.length >= 8 && l.body.join(' ').split(/\s+/).length >= 250 && l.minutes >= 2), `${at} has full readings of 250+ words`)
       assert.ok(w.tasks.length >= 4 && w.tasks.every(t => t.text.length > 15 && t.minutes > 0), `${at} has guided tasks`)
       assert.ok(w.templates.length >= 1 && w.templates.every(t => t.title && t.text.length > 30), `${at} has a template`)
       assert.ok(w.reflect.endsWith('?'), at)
@@ -29,6 +30,7 @@ test('the paid program is a full four-week course for every type, separate from 
 test('every task points at a real tool or coach, and lessons have unique ids', () => {
   const ids = new Set()
   for (const q of TYPES) for (const w of PROGRAM[q]) {
+    for (const l of w.lessons) assert.ok(READINGS[l.id], `lesson ${l.id} has a full reading`)
     for (const t of w.tasks) {
       if (t.tool) assert.ok(TOOL_IDS.includes(t.tool), `unknown tool ${t.tool}`)
       if (t.coach) assert.ok(COACH_IDS.includes(t.coach), `unknown coach ${t.coach}`)
@@ -62,7 +64,7 @@ test('there is real material: hours of guided work, readings, templates and a li
     const hours = PROGRAM[q].flatMap(w => w.tasks).reduce((n, t) => n + t.minutes, 0) / 60
     const words = PROGRAM[q].flatMap(w => w.lessons).reduce((n, l) => n + l.body.join(' ').split(/\s+/).length, 0) + libraryFor(q).reduce((n, l) => n + l.body.join(' ').split(/\s+/).length, 0)
     assert.ok(hours >= 6, `${q}: ${hours.toFixed(1)} hours of guided work`)
-    assert.ok(words >= 2200, `${q}: ${words} words of reading and reference`)
+    assert.ok(words >= 5000, `${q}: ${words} words of reading and reference`)
     assert.ok(libraryFor(q).length >= 6, `${q} library`)
   }
   assert.ok(SHARED_LIBRARY.length >= 4)
@@ -106,4 +108,15 @@ test('section documents are cleaned and capped, and only known fields are kept',
   assert.deepEqual(cleanFields('progress', { who: 'x' }), {})
   assert.equal(cleanFields('linkedin', { job: 'j'.repeat(9000) }).job.length, 6000)
   assert.deepEqual(cleanSections(null), { title: '', sections: [] })
+})
+
+test('every full reading belongs to a lesson, ends with something to try, and promises nothing', () => {
+  const lessonIds = new Set(TYPES.flatMap(q => PROGRAM[q].flatMap(w => w.lessons.map(l => l.id))))
+  for (const id of Object.keys(READINGS)) assert.ok(lessonIds.has(id), `reading ${id} has no lesson`)
+  for (const id of lessonIds) {
+    const body = READINGS[id].body
+    assert.match(body.join('\n'), /## Try this/, `${id} ends with an action`)
+    assert.match(body[body.length - 1], /\S/, id)
+    assert.ok(!/\bguaranteed\b|you will (definitely|certainly)|studies prove|\d+% of (people|employers)/i.test(body.join(' ')), `${id} makes no outcome promises or invented statistics`)
+  }
 })

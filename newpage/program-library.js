@@ -348,3 +348,6 @@ export const LIBRARY = {
 }
 
 export const libraryFor = quadrant => [...SHARED_LIBRARY, ...(LIBRARY[quadrant] || [])]
+
+// Reading time from the word count, so the label is honest.
+for (const l of [...SHARED_LIBRARY, ...Object.values(LIBRARY).flat()]) l.minutes = Math.max(2, Math.round(l.body.join(' ').split(/\s+/).length / 170))
