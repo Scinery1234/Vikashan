@@ -165,3 +165,14 @@
 .gs-list li { display: flex; align-items: center; gap: 10px; min-height: 40px; }
 .gs-list li > span:nth-child(2) { flex: 1 1 auto; }
 .gs-list .gs-done { color: var(--muted); } .gs-list .gs-done span:nth-child(2) { text-decoration: line-through; }
+
+/* Today and Plan use the width on desktop */
+.today-grid { display: contents; }
+.weeks.cols { display: flex; }
+@media (min-width: 900px) {
+  .today-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px 24px; align-items: start; }
+  .today-grid > .week-card { grid-column: 1; grid-row: 1 / span 6; }
+  .today-grid > :not(.week-card) { grid-column: 2; }
+  .today-grid .two { grid-template-columns: minmax(0, 1fr); }
+  .weeks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}

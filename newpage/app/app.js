@@ -192,8 +192,9 @@ function todayScreen() {
       h('span', { class: 'note' }, p.complete ? 'four weeks done' : `day ${p.day} of 28`),
       h('h1', {}, first ? `Hi ${first}.` : 'Welcome back.')),
     S.info && h('div', { class: 'soft', role: 'status' }, S.info),
-    gettingStarted(me),
     p.complete && h('div', { class: 'soft' }, h('b', {}, 'You’ve done your four weeks. '), 'Retake the check-in to see how far you’ve moved, and talk to your coach about what’s next.'),
+    h('div', { class: 'today-grid' },
+    gettingStarted(me),
     h('div', { class: 'week-card' },
       h('div', { class: 'week-head' }, h('h2', {}, `Week ${p.week}: ${week.title}`), h('span', { class: 'pill' }, `${p.doneThisWeek} of ${p.totalThisWeek} done`)),
       h('p', { class: 'muted' }, week.why),
@@ -207,7 +208,7 @@ function todayScreen() {
     h('div', { class: 'card' },
       h('span', { class: 'label' }, 'Your next steps'),
       taskList(me.tasks, 5),
-      h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'planner') }, 'Open your planner')))
+      h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'planner') }, 'Open your planner'))))
 }
 
 async function buy(action, body = {}) {
@@ -446,7 +447,7 @@ function render() {
   else if (S.screen === 'noaccess') node = noAccessScreen()
   else node = ({ today: todayScreen, plan: planScreen, coach: coachScreen, tools: toolsScreen, me: meScreen }[S.tab] || todayScreen)()
   app.replaceChildren(node)
-  document.querySelector('.paper')?.classList.toggle('wide', S.screen === 'app' && S.tab === 'tools' && !!S.tool)
+  document.querySelector('.paper')?.classList.toggle('wide', S.screen === 'app' && ((S.tab === 'tools' && !!S.tool) || S.tab === 'today' || S.tab === 'plan'))
   renderTabs()
   if (active) { const el = document.getElementById(active); if (el) { el.focus(); if (sel != null && el.setSelectionRange) try { el.setSelectionRange(sel, sel) } catch {} } }
 }
