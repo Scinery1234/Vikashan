@@ -182,7 +182,9 @@ test('the Compass features in every plan, in the week Vik chose: Launch 1, Unsti
     const featured = weeks.map((w, n) => (w.tool === 'compass' ? n : -1)).filter(n => n >= 0)
     assert.deepEqual(featured, [i], `${k} features the Compass once, in week ${i + 1}`)
     assert.match(weeks[i].withNewPage, /The Compass/, `${k} week ${i + 1} note names it`)
-    assert.ok(weeks[i].steps.some(s => /top five values/i.test(s)), `${k} week ${i + 1} has a stand-alone values step`)
+    assert.ok(weeks.slice(0, i + 1).some(w => w.steps.some(s => /values/i.test(s) && /five/i.test(s))), `${k} writes down top values by its Compass week`)
+    assert.ok(weeks[i].steps.some(s => /“I am/.test(s)), `${k} week ${i + 1} has a stand-alone “I am” step`)
+    assert.ok(weeks[i].steps.some(s => /North Star/.test(s)), `${k} week ${i + 1} has a stand-alone North Star step`)
     weeks.forEach((w, n) => { if (n !== i) assert.doesNotMatch(w.withNewPage, /The Compass/, `${k} week ${n + 1} should not push the Compass`) })
   }
 })

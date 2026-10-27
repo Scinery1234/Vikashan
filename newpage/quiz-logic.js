@@ -179,7 +179,7 @@ export const QUADRANTS = {
     tag: 'Ready to turn the page.',
     meaning: 'You know where you’re heading and you’ve got the energy to go for it. Now it’s about doing it well: applications that are tailored, not sprayed, a steady weekly rhythm, and good preparation for interviews. A system beats bursts of effort.',
     oneLine: 'clear on where you’re heading and ready to go for it',
-    week1: 'Choose your target role in one line, then find three real job ads for it. Highlight the words that come up in all three. Those are what your resume needs to show.',
+    week1: 'Write your target role in one line. Then write your top five values and your must-haves: the lowest pay you’d accept, the most hours a week and where you’ll work. Does the role fit your life? That’s week one.',
     weeks: PLANS.launch,
   }
 }
@@ -210,7 +210,7 @@ export function planTweaks(answers, personal = {}, result = score(answers)) {
   if (bySituation[answers.sit]) tweaks.push(bySituation[answers.sit])
 
   if (personal.time === 'exploring') tweaks.push('Take this at a softer pace. One step a week is plenty.')
-  if (personal.time === 'asap') tweaks.push('Want to move fast? Start on your resume in week one.')
+  if (personal.time === 'asap') tweaks.push('Want to move fast? Do each week’s steps in the first three days, then use the rest of the week to start on the next one.')
 
   // Burnout gets its own line below.
   if (personal.block !== 'energy' && BLOCKER_TIPS[personal.block]) tweaks.push(BLOCKER_TIPS[personal.block])

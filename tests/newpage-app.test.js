@@ -94,7 +94,7 @@ test('coach prompt carries the plan, week, tasks and notes, and the safety rules
     tasks: [{ title: 'Update resume', due: '2026-10-12', done: false }, { title: 'Old thing', done: true }],
     memory: [{ note: 'Wants a policy role.' }]
   })
-  assert.match(sys, /Unstick/); assert.match(sys, /week 2/); assert.match(sys, /Make it smaller/)
+  assert.match(sys, /Unstick/); assert.match(sys, /week 2/); assert.match(sys, /Find your reason/); assert.match(sys, /featured tool is the Compass/)
   assert.match(sys, /Update resume \(due 2026-10-12\)/); assert.ok(!/Old thing/.test(sys))
   assert.match(sys, /Wants a policy role/)
   assert.match(sys, /13 11 14/); assert.match(sys, /You are an AI/); assert.match(sys, /not therapy/)
