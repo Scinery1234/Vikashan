@@ -11,6 +11,21 @@ async function loadSlots(ctx, date) {
   L.loading = false; ctx.render()
 }
 
+const B = { hours: 1 }
+function buyHours(ctx, me) {
+  if (!me.member.canBuy) return h('p', { class: 'small muted' }, 'Want more time with Vik? Reply to any email from him.')
+  const max = me.prices.maxHours, per = me.prices.hourCents / 100
+  return h('div', {},
+    h('p', { class: 'small muted' }, `Want more time with Vik? Extra hours are $${per} each, up to ${max} at a time.`),
+    h('div', { class: 'stepper-row' },
+      h('button', { class: 'step-btn', type: 'button', 'aria-label': 'One fewer hour', disabled: B.hours <= 1, onclick: () => { B.hours--; ctx.render() } }, '−'),
+      h('output', { 'aria-live': 'polite' }, `${B.hours} hour${B.hours === 1 ? '' : 's'}`),
+      h('button', { class: 'step-btn', type: 'button', 'aria-label': 'One more hour', disabled: B.hours >= max, onclick: () => { B.hours++; ctx.render() } }, '+')),
+    ctx.S.error && h('p', { class: 'error', role: 'alert' }, ctx.S.error),
+    h('button', { class: 'btn btn-primary', type: 'button', disabled: ctx.S.busy, onclick: () => ctx.buy('hours_checkout', { hours: B.hours }) }, ctx.S.busy ? 'One moment…' : `Buy ${B.hours} hour${B.hours === 1 ? '' : 's'} for $${B.hours * per}`),
+    h('p', { class: 'small muted' }, 'You pay on a secure Stripe page, then come back here to book.'))
+}
+
 export function sessionScreen(ctx) {
   const me = ctx.S.me, s = me.sessions
   const back = h('button', { class: 'link-btn back', type: 'button', onclick: () => { L.done = null; ctx.go('tools') } }, '← Tools')
@@ -29,7 +44,7 @@ export function sessionScreen(ctx) {
 
   if (s.remaining < 1) {
     return h('section', { class: 'screen' }, head, upcoming,
-      !s.upcoming.length && h('div', { class: 'card' }, h('p', {}, 'You’ve used the session included in New Page.'), h('p', { class: 'small muted' }, 'Want more time with Vik? Reply to any email from him and he’ll set up extra hours.')))
+      !s.upcoming.length && h('div', { class: 'card' }, h('p', {}, 'You’ve used the session included in New Page.'), buyHours(ctx, me)))
   }
 
   const min = addDays(todayStr(), 1)

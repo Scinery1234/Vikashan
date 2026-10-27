@@ -242,3 +242,35 @@ CREATE INDEX IF NOT EXISTS idx_bookings_np_member ON bookings(newpage_member_id)
 INSERT INTO session_types (name, description, duration_mins, price_min_cents, price_max_cents, is_free, buffer_mins, max_per_day, members_only)
 SELECT 'New Page 1:1 session', 'Your 60-minute session with Vik, included in New Page.', 60, 0, 0, true, 15, 5, true
 WHERE NOT EXISTS (SELECT 1 FROM session_types WHERE name = 'New Page 1:1 session');
+
+-- ── Payments and scholarship codes ──
+-- One row per Stripe payment we've acted on. The unique session id stops a
+-- retried webhook from giving someone a second month.
+CREATE TABLE IF NOT EXISTS newpage_payments (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  stripe_session_id text UNIQUE NOT NULL,
+  kind text NOT NULL CHECK (kind IN ('join','renew','hours')),
+  email text,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE SET NULL,
+  amount_cents integer,
+  hours integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Scholarship codes: each works once and covers the whole program.
+CREATE TABLE IF NOT EXISTS newpage_codes (
+  code text PRIMARY KEY,
+  note text,
+  used_at timestamptz,
+  used_by_email text,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE newpage_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_codes ENABLE ROW LEVEL SECURITY;
+
+-- 30 premade codes (five a month for six months), made once. Running this file again adds none.
+INSERT INTO newpage_codes (code)
+SELECT 'NP-' || upper(substr(h, 1, 4)) || '-' || upper(substr(h, 5, 4)) || '-' || upper(substr(h, 9, 4))
+FROM (SELECT encode(gen_random_bytes(6), 'hex') AS h FROM generate_series(1, 30)) t
+WHERE NOT EXISTS (SELECT 1 FROM newpage_codes);

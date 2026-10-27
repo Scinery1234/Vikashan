@@ -31,9 +31,10 @@ async function call(url, body, token = session) {
   return data
 }
 
-async function act(action, body = {}) {
+async function act(action, body = {}, raw = false) {
   try {
     const data = await call('/api/newpage/app', { action, coach: S.coach, ...body })
+    if (raw) return data
     S.me = data
     S.error = ''
     return data
@@ -168,7 +169,7 @@ const ctx = {
   get S() { return S },
   call: (url, body) => call(url, body),
   beacon: (url, body) => { try { fetch(url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` }, body: JSON.stringify(body) }) } catch {} },
-  act, render: () => render(), go: (tab, sub) => go(tab, sub),
+  act, buy: (action, body) => buy(action, body), render: () => render(), go: (tab, sub) => go(tab, sub),
   askCoach: (coach, text) => askCoach(text, coach)
 }
 
@@ -189,6 +190,7 @@ function todayScreen() {
     h('div', { class: 'hello' },
       h('span', { class: 'note' }, p.complete ? 'four weeks done' : `day ${p.day} of 28`),
       h('h1', {}, first ? `Hi ${first}.` : 'Welcome back.')),
+    S.info && h('div', { class: 'soft', role: 'status' }, S.info),
     p.complete && h('div', { class: 'soft' }, h('b', {}, 'You’ve done your four weeks. '), 'Retake the check-in to see how far you’ve moved, and talk to your coach about what’s next.'),
     h('div', { class: 'week-card' },
       h('div', { class: 'week-head' }, h('h2', {}, `Week ${p.week}: ${week.title}`), h('span', { class: 'pill' }, `${p.doneThisWeek} of ${p.totalThisWeek} done`)),
@@ -199,10 +201,30 @@ function todayScreen() {
     h('div', { class: 'two' },
       gridCard(me),
       sessionCard(me)),
+    renewCard(me),
     h('div', { class: 'card' },
       h('span', { class: 'label' }, 'Your next steps'),
       taskList(me.tasks, 5),
       h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'planner') }, 'Open your planner')))
+}
+
+async function buy(action, body = {}) {
+  S.busy = true; S.error = ''; render()
+  try { const d = await act(action, body, true); if (d?.url) { location.href = d.url; return } } catch (e) { S.error = e.message }
+  S.busy = false; render()
+}
+
+function renewCard(me) {
+  const p = me.program
+  const endsSoon = me.member.accessUntil && new Date(me.member.accessUntil).getTime() - Date.now() < 7 * 864e5
+  if (!me.member.canBuy || !(p.week >= 4 || p.complete || endsSoon)) return null
+  const until = me.member.accessUntil ? new Date(me.member.accessUntil).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' }) : null
+  return h('div', { class: 'card' },
+    h('span', { class: 'label' }, 'Keep going'),
+    h('p', {}, 'Want another month? $500 gets you a month of New Page and one more 60-minute session with Vik.', until && ` Your access currently runs to ${until}.`),
+    S.error && h('p', { class: 'error', role: 'alert' }, S.error),
+    h('button', { class: 'btn btn-primary', type: 'button', disabled: S.busy, onclick: () => buy('renew_checkout') }, S.busy ? 'One moment…' : 'Renew for $500'),
+    h('p', { class: 'small muted' }, 'You pay on a secure Stripe page. It’s one month at a time. Nothing renews by itself.'))
 }
 
 function sessionCard(me) {
@@ -433,6 +455,8 @@ async function start() {
     S.tab = TABS.some(([k]) => k === wanted) ? wanted : 'today'
     S.tool = S.tab === 'tools' && TOOLS.some(([k]) => k === sub) ? sub : null
     S.screen = 'app'
+    const paid = new URL(location.href).searchParams.get('paid')
+    if (paid) { S.info = paid === 'renew' ? 'Thanks. Your renewal is being applied. If it doesn’t show within a minute, refresh this page.' : 'Thanks. Your extra hours are being added. If they don’t show within a minute, refresh this page.'; history.replaceState(null, '', location.pathname + location.hash) }
   } catch (e) {
     S.screen = 'login'; S.info = e.message
   }

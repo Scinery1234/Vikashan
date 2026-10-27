@@ -1,10 +1,8 @@
-import { Resend } from 'resend'
 import { supabase } from '../../lib/supabase.js'
 import { requireAdmin } from '../../lib/auth.js'
-import { memberWelcomeEmail } from '../../lib/newpage-emails.js'
-import { ACCESS, renewedUntil } from '../../lib/newpage-members.js'
+import { grantMember } from '../../lib/newpage-grant.js'
+import { renewedUntil } from '../../lib/newpage-members.js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const SOURCES = ['purchase', 'scholarship', 'manual']
 const STATUSES = ['active', 'paused', 'ended']
@@ -66,39 +64,7 @@ export default async function handler(req, res) {
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Enter a valid email.' })
   const name = typeof b.name === 'string' ? b.name.trim().slice(0, 80) : ''
   const source = SOURCES.includes(b.source) ? b.source : 'manual'
-
-  // Start from their quiz result if they took the quiz.
-  const { data: lead } = await supabase.from('newpage_leads')
-    .select('id, name, quadrant, answers, personal').eq('email', email).eq('superseded', false)
-    .order('created_at', { ascending: false }).limit(1).maybeSingle()
-
-  const row = {
-    email, name: name || lead?.name || null, source, status: 'active',
-    quadrant: lead?.quadrant || null, answers: lead?.answers || null, personal: lead?.personal || {}, lead_id: lead?.id || null,
-    plan_started_at: new Date().toISOString(),
-    access_until: ACCESS[b.access || '4w'] ? new Date(Date.now() + ACCESS[b.access || '4w']).toISOString() : null,
-    sessions_included: 1
-  }
-  const { data: existing } = await supabase.from('newpage_members').select('id').eq('email', email).maybeSingle()
-  let error
-  if (existing) {
-    // Re-granting restores access without wiping their progress.
-    ;({ error } = await supabase.from('newpage_members').update({ status: 'active', source, name: row.name, access_until: row.access_until }).eq('id', existing.id))
-  } else {
-    ;({ error } = await supabase.from('newpage_members').insert(row))
-  }
-  if (error) { console.error('Grant failed:', error); return res.status(500).json({ error: 'Could not save the member.' }) }
-  if (lead) await supabase.from('newpage_leads').update({ converted_at: new Date().toISOString() }).eq('id', lead.id)
-  await supabase.from('clients').update({ status: 'active', updated_at: new Date().toISOString() }).eq('email', email)
-
-  if (b.welcome !== false) {
-    const mail = memberWelcomeEmail({ name: row.name })
-    try {
-      await resend.emails.send({ from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`, to: email, reply_to: process.env.ADMIN_EMAIL, subject: mail.subject, html: mail.html })
-    } catch (err) {
-      console.error('Welcome email failed:', err)
-      return res.json({ ok: true, welcomeSent: false, quadrant: row.quadrant })
-    }
-  }
-  res.json({ ok: true, welcomeSent: b.welcome !== false, quadrant: row.quadrant, restored: !!existing })
+  const r = await grantMember({ email, name, source, access: b.access || '4w', sessionsIncluded: 1, addToExisting: false, welcome: b.welcome !== false })
+  if (r.error) return res.status(500).json({ error: r.error })
+  res.json({ ok: true, welcomeSent: b.welcome !== false ? r.welcomeSent : false, quadrant: r.quadrant, restored: r.restored })
 }

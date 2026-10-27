@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase.js'
 import { sendConfirmation } from '../../lib/resend.js'
 import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
+import { applyCheckout } from '../../lib/newpage-payments.js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -30,8 +31,21 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Webhook signature verification failed' })
   }
 
+  // New Page payments (join, renewal, extra hours) come through Stripe Checkout.
+  if (event.type === 'checkout.session.completed') {
+    try {
+      await applyCheckout(event.data.object)
+    } catch (err) {
+      console.error('New Page payment failed:', err)
+      return res.status(500).json({ error: 'Could not apply the payment' }) // Stripe will retry
+    }
+    return res.json({ received: true })
+  }
+
   if (event.type === 'payment_intent.succeeded') {
     const intent = event.data.object
+    // Checkout payments for New Page have no booking. Nothing to do here.
+    if (intent.metadata?.kind?.startsWith('newpage_')) return res.json({ received: true })
 
     const { data: booking } = await supabase
       .from('bookings')

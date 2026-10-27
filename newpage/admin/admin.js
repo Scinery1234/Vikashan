@@ -20,6 +20,7 @@ function signOut() {
   token = null
   try { sessionStorage.removeItem('np_admin_token') } catch {}
   $('members').hidden = true
+  $('codes').hidden = true
   $('launch').hidden = true
   $('login').hidden = false
 }
@@ -28,7 +29,9 @@ async function showLaunch() {
   $('login').hidden = true
   $('launch').hidden = false
   $('members').hidden = false
+  $('codes').hidden = false
   loadMembers()
+  loadCodes()
   try { $('waiting').textContent = (await api('GET')).waiting } catch (e) { $('status').textContent = e.message }
 }
 
@@ -141,5 +144,30 @@ $('grant-form').addEventListener('submit', async e => {
     loadMembers()
   } catch (err) { $('g-error').textContent = err.message; $('g-error').hidden = false }
 })
+
+// ── Scholarship codes ──
+const CODES = '/api/newpage/codes'
+async function loadCodes(more) {
+  const box = $('code-list')
+  try {
+    const { codes } = await api(more ? 'POST' : 'GET', more ? { action: 'more' } : null, CODES)
+    box.replaceChildren()
+    const free = codes.filter(c => !c.used_at).length
+    box.append(el('p', `${free} unused · ${codes.length - free} used`, { class: 'small muted' }))
+    for (const c of codes) {
+      const row = el('div', null, { class: 'mem' })
+      const info = el('span', `${c.code} · ${c.used_at ? 'used by ' + c.used_by_email + ' on ' + new Date(c.used_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' }) : 'unused'}`)
+      if (c.used_at) info.style.color = '#56607A'
+      row.append(info)
+      if (!c.used_at) {
+        const copy = el('button', 'Copy link', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
+        copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(`${location.origin}/newpage/join?code=${c.code}`); copy.textContent = 'Copied' } catch { copy.textContent = 'Couldn’t copy' } setTimeout(() => { copy.textContent = 'Copy link' }, 1500) })
+        row.append(copy)
+      }
+      box.append(row)
+    }
+  } catch (e) { box.replaceChildren(el('p', e.message, { class: 'error' })) }
+}
+$('more-codes').addEventListener('click', () => loadCodes(true))
 
 if (token) showLaunch()

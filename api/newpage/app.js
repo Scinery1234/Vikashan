@@ -8,6 +8,8 @@ import { isCoach } from '../../lib/newpage-coaches.js'
 import { getAvailableSlots } from '../../lib/availability.js'
 import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
 import { sendConfirmation } from '../../lib/resend.js'
+import { stripe, renewSessionParams, hoursSessionParams } from '../../lib/newpage-stripe.js'
+import { cleanHours } from '../../lib/newpage-pricing.js'
 import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import {
@@ -227,6 +229,23 @@ export default async function handler(req, res) {
         ])
       } catch (err) { console.error('Session confirmation failed:', err) }
       return res.json({ ...(await me({ ...member, session_booked: true }, coachOf(b.coach))), booked: { date, time } })
+    }
+
+    // ── Paying for more: another month, or extra hours with Vik ──
+    case 'renew_checkout':
+    case 'hours_checkout': {
+      if (!rateLimit(req, res, { max: 10, windowMs: 60 * 60 * 1000, key: `np-buy-${member.id}` })) return
+      if (member.source === 'scholarship') return res.status(403).json({ error: 'Scholarship places can’t be renewed here. Reply to any email from Vik to talk about it.', code: 'scholarship' })
+      const hours = b.action === 'hours_checkout' ? cleanHours(b.hours) : 0
+      if (b.action === 'hours_checkout' && !hours) return res.status(400).json({ error: 'Choose between 1 and 8 hours.' })
+      try {
+        const params = b.action === 'renew_checkout' ? renewSessionParams({ member }) : hoursSessionParams({ member, hours })
+        const session = await stripe().checkout.sessions.create(params)
+        return res.json({ url: session.url })
+      } catch (err) {
+        console.error('Checkout failed:', err)
+        return res.status(502).json({ error: 'We couldn’t start the payment. Please try again in a minute.' })
+      }
     }
 
     case 'session_booked':

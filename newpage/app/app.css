@@ -155,3 +155,8 @@
   .cp-steps, .compass > p { max-width: 860px; }
   .paper.wide .cp-footer { max-width: 860px; }
 }
+
+.stepper-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.step-btn { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-size: 24px; cursor: pointer; color: var(--ink); }
+.step-btn:disabled { opacity: .35; cursor: default; }
+.stepper-row output { min-width: 80px; text-align: center; font-weight: 700; }

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Join New Page</title>
+<meta name="theme-color" content="#FFFFFF">
+<link rel="icon" href="/newpage/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap">
+<link rel="stylesheet" href="/newpage/styles.css">
+<style>.stepper{display:flex;align-items:center;gap:10px}.stepper button{width:48px;height:48px;border-radius:12px;border:2px solid var(--ink);background:#fff;font-size:24px;cursor:pointer;color:var(--ink)}.stepper button:disabled{opacity:.35;cursor:default}.stepper output{min-width:34px;text-align:center;font-weight:700;font-size:22px}.sum{display:flex;justify-content:space-between;gap:12px;padding:6px 0}.sum.total{border-top:2px solid var(--ink);margin-top:6px;padding-top:12px;font-weight:700;font-size:20px}.code-row{display:flex;gap:8px}.code-row input{flex:1 1 auto;min-width:0}</style>
+<script type="module" src="/newpage/join/join.js"></script>
+</head>
+<body>
+<div class="paper">
+  <div class="margin-line" aria-hidden="true"></div>
+  <header class="top"><div class="top-in">
+    <a class="brand" href="/newpage/program" aria-label="New Page">
+      <svg width="24" height="27" viewBox="0 0 32 36" aria-hidden="true"><path d="M3 2h18l8 8v24H3z" fill="#FFFFFF" stroke="#15203B" stroke-width="2.4" stroke-linejoin="round"/><path d="M21 2v8h8" fill="none" stroke="#15203B" stroke-width="2.4" stroke-linejoin="round"/><rect x="7" y="19" width="17" height="6" rx="2" fill="#D4F36B"/><path d="M8 29h11" stroke="#15203B" stroke-width="2.2" stroke-linecap="round"/></svg>
+      <span>new page</span>
+    </a>
+    <a class="top-link" href="/newpage/app" style="border-bottom-color:transparent;color:var(--muted)">Member sign in</a>
+  </div></header>
+  <main class="col" id="main">
+    <section class="screen" id="form-screen">
+      <span class="note">join</span>
+      <h1>Start <span class="hl">New Page</span></h1>
+      <p class="lead">Four weeks with a coach in your corner, and a 60-minute session with Vik.</p>
+      <form id="join-form" class="card" novalidate>
+        <div class="field"><label for="j-name">Your name</label><input id="j-name" type="text" autocomplete="name" maxlength="80" required></div>
+        <div class="field"><label for="j-email">Email</label><input id="j-email" type="email" autocomplete="email" inputmode="email" maxlength="200" required>
+          <p class="small muted">This is how you’ll sign in. We’ll send a link, so there’s no password.</p></div>
+        <div class="hp" aria-hidden="true"><label for="j-website">Leave this empty</label><input id="j-website" type="text" tabindex="-1" autocomplete="off"></div>
+        <div class="field" id="hours-field"><span class="label" id="hours-label">Extra time with Vik (optional)</span>
+          <p class="small muted">Each extra hour is a 60-minute session, $250. Add up to 8.</p>
+          <div class="stepper" role="group" aria-labelledby="hours-label"><button type="button" id="h-minus" aria-label="One fewer extra hour">−</button><output id="h-val" aria-live="polite">0</output><button type="button" id="h-plus" aria-label="One more extra hour">+</button></div></div>
+        <div class="field"><label for="j-code">Scholarship code (if you have one)</label>
+          <div class="code-row"><input id="j-code" type="text" autocomplete="off" autocapitalize="characters" maxlength="24" placeholder="NP-XXXX-XXXX-XXXX"><button class="btn btn-secondary" type="button" id="code-apply">Apply</button></div>
+          <p class="small" id="code-msg" role="status"></p></div>
+        <div id="summary" aria-live="polite"></div>
+        <p class="error" id="j-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit" id="j-submit">Pay and start</button>
+        <p class="small muted" id="j-fine">Pay by card on the next page. <b>Change your mind within 7 days? Full refund.</b> Do the four weeks and don’t move forward? Your next month is on us. Coaching, not therapy. For people 18 and over.</p>
+      </form>
+    </section>
+    <section class="screen" id="done-screen" hidden>
+      <span class="note">welcome</span>
+      <h2 id="done-title">You’re in.</h2>
+      <p id="done-text"></p>
+      <a class="btn btn-primary" href="/newpage/app">Go to New Page</a>
+    </section>
+    <section class="screen" id="cancel-screen" hidden>
+      <h2>No payment was taken</h2>
+      <p>You can start again whenever you’re ready. If something went wrong, reply to any email from Vik.</p>
+      <button class="btn btn-primary" type="button" id="cancel-back">Back to the form</button>
+    </section>
+  </main>
+  <footer class="foot col"><p>New Page is a career program by <a href="/">Vikashan</a>. <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></p></footer>
+</div>
+</body>
+</html>
