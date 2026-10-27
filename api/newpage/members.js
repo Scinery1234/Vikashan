@@ -18,6 +18,13 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (!requireAdmin(req, res)) return
 
+  if (req.method === 'GET' && req.query?.brief) {
+    const id = String(req.query.brief)
+    if (!/^[0-9a-f-]{36}$/i.test(id)) return res.status(400).json({ error: 'Unknown member.' })
+    const { data: m } = await supabase.from('newpage_members').select('name, email').eq('id', id).maybeSingle()
+    const { data: docs } = await supabase.from('newpage_docs').select('title, content, created_at').eq('member_id', id).eq('kind', 'brief').order('created_at', { ascending: false }).limit(1)
+    return res.json({ member: m || null, brief: docs?.[0] || null })
+  }
   if (req.method === 'GET') {
     const { data, error } = await supabase.from('newpage_members')
       .select('id, email, name, status, source, quadrant, plan_started_at, last_login_at, session_booked, access_until, sessions_included')
@@ -26,7 +33,9 @@ export default async function handler(req, res) {
     const { data: used } = await supabase.from('bookings').select('newpage_member_id, status').not('newpage_member_id', 'is', null).neq('status', 'cancelled')
     const count = {}
     for (const b of used || []) count[b.newpage_member_id] = (count[b.newpage_member_id] || 0) + 1
-    return res.json({ members: data.map(m => ({ ...m, sessions_used: count[m.id] || 0 })) })
+    const { data: briefs } = await supabase.from('newpage_docs').select('member_id').eq('kind', 'brief')
+    const hasBrief = new Set((briefs || []).map(b => b.member_id))
+    return res.json({ members: data.map(m => ({ ...m, sessions_used: count[m.id] || 0, has_brief: hasBrief.has(m.id) })) })
   }
   if (req.method !== 'POST') return res.status(405).end()
   const b = req.body || {}

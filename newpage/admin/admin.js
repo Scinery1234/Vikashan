@@ -126,7 +126,30 @@ async function loadMembers() {
         try { await api('POST', { id: m.id, sessionsIncluded: (m.sessions_included ?? 1) + 1 }, MEMBERS) } catch (e) { alert(e.message) }
         loadMembers()
       })
-      row.append(info, sel, renew, date, more); box.append(row)
+      row.append(info, sel, renew, date, more)
+      if (m.has_brief) {
+        const brief = el('button', 'Session brief', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
+        brief.addEventListener('click', async () => {
+          try {
+            const { member, brief: b } = await api('GET', null, `${MEMBERS}?brief=${m.id}`)
+            const view = $('brief-view'); view.replaceChildren()
+            view.append(el('span', `Session brief: ${member?.name || member?.email || ''}`, { class: 'label' }))
+            if (!b) { view.append(el('p', 'No brief yet.')) } else {
+              const c = b.content
+              view.append(el('h3', c.title || b.title))
+              view.append(el('p', `Written ${new Date(b.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}`, { class: 'small muted' }))
+              for (const s of c.sections || []) {
+                view.append(el('h4', s.heading))
+                for (const p of s.paragraphs || []) view.append(el('p', p))
+                if ((s.bullets || []).length) { const ul = el('ul'); for (const x of s.bullets) ul.append(el('li', x)); view.append(ul) }
+              }
+            }
+            view.hidden = false; view.scrollIntoView({ block: 'start' })
+          } catch (e) { alert(e.message) }
+        })
+        row.append(brief)
+      }
+      box.append(row)
     }
   } catch (e) { box.replaceChildren(el('p', e.message, { class: 'error' })) }
 }

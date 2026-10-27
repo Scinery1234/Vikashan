@@ -4,6 +4,8 @@ import { plannerScreen } from './planner.js'
 import { compassScreen, compassStatus, COMPASS_STEPS } from './compass.js'
 import { docsScreen } from './docs.js'
 import { sessionScreen } from './session.js'
+import { sectionsScreen, sectionKinds } from './sections.js'
+import { copyText } from './ui.js'
 
 const KEY = 'np_app_session'
 const app = document.getElementById('app')
@@ -108,14 +110,60 @@ function toolCallout(w) {
     h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('tools', 'compass') }, 'Open the Compass'))
 }
 
-function stepRow(week, i, text) {
+const TOOL_LABELS = { compass: 'Open the Compass', planner: 'Open the planner', resume: 'Open the resume writer', cover: 'Open the cover letter writer', linkedin: 'Open the LinkedIn writer', outreach: 'Open the message writer', report: 'Create my report', brief: 'Fill in my brief', progress: 'Create my report', session: 'Book or see my session' }
+const COACH_NAMES = c => (S.me.coaches.find(x => x.id === c) || {}).name || 'your coach'
+
+// One task in the program: a tick-box, how long it takes, and a button that takes them to the right tool or coach.
+function taskRow(week, i, task) {
+  const action = task.tool
+    ? h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', task.tool) }, TOOL_LABELS[task.tool] || 'Open')
+    : task.coach
+      ? h('button', { class: 'link-btn blue', type: 'button', onclick: () => askCoach(task.prompt || '', task.coach) }, `Talk to ${COACH_NAMES(task.coach)}`)
+      : null
   return h('li', {}, h('label', { class: 'step' },
     h('input', { type: 'checkbox', checked: stepDone(week, i), onchange: async e => {
       const done = e.target.checked
       try { await act('progress', { week, step: i, done }) } catch (err) { S.error = err.message }
       render()
     } }),
-    h('span', {}, text)))
+    h('span', {}, task.text, task.minutes && h('small', { class: 'mins' }, ` · about ${task.minutes < 60 ? task.minutes + ' min' : (task.minutes / 60).toFixed(task.minutes % 60 ? 1 : 0).replace('.0', '') + ' h'}`))),
+    action && h('div', { class: 'task-action' }, action))
+}
+
+// Text with **bold** as real bold, never as HTML.
+const inline = t => String(t).split(/(\*\*[^*]+\*\*|\*[^*]+\*)/g).map(p => (p.startsWith('**') && p.endsWith('**') ? h('b', {}, p.slice(2, -2)) : p.startsWith('*') && p.endsWith('*') && p.length > 2 ? h('i', {}, p.slice(1, -1)) : p))
+function body(lines) {
+  const out = []; let list = null
+  for (const line of lines) {
+    if (line.startsWith('- ')) { if (!list) { list = h('ul', {}); out.push(list) } list.append(h('li', {}, inline(line.slice(2)))); continue }
+    list = null
+    out.push(line.startsWith('## ') ? h('h4', {}, line.slice(3)) : h('p', {}, inline(line)))
+  }
+  return out
+}
+
+function lessonList(week) {
+  return h('ul', { class: 'lessons' }, week.lessons.map(l => h('li', {}, h('button', { class: 'lesson-btn', type: 'button', onclick: () => openLesson(l.id) },
+    h('b', {}, l.title), h('small', {}, `${l.minutes} min read`)))))
+}
+
+function templateList(week) {
+  return week.templates.map(t => h('details', { class: 'tmpl' }, h('summary', {}, t.title),
+    h('pre', {}, t.text), h('button', { class: 'btn btn-secondary', type: 'button', onclick: e => copyText(t.text, e.currentTarget) }, 'Copy')))
+}
+
+function lessonScreen() {
+  const plan = S.me.plan
+  let found = null, wk = 0
+  plan?.weeks.forEach((w, i) => w.lessons.forEach(l => { if (l.id === S.lessonId) { found = l; wk = i + 1 } }))
+  if (!found) plan?.library.forEach(l => { if (l.id === S.lessonId) { found = l; wk = 0 } })
+  if (!found) return h('section', { class: 'screen' }, h('button', { class: 'link-btn back', type: 'button', onclick: () => go('plan') }, '← Program'), h('p', {}, 'That reading isn’t part of your program.'))
+  return h('section', { class: 'screen lesson' },
+    h('button', { class: 'link-btn back', type: 'button', onclick: () => go('plan') }, '← Program'),
+    h('span', { class: 'note' }, wk ? `week ${wk} · ${found.minutes} min` : `library · ${found.minutes} min`), h('h2', {}, found.title),
+    h('div', { class: 'prose' }, body(found.body)),
+    h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`I just read “${found.title}”. `) }, 'Talk it through with your coach'),
+    h('button', { class: 'link-btn', type: 'button', onclick: () => go('today') }, 'Back to today'))
 }
 
 function gridCard(me) {
@@ -165,6 +213,12 @@ function askCoach(text, coach = 'career') {
   openCoach(coach)
 }
 
+function openLesson(id) {
+  S.lessonId = id; S.error = ''
+  try { history.replaceState(null, '', `#lesson/${id}`) } catch {}
+  render(); window.scrollTo({ top: 0 })
+}
+
 async function openCoach(id) {
   S.coach = id; S.coachError = ''; S.crisis = false
   if (S.me) S.me.messages = []
@@ -205,11 +259,14 @@ function todayScreen() {
     gettingStarted(me),
     h('div', { class: 'week-card' },
       h('div', { class: 'week-head' }, h('h2', {}, `Week ${p.week}: ${week.title}`), h('span', { class: 'pill' }, `${p.doneThisWeek} of ${p.totalThisWeek} done`)),
-      h('p', { class: 'muted' }, week.why),
+      h('p', { class: 'muted' }, week.goal),
       h('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'This week’s progress' }, h('i', { style: { width: pct + '%' } })),
-      h('ul', { class: 'steps-list' }, week.steps.map((s, i) => stepRow(p.week, i, s))),
+      h('ul', { class: 'steps-list' }, week.tasks.map((t, i) => taskRow(p.week, i, t))),
       toolCallout(week),
       h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`I’m on week ${p.week}, “${week.title}”. `) }, 'Stuck? Ask your coach about this week')),
+    h('div', { class: 'card' }, h('span', { class: 'label' }, 'By the end of this week you’ll have'),
+      h('ul', { class: 'deliverables' }, week.deliverables.map(d => h('li', {}, d)))),
+    h('div', { class: 'card' }, h('span', { class: 'label' }, 'Read this week'), lessonList(week)),
     h('div', { class: 'two' },
       gridCard(me),
       sessionCard(me)),
@@ -271,15 +328,23 @@ function sessionCard(me) {
 // ── Plan ─────────────────────────────────────────────────────────
 function planScreen() {
   const me = S.me, plan = me.plan
-  if (!plan) return h('section', { class: 'screen' }, h('h2', {}, 'Your plan'), h('p', {}, 'Your plan appears once you’ve done the check-in.'), h('button', { class: 'btn btn-primary', type: 'button', onclick: () => go('me') }, 'Start the check-in'))
+  if (!plan) return h('section', { class: 'screen' }, h('h2', {}, 'Your program'), h('p', {}, 'Your program appears once you’ve done the check-in.'), h('button', { class: 'btn btn-primary', type: 'button', onclick: () => go('me') }, 'Start the check-in'))
   return h('section', { class: 'screen', style: { '--hlc': plan.color } },
-    h('h2', {}, 'Your four weeks: ', h('span', { class: 'hl' }, plan.name)),
+    h('h2', {}, 'Your program: ', h('span', { class: 'hl' }, plan.name)),
     h('p', { class: 'muted' }, plan.meaning),
     h('div', { class: 'weeks' }, plan.weeks.map((w, i) => {
-      const n = i + 1, done = w.steps.filter((_, j) => stepDone(n, j)).length
-      return h('details', { open: n === me.program.week }, h('summary', {}, h('span', {}, `Week ${n}: ${w.title}`), h('small', {}, `${done}/${w.steps.length}`)),
-        h('div', {}, h('p', { class: 'muted small' }, w.why), h('ul', { class: 'steps-list' }, w.steps.map((s, j) => stepRow(n, j, s))), toolCallout(w)))
+      const n = i + 1, done = w.tasks.filter((_, j) => stepDone(n, j)).length
+      return h('details', { open: n === me.program.week }, h('summary', {}, h('span', {}, `Week ${n}: ${w.title}`), h('small', {}, `${done}/${w.tasks.length}`)),
+        h('div', {}, h('p', { class: 'muted small' }, w.goal),
+          h('span', { class: 'label' }, 'You’ll have'), h('ul', { class: 'deliverables' }, w.deliverables.map(d => h('li', {}, d))),
+          h('span', { class: 'label' }, 'Do'), h('ul', { class: 'steps-list' }, w.tasks.map((t, j) => taskRow(n, j, t))), toolCallout(w),
+          h('span', { class: 'label' }, 'Read'), lessonList(w),
+          h('span', { class: 'label' }, 'Use'), templateList(w),
+          h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`${w.reflect} `) }, 'Reflect with a coach')))
     })),
+    h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your library'),
+      h('p', { class: 'small muted' }, 'Guides, scripts and question banks. They’re yours to keep going back to.'),
+      h('ul', { class: 'lessons' }, plan.library.map(l => h('li', {}, h('button', { class: 'lesson-btn', type: 'button', onclick: () => openLesson(l.id) }, h('b', {}, l.title), h('small', {}, `${l.minutes} min read · ${l.summary}`)))))),
     plan.tweaks.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Just for you'), h('ul', { style: { margin: 0, 'padding-left': '20px' } }, plan.tweaks.map(t => h('li', {}, t)))),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your tasks'), taskList(me.tasks, 8), h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'planner') }, 'Open your planner')))
 }
@@ -331,31 +396,42 @@ function coachScreen() {
 function scrollChat() { const m = document.getElementById('msgs'); if (m) m.lastElementChild?.scrollIntoView({ block: 'end' }) }
 
 // ── Tools ────────────────────────────────────────────────────────
-const TOOLS = [
-  ['session', '1:1 with Vik', 'Book the 60-minute session that comes with New Page.'],
-  ['planner', 'Planner', 'Tasks, time blocks, goals and a morning reminder. Add anything to your calendar.'],
-  ['compass', 'The Compass', 'Ten short steps from what matters to you to three first steps.'],
-  ['resume', 'Resume writer', 'A tailored resume from your own work history and a job ad.'],
-  ['cover', 'Cover letter writer', 'A short letter in your voice for one specific job.']
+const TOOL_GROUPS = [
+  ['Your direction', [
+    ['compass', 'The Compass', 'Ten short steps from what matters to you to three first steps.'],
+    ['report', 'Career Direction Report', 'One personal document from your Compass, check-ins and notes.']]],
+  ['Get hired', [
+    ['resume', 'Resume writer', 'A tailored resume from your own work history and a job ad.'],
+    ['cover', 'Cover letter writer', 'A short letter in your voice for one specific job.'],
+    ['linkedin', 'LinkedIn profile writer', 'Headline, About, experience and skills, from your own history.'],
+    ['outreach', 'Outreach messages', 'Ask for a conversation, follow up, and say thank you.']]],
+  ['Your 1:1 with Vik', [
+    ['session', 'Book your session', 'Book the 60-minute session that comes with New Page.'],
+    ['brief', 'Session brief', 'Four questions so Vik can start on what matters.']]],
+  ['Stay on track', [
+    ['planner', 'Planner', 'Tasks, time blocks, goals and a morning reminder.'],
+    ['progress', 'Progress Report', 'What you did, what changed, and your next 30 days.']]]
 ]
+const TOOLS = TOOL_GROUPS.flatMap(([, items]) => items)
 let compassNote = ''
 function toolsScreen() {
   if (S.tool === 'session') return sessionScreen(ctx)
   if (S.tool === 'planner') return plannerScreen(ctx)
   if (S.tool === 'compass') return compassScreen(ctx)
   if (S.tool === 'resume' || S.tool === 'cover') return docsScreen(ctx, S.tool)
+  if (sectionKinds.includes(S.tool)) return sectionsScreen(ctx, S.tool)
   const me = S.me
   const open = me.tasks.filter(t => !t.done).length
   const due = me.tasks.filter(t => !t.done && t.due && t.due <= todayStr()).length
   compassStatus(ctx).then(c => { const n = c ? (c.done ? 'Finished' : c.step > 0 || c.values.length ? `Step ${c.step + 1} of 10: ${COMPASS_STEPS[c.step]}` : '') : ''; if (n !== compassNote) { compassNote = n; if (S.tab === 'tools' && !S.tool) render() } })
-  const status = { session: me.sessions.upcoming.length ? 'Booked' : me.sessions.remaining ? `${me.sessions.remaining} included` : '', planner: due ? `${due} due today` : open ? `${open} open` : '', compass: compassNote, resume: '', cover: '' }
+  const status = { session: me.sessions.upcoming.length ? 'Booked' : me.sessions.remaining ? `${me.sessions.remaining} included` : '', planner: due ? `${due} due today` : open ? `${open} open` : '', compass: compassNote, resume: '', cover: '', report: '', linkedin: '', outreach: '', brief: '', progress: '' }
   return h('section', { class: 'screen' },
     h('div', {}, h('span', { class: 'note' }, 'your toolkit'), h('h2', {}, 'Tools'), h('p', { class: 'muted' }, 'These save to your account, and your coaches know about your tasks.')),
-    h('div', { class: 'toolgrid' }, TOOLS.map(([id, name, blurb]) =>
+    TOOL_GROUPS.map(([group, items]) => [h('h3', { class: 'group' }, group), h('div', { class: 'toolgrid' }, items.map(([id, name, blurb]) =>
       h('button', { class: 'toolcard', type: 'button', onclick: () => go('tools', id) },
-        h('b', {}, name), h('span', {}, blurb), status[id] && h('small', {}, status[id])))),
+        h('b', {}, name), h('span', {}, blurb), status[id] && h('small', {}, status[id]))))]),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Need to talk something through?'),
-      h('p', { class: 'small' }, 'Your coaches are in the Coach tab: Career, Recovery, Action, Executive Function, Reducing the Charge, CBT and the Clarity Compass.'),
+      h('p', { class: 'small' }, 'Your coaches are in the Coach tab: Career, Recovery, Action, Executive Function, Reducing the Charge, CBT, Interview, Offer and Negotiation, and the Clarity Compass.'),
       h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('coach') }, 'Go to your coaches')))
 }
 
@@ -420,10 +496,10 @@ const ICONS = {
   tools: '<path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.4 2.4-2.6-.6-.6-2.6z"/>',
   me: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>'
 }
-const TABS = [['today', 'Today'], ['plan', 'Plan'], ['coach', 'Coach'], ['tools', 'Tools'], ['me', 'Me']]
+const TABS = [['today', 'Today'], ['plan', 'Program'], ['coach', 'Coach'], ['tools', 'Tools'], ['me', 'Me']]
 
 function go(tab, sub) {
-  S.tab = tab; S.error = ''
+  S.tab = tab; S.error = ''; S.lessonId = null
   S.tool = tab === 'tools' ? sub || null : null
   try { history.replaceState(null, '', `#${tab}${S.tool ? '/' + S.tool : ''}`) } catch {}
   render(); window.scrollTo({ top: 0 })
@@ -454,6 +530,7 @@ function render() {
   else if (S.screen === 'login') node = loginScreen()
   else if (S.screen === 'sent') node = sentScreen()
   else if (S.screen === 'noaccess') node = noAccessScreen()
+  else if (S.lessonId) node = lessonScreen()
   else node = ({ today: todayScreen, plan: planScreen, coach: coachScreen, tools: toolsScreen, me: meScreen }[S.tab] || todayScreen)()
   app.replaceChildren(node)
   document.querySelector('.paper')?.classList.toggle('wide', S.screen === 'app' && ((S.tab === 'tools' && !!S.tool) || S.tab === 'today' || S.tab === 'plan'))
@@ -480,7 +557,8 @@ async function start() {
   try {
     if (!(await act('me'))) return
     const [wanted, sub] = location.hash.slice(1).split('/')
-    S.tab = TABS.some(([k]) => k === wanted) ? wanted : 'today'
+    if (wanted === 'lesson' && sub) { S.lessonId = sub; S.tab = 'plan' }
+    S.tab = S.lessonId ? 'plan' : TABS.some(([k]) => k === wanted) ? wanted : 'today'
     S.tool = S.tab === 'tools' && TOOLS.some(([k]) => k === sub) ? sub : null
     S.screen = 'app'
     const paid = new URL(location.href).searchParams.get('paid')

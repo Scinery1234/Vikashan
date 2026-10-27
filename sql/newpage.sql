@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS newpage_tools (
 CREATE TABLE IF NOT EXISTS newpage_docs (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
-  kind text NOT NULL CHECK (kind IN ('resume','cover')),
+  kind text NOT NULL CHECK (kind IN ('resume','cover','report','linkedin','outreach','brief','progress')),
   title text NOT NULL,
   content jsonb NOT NULL,
   created_at timestamptz DEFAULT now()
@@ -274,3 +274,7 @@ INSERT INTO newpage_codes (code)
 SELECT 'NP-' || upper(substr(h, 1, 4)) || '-' || upper(substr(h, 5, 4)) || '-' || upper(substr(h, 9, 4))
 FROM (SELECT encode(gen_random_bytes(6), 'hex') AS h FROM generate_series(1, 30)) t
 WHERE NOT EXISTS (SELECT 1 FROM newpage_codes);
+
+-- The program adds more document types (report, LinkedIn, outreach, session brief, progress report).
+ALTER TABLE newpage_docs DROP CONSTRAINT IF EXISTS newpage_docs_kind_check;
+ALTER TABLE newpage_docs ADD CONSTRAINT newpage_docs_kind_check CHECK (kind IN ('resume','cover','report','linkedin','outreach','brief','progress'));

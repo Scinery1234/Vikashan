@@ -2,6 +2,7 @@ import { supabase } from '../../lib/supabase.js'
 import { rateLimit } from '../../lib/security.js'
 import { requireMember } from '../../lib/newpage-auth.js'
 import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
+import { PROGRAM } from '../../newpage/program-content.js'
 import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
 import { coachSystem, toApiMessages, runCoach, askJson } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
@@ -14,7 +15,8 @@ import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import {
   COMPASS_SYSTEM, COMPASS_TASKS, cleanCompass,
-  DOC_SYSTEM, RESUME_SCHEMA, COVER_SCHEMA, resumePrompt, coverPrompt, cleanResume, cleanCover, docTitle, clipText
+  DOC_SYSTEM, RESUME_SCHEMA, COVER_SCHEMA, resumePrompt, coverPrompt, cleanResume, cleanCover, docTitle, clipText,
+  SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
 
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
@@ -62,8 +64,8 @@ export default async function handler(req, res) {
 
     case 'progress': {
       const week = Number(b.week), step = Number(b.step)
-      const plan = member.quadrant ? QUADRANTS[member.quadrant].weeks : null
-      if (!plan || !Number.isInteger(week) || week < 1 || week > PROGRAM_WEEKS || !Number.isInteger(step) || step < 0 || step >= plan[week - 1].steps.length) {
+      const plan = member.quadrant ? PROGRAM[member.quadrant] : null
+      if (!plan || !Number.isInteger(week) || week < 1 || week > PROGRAM_WEEKS || !Number.isInteger(step) || step < 0 || step >= plan[week - 1].tasks.length) {
         return res.status(400).json({ error: 'That step doesn’t exist.' })
       }
       if (b.done) await supabase.from('newpage_progress').upsert({ member_id: member.id, week, step }, { onConflict: 'member_id,week,step' })
@@ -153,6 +155,36 @@ export default async function handler(req, res) {
       await supabase.from('newpage_docs').delete().eq('id', b.id).eq('member_id', member.id)
       return res.json({ ok: true })
     case 'doc_generate': {
+      if (SECTION_KINDS[b.kind]) {
+        const SK = SECTION_KINDS[b.kind]
+        if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+        const fields = cleanFields(b.kind, b.fields)
+        const background = clipText(b.background, 12000)
+        if (b.kind === 'linkedin' && background) await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
+        const [data, cp, pr] = await Promise.all([
+          load(member.id),
+          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'compass').maybeSingle(),
+          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle()
+        ])
+        const ctx = memberContext({
+          member, compass: cp.data?.data, checkins: data.checkins, memory: data.memory, doneCount: data.progress.length,
+          taskDone: data.tasks.filter(t => t.done).length, profile: ['linkedin', 'report', 'progress', 'brief'].includes(b.kind) ? (background || clipText(pr.data?.data?.text, 4000)) : ''
+        })
+        const problem = SK.needs(ctx, fields)
+        if (problem) return res.status(400).json({ error: problem })
+        let content
+        try {
+          content = cleanSections(await askJson({ system: SECTION_SYSTEM, prompt: SK.prompt(ctx, fields), schema: SECTIONS_SCHEMA, maxTokens: 4500 }))
+        } catch (err) {
+          console.error('Document failed:', err)
+          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        }
+        if (!content.sections.length) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        const title = (content.title || SK.label).slice(0, 160)
+        const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: b.kind, title, content }).select('id, kind, title, content, created_at').single()
+        return res.json({ doc: saved || { kind: b.kind, title, content } })
+      }
       const kind = b.kind === 'cover' ? 'cover' : b.kind === 'resume' ? 'resume' : null
       if (!kind) return res.status(400).json({ error: 'Choose a resume or a cover letter.' })
       const background = clipText(b.background, 12000)

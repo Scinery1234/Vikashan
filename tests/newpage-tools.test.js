@@ -9,7 +9,7 @@ import { buildMe } from '../lib/newpage-app.js'
 const member = { name: 'Sam Lee', quadrant: 'explore', plan_started_at: new Date().toISOString() }
 
 test('every coach has a name, opener and starters, and ids are validated', () => {
-  assert.deepEqual(COACH_IDS, ['career', 'recovery', 'action', 'exec', 'charge', 'cbt', 'clarity'])
+  assert.deepEqual(COACH_IDS, ['career', 'recovery', 'action', 'exec', 'charge', 'cbt', 'interview', 'offer', 'clarity'])
   for (const c of coachList()) { assert.ok(c.name && c.open && c.starters.length >= 2, c.id) }
   assert.ok(isCoach('action'))
   assert.ok(!isCoach('__proto__') && !isCoach('constructor') && !isCoach('nope'))
@@ -106,7 +106,7 @@ test('the reminder email lists times and escapes titles', () => {
 test('the app payload carries goals, coaches and the reminder setting', () => {
   const me = buildMe({ member: { ...member, email: 'a@b.co', reminders: false }, progress: [], tasks: [], goals: [{ id: 'g' }], checkins: [], memory: [], messages: [] })
   assert.equal(me.goals.length, 1)
-  assert.equal(me.coaches.length, 7)
+  assert.equal(me.coaches.length, 9)
   assert.equal(me.member.reminders, false)
   assert.equal(buildMe({ member: { ...member, email: 'a@b.co' }, progress: [], tasks: [], checkins: [], memory: [], messages: [] }).member.reminders, true)
 })
