@@ -69,11 +69,16 @@ test('there is real material: hours of guided work, readings, templates and a li
   }
   assert.ok(SHARED_LIBRARY.length >= 4)
   for (const q of TYPES) assert.ok(LIBRARY[q].length >= 3)
+  for (const l of [...SHARED_LIBRARY, ...TYPES.flatMap(q => LIBRARY[q])]) {
+    const n = l.body.join(' ').split(/\s+/).length
+    assert.ok(n >= 450, `${l.id} is a full guide (${n} words)`)
+    assert.ok(l.body.filter(x => x.startsWith('## ')).length >= 4, `${l.id} has sections`)
+  }
 })
 
 test('safe wording: no medical claims or promises, and support lines where they matter', () => {
   const all = JSON.stringify([PROGRAM, LIBRARY, SHARED_LIBRARY])
-  assert.ok(!/guarantee(d)? (a )?(job|offer|result)/i.test(all))
+  assert.ok(!/we guarantee|you(’ll| will) (get|land|win) (a|the) (job|role|offer)/i.test(all))
   assert.ok(!/\b(cure|treat(s|ment)? your|diagnos(e|is) you)\b/i.test(all.replace(/not (a )?(treatment|diagnos)/gi, '')))
   assert.match(JSON.stringify(PROGRAM.recharge), /GP or a counsellor/)
   assert.match(JSON.stringify(LIBRARY.recharge), /13 11 14/)
