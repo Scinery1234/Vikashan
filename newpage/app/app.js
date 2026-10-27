@@ -3,6 +3,7 @@ import { h, todayStr } from './ui.js'
 import { plannerScreen } from './planner.js'
 import { compassScreen, compassStatus, COMPASS_STEPS } from './compass.js'
 import { docsScreen } from './docs.js'
+import { sessionScreen } from './session.js'
 
 const KEY = 'np_app_session'
 const app = document.getElementById('app')
@@ -38,7 +39,7 @@ async function act(action, body = {}) {
     return data
   } catch (e) {
     if (e.code === 'signed_out') return signOut()
-    if (e.code === 'paused' || e.code === 'ended') { S.screen = 'noaccess'; S.error = e.message; render(); return null }
+    if (e.code === 'paused' || e.code === 'ended' || e.code === 'expired') { S.screen = 'noaccess'; S.error = e.message; render(); return null }
     throw e
   }
 }
@@ -205,16 +206,16 @@ function todayScreen() {
 }
 
 function sessionCard(me) {
-  const p = me.program, booked = me.member.sessionBooked
+  const p = me.program, ss = me.sessions
   return h('div', { class: 'card' },
     h('span', { class: 'label' }, 'Your 1:1 with Vik'),
-    booked
-      ? h('p', {}, h('b', {}, 'Session booked. '), 'Check your email for the time and the link.')
-      : [h('p', {}, p.sessionWindow ? 'This is the best time to book your 60-minute session. Vik will have seen your plan and progress beforehand.' : 'Your 60-minute session is best booked for weeks 2 to 3, so there’s something to talk about. You can book it any time.'),
-         h('a', { class: 'btn btn-primary', href: me.sessionUrl }, 'Book your session')],
-    h('label', { class: 'check' },
-      h('input', { type: 'checkbox', checked: booked, onchange: async e => { try { await act('session_booked', { booked: e.target.checked }) } catch (err) { S.error = err.message } render() } }),
-      h('span', {}, 'I’ve booked my session')))
+    ss.upcoming.length
+      ? [h('p', {}, h('b', {}, 'Session booked. '), `${new Date(ss.upcoming[0].date + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long' })} at ${ss.upcoming[0].time}, Sydney time. The link is in your email.`),
+         h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'session') }, 'See details')]
+      : ss.remaining > 0
+        ? [h('p', {}, p.sessionWindow ? 'This is the best time to book your 60-minute session. Vik will have seen your plan and progress beforehand.' : 'Your 60-minute session is best booked for weeks 2 to 3, so there’s something to talk about. You can book it any time.'),
+           h('button', { class: 'btn btn-primary', type: 'button', onclick: () => go('tools', 'session') }, 'Book your session')]
+        : h('p', {}, 'You’ve used your included session. Reply to any email from Vik if you’d like more time.'))
 }
 
 // ── Plan ─────────────────────────────────────────────────────────
@@ -281,6 +282,7 @@ function scrollChat() { const m = document.getElementById('msgs'); if (m) m.last
 
 // ── Tools ────────────────────────────────────────────────────────
 const TOOLS = [
+  ['session', '1:1 with Vik', 'Book the 60-minute session that comes with New Page.'],
   ['planner', 'Planner', 'Tasks, time blocks, goals and a morning reminder. Add anything to your calendar.'],
   ['compass', 'The Compass', 'Ten short steps from what matters to you to three first steps.'],
   ['resume', 'Resume writer', 'A tailored resume from your own work history and a job ad.'],
@@ -288,6 +290,7 @@ const TOOLS = [
 ]
 let compassNote = ''
 function toolsScreen() {
+  if (S.tool === 'session') return sessionScreen(ctx)
   if (S.tool === 'planner') return plannerScreen(ctx)
   if (S.tool === 'compass') return compassScreen(ctx)
   if (S.tool === 'resume' || S.tool === 'cover') return docsScreen(ctx, S.tool)
@@ -295,7 +298,7 @@ function toolsScreen() {
   const open = me.tasks.filter(t => !t.done).length
   const due = me.tasks.filter(t => !t.done && t.due && t.due <= todayStr()).length
   compassStatus(ctx).then(c => { const n = c ? (c.done ? 'Finished' : c.step > 0 || c.values.length ? `Step ${c.step + 1} of 10: ${COMPASS_STEPS[c.step]}` : '') : ''; if (n !== compassNote) { compassNote = n; if (S.tab === 'tools' && !S.tool) render() } })
-  const status = { planner: due ? `${due} due today` : open ? `${open} open` : '', compass: compassNote, resume: '', cover: '' }
+  const status = { session: me.sessions.upcoming.length ? 'Booked' : me.sessions.remaining ? `${me.sessions.remaining} included` : '', planner: due ? `${due} due today` : open ? `${open} open` : '', compass: compassNote, resume: '', cover: '' }
   return h('section', { class: 'screen' },
     h('div', {}, h('span', { class: 'note' }, 'your toolkit'), h('h2', {}, 'Tools'), h('p', { class: 'muted' }, 'These save to your account, and your coaches know about your tasks.')),
     h('div', { class: 'toolgrid' }, TOOLS.map(([id, name, blurb]) =>
@@ -425,7 +428,7 @@ async function start() {
   if (!session) { S.screen = 'login'; render(); return }
   render()
   try {
-    await act('me')
+    if (!(await act('me'))) return
     const [wanted, sub] = location.hash.slice(1).split('/')
     S.tab = TABS.some(([k]) => k === wanted) ? wanted : 'today'
     S.tool = S.tab === 'tools' && TOOLS.some(([k]) => k === sub) ? sub : null

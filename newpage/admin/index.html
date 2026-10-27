@@ -8,6 +8,7 @@
 <link rel="icon" href="/newpage/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap">
 <link rel="stylesheet" href="/newpage/styles.css">
+<style>.mem{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 0;border-bottom:1px dashed #C9D3E3}.mem span{flex:1 1 100%;font-size:15px;line-height:1.4;overflow-wrap:anywhere}</style>
 <script type="module" src="/newpage/admin/admin.js"></script>
 </head>
 <body>
@@ -28,12 +29,14 @@
 
     <section class="screen" id="members" hidden>
       <h2>Members</h2>
-      <p>People who can sign in to the New Page app at <b>/newpage/app</b>. Adding someone sends them a welcome email. If they took the quiz, their plan starts from their result.</p>
+      <p>People who can sign in to the New Page app at <b>/newpage/app</b>. Adding someone sends them a welcome email, and starts their 4 weeks. Access ends after that unless you press “Renewal paid” once they’ve paid for a renewal. If they took the quiz, their plan starts from their result.</p>
       <form id="grant-form" class="card" novalidate>
         <div class="field"><label for="g-email">Email</label><input id="g-email" type="email" autocomplete="off" required></div>
         <div class="field"><label for="g-name">Name (optional)</label><input id="g-name" type="text" autocomplete="off" maxlength="80"></div>
         <div class="field"><label for="g-source">How they joined</label>
           <select id="g-source" style="min-height:50px;border:1.5px solid #C9D3E3;border-radius:12px;padding:10px 14px;background:#fff;font-size:17px"><option value="purchase">Paid</option><option value="scholarship">Scholarship</option><option value="manual">Other</option></select></div>
+        <div class="field"><label for="g-access">How long they have access</label>
+          <select id="g-access" style="min-height:50px;border:1.5px solid #C9D3E3;border-radius:12px;padding:10px 14px;background:#fff;font-size:17px"><option value="4w">4 weeks (the program)</option><option value="1m">1 month</option><option value="3m">3 months</option><option value="none">No end date (for testing)</option></select></div>
         <label class="check" for="g-welcome"><input id="g-welcome" type="checkbox" checked><span>Send the welcome email</span></label>
         <p class="error" id="g-error" role="alert" hidden></p>
         <button class="btn btn-primary" type="submit">Give access</button>

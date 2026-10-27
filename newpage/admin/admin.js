@@ -92,16 +92,38 @@ async function loadMembers() {
     const { members } = await api('GET', null, MEMBERS)
     box.replaceChildren()
     if (!members.length) { box.append(el('p', 'No members yet.', { class: 'muted small' })); return }
+    const today = Date.now()
+    const fmt = d => new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
     for (const m of members) {
+      const ended = m.access_until && new Date(m.access_until).getTime() < today
       const row = el('div', null, { class: 'mem' })
-      const info = el('span', `${m.name || m.email}${m.name ? ' · ' + m.email : ''} · ${m.quadrant || 'no plan yet'} · ${m.source}${m.status !== 'active' ? ' · ' + m.status : ''}${m.last_login_at ? '' : ' · never signed in'}`)
+      const access = m.access_until ? (ended ? `access ended ${fmt(m.access_until)}` : `access until ${fmt(m.access_until)}`) : 'no end date'
+      const info = el('span', `${m.name || m.email}${m.name ? ' · ' + m.email : ''} · ${m.quadrant || 'no plan yet'} · ${m.source} · ${access} · session ${m.sessions_used}/${m.sessions_included ?? 1}${m.status !== 'active' ? ' · ' + m.status.toUpperCase() : ''}${m.last_login_at ? '' : ' · never signed in'}`)
       const sel = el('select', null, { 'aria-label': `Status for ${m.email}`, style: 'min-height:44px;border:1.5px solid #C9D3E3;border-radius:10px;padding:6px 8px;background:#fff;font-size:15px' })
       for (const s of ['active', 'paused', 'ended']) { const o = el('option', s, { value: s }); if (s === m.status) o.selected = true; sel.append(o) }
       sel.addEventListener('change', async () => {
         try { await api('POST', { id: m.id, status: sel.value }, MEMBERS) } catch (e) { alert(e.message) }
         loadMembers()
       })
-      row.append(info, sel); box.append(row)
+      const renew = el('button', 'Renewal paid: +1 month', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
+      renew.addEventListener('click', async () => {
+        if (!confirm(`Add one month and one more session for ${m.email}? Only do this once they have paid for the renewal.`)) return
+        try { await api('POST', { id: m.id, renew: true }, MEMBERS) } catch (e) { alert(e.message) }
+        loadMembers()
+      })
+      const date = el('button', 'Set end date', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
+      date.addEventListener('click', async () => {
+        const v = prompt('Access ends on (YYYY-MM-DD), or leave blank for no end date:', m.access_until ? m.access_until.slice(0, 10) : '')
+        if (v === null) return
+        try { await api('POST', { id: m.id, accessUntil: v.trim() || null }, MEMBERS) } catch (e) { alert(e.message) }
+        loadMembers()
+      })
+      const more = el('button', '+1 session', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
+      more.addEventListener('click', async () => {
+        try { await api('POST', { id: m.id, sessionsIncluded: (m.sessions_included ?? 1) + 1 }, MEMBERS) } catch (e) { alert(e.message) }
+        loadMembers()
+      })
+      row.append(info, sel, renew, date, more); box.append(row)
     }
   } catch (e) { box.replaceChildren(el('p', e.message, { class: 'error' })) }
 }
@@ -113,7 +135,7 @@ $('grant-form').addEventListener('submit', async e => {
   const email = $('g-email').value.trim()
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $('g-error').textContent = 'Enter a valid email.'; $('g-error').hidden = false; return }
   try {
-    const r = await api('POST', { email, name: $('g-name').value.trim(), source: $('g-source').value, welcome: $('g-welcome').checked }, MEMBERS)
+    const r = await api('POST', { email, name: $('g-name').value.trim(), source: $('g-source').value, welcome: $('g-welcome').checked, access: $('g-access').value }, MEMBERS)
     $('g-status').textContent = `${r.restored ? 'Access restored' : 'Access given'}${r.quadrant ? ` (plan: ${r.quadrant})` : ' (no quiz result yet, so they start with the check-in)'}${r.welcomeSent ? ', welcome email sent.' : r.welcomeSent === false && $('g-welcome').checked ? ', but the welcome email failed to send.' : '.'}`
     $('g-email').value = ''; $('g-name').value = ''
     loadMembers()

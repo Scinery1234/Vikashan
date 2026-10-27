@@ -33,6 +33,7 @@ export default async function handler(req, res) {
   const { data: sessionType } = await supabase
     .from('session_types').select('*').eq('id', sessionTypeId).single()
   if (!sessionType) return res.status(404).json({ error: 'Session type not found' })
+  if (sessionType.members_only) return res.status(403).json({ error: 'That session is for New Page members.' })
 
   const meetLink = process.env.ZOOM_PERSONAL_LINK
   const totalCents = amountCentsPerSession * sessionsTotal

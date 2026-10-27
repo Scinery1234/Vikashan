@@ -5,6 +5,11 @@ import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
 import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
 import { coachSystem, toApiMessages, runCoach, askJson } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
+import { getAvailableSlots } from '../../lib/availability.js'
+import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
+import { sendConfirmation } from '../../lib/resend.js'
+import { createOutlookEvent } from '../../lib/outlook.js'
+import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import {
   COMPASS_SYSTEM, COMPASS_TASKS, cleanCompass,
   DOC_SYSTEM, RESUME_SCHEMA, COVER_SCHEMA, resumePrompt, coverPrompt, cleanResume, cleanCover, docTitle, clipText
@@ -20,16 +25,17 @@ const cleanTime = v => (typeof v === 'string' && TIME_RE.test(v) ? v : null)
 const cleanMins = v => (Number.isInteger(Number(v)) && Number(v) >= 5 && Number(v) <= 600 ? Number(v) : null)
 
 async function load(memberId, coach = 'career') {
-  const [progress, tasks, checkins, memory, messages, goals] = await Promise.all([
+  const [progress, tasks, checkins, memory, messages, goals, bookings] = await Promise.all([
     supabase.from('newpage_progress').select('week, step').eq('member_id', memberId),
     supabase.from('newpage_tasks').select('id, title, due, done, source, created_at, block_start, block_mins, goal_id').eq('member_id', memberId).order('created_at', { ascending: true }).limit(200),
     supabase.from('newpage_checkins').select('clarity, capacity, quadrant, created_at').eq('member_id', memberId).order('created_at', { ascending: true }).limit(60),
     supabase.from('newpage_memory').select('id, note').eq('member_id', memberId).order('created_at', { ascending: true }).limit(60),
     supabase.from('newpage_messages').select('role, content, created_at').eq('member_id', memberId).eq('coach', coach).order('id', { ascending: false }).limit(40),
-    supabase.from('newpage_goals').select('id, title, target, done').eq('member_id', memberId).order('created_at', { ascending: true }).limit(50)
+    supabase.from('newpage_goals').select('id, title, target, done').eq('member_id', memberId).order('created_at', { ascending: true }).limit(50),
+    supabase.from('bookings').select('id, date, start_time, status').eq('newpage_member_id', memberId).limit(100)
   ])
   return {
-    progress: progress.data || [], goals: goals.data || [],
+    progress: progress.data || [], goals: goals.data || [], bookings: bookings.data || [],
     tasks: (tasks.data || []).map(t => ({ id: t.id, title: t.title, due: t.due, done: t.done, source: t.source, goalId: t.goal_id || null, start: t.block_start ? String(t.block_start).slice(0, 5) : null, mins: t.block_mins || null })), checkins: checkins.data || [], memory: memory.data || [],
     messages: (messages.data || []).reverse()
   }
@@ -37,7 +43,7 @@ async function load(memberId, coach = 'career') {
 
 async function me(member, coach = 'career') {
   const data = await load(member.id, coach)
-  return { ...buildMe({ member, ...data, coachOn: !!process.env.ANTHROPIC_API_KEY }), coach }
+  return { ...buildMe({ member, ...data, sessions: sessionState(member.sessions_included, data.bookings), coachOn: !!process.env.ANTHROPIC_API_KEY }), coach }
 }
 
 // One endpoint for everything a signed-in member does: POST { action, ... }
@@ -178,6 +184,49 @@ export default async function handler(req, res) {
       if (b.action === 'task_delete') await q.delete().eq('id', b.id).eq('member_id', member.id)
       else await q.update({ done: !!b.done }).eq('id', b.id).eq('member_id', member.id)
       return res.json(await me(member, coachOf(b.coach)))
+    }
+
+    // ── The included 1:1 session with Vik ──
+    case 'slots': {
+      const date = String(b.date || '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Choose a date.' })
+      const { slots } = await getAvailableSlots(date)
+      return res.json({ date, slots: slots.filter(sl => !bookingProblem(date, sl.hour)) })
+    }
+    case 'session_book': {
+      if (!rateLimit(req, res, { max: 10, windowMs: 60 * 60 * 1000, key: `np-session-${member.id}` })) return
+      const date = String(b.date || ''), hour = Number(b.hour)
+      const problem = bookingProblem(date, hour)
+      if (problem) return res.status(400).json({ error: problem })
+      const state = sessionState(member.sessions_included, (await load(member.id)).bookings)
+      if (state.remaining < 1) return res.status(403).json({ error: 'You’ve used the session included in New Page. Reply to any email from Vik to add more hours.', code: 'no_sessions' })
+      const { slots } = await getAvailableSlots(date)
+      if (!slots.some(sl => sl.hour === hour)) return res.status(409).json({ error: 'Sorry, that time was just taken. Please choose another.', code: 'taken' })
+      const { data: type } = await supabase.from('session_types').select('*').eq('name', 'New Page 1:1 session').maybeSingle()
+      if (!type) return res.status(500).json({ error: 'Session booking isn’t set up yet. Please email Vik.' })
+
+      let { data: client } = await supabase.from('clients').select('*').eq('email', member.email).maybeSingle()
+      if (!client) ({ data: client } = await supabase.from('clients').insert({ name: member.name || member.email, email: member.email, status: 'active' }).select().single())
+      if (!client) return res.status(500).json({ error: 'Could not book that. Please try again.' })
+
+      const time = `${String(hour).padStart(2, '0')}:00`
+      const { data: booking, error } = await supabase.from('bookings').insert({
+        client_id: client.id, session_type_id: type.id, date, start_time: time, duration_mins: type.duration_mins,
+        meet_link: process.env.ZOOM_PERSONAL_LINK, amount_cents: 0, tier: 'free', status: 'confirmed', newpage_member_id: member.id,
+        notes: 'New Page included session'
+      }).select().single()
+      if (error || !booking) { console.error('Session booking failed:', error); return res.status(500).json({ error: 'Could not book that. Please try again.' }) }
+      await supabase.from('newpage_members').update({ session_booked: true }).eq('id', member.id)
+
+      const confirmed = { ...booking, session_type_name: type.name }
+      try {
+        await Promise.all([
+          sendConfirmation({ booking: confirmed, client, zoomLink: booking.meet_link }),
+          createOutlookEvent({ booking: confirmed, client, meetLink: booking.meet_link }),
+          createGoogleCalendarEvent({ booking: confirmed, client, meetLink: booking.meet_link })
+        ])
+      } catch (err) { console.error('Session confirmation failed:', err) }
+      return res.json({ ...(await me({ ...member, session_booked: true }, coachOf(b.coach))), booked: { date, time } })
     }
 
     case 'session_booked':

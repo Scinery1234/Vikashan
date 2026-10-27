@@ -230,3 +230,15 @@ CREATE INDEX IF NOT EXISTS newpage_docs_member_idx ON newpage_docs (member_id, c
 ALTER TABLE newpage_goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_tools ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_docs ENABLE ROW LEVEL SECURITY;
+
+-- ── Membership length, included sessions, and the members-only session type ──
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS access_until timestamptz;       -- null = no end date
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS sessions_included integer DEFAULT 1;
+
+ALTER TABLE session_types ADD COLUMN IF NOT EXISTS members_only boolean DEFAULT false;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS newpage_member_id uuid REFERENCES newpage_members(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_bookings_np_member ON bookings(newpage_member_id);
+
+INSERT INTO session_types (name, description, duration_mins, price_min_cents, price_max_cents, is_free, buffer_mins, max_per_day, members_only)
+SELECT 'New Page 1:1 session', 'Your 60-minute session with Vik, included in New Page.', 60, 0, 0, true, 15, 5, true
+WHERE NOT EXISTS (SELECT 1 FROM session_types WHERE name = 'New Page 1:1 session');
