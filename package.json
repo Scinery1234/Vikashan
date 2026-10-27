@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vercel dev",
-    "generate-hash": "node -e \"import('bcryptjs').then(b=>b.default.hash(process.argv[1],12)).then(console.log)\" --"
+    "generate-hash": "node -e \"import('bcryptjs').then(b=>b.default.hash(process.argv[1],12)).then(console.log)\" --",
+    "test": "node --test tests/*.test.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2",

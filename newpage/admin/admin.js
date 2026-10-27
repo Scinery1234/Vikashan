@@ -1,0 +1,123 @@
+// New Page admin: sign in with the Vikashan admin login, then send the
+// launch email in batches.
+const $ = id => document.getElementById(id)
+let token = null
+try { token = sessionStorage.getItem('np_admin_token') } catch {}
+
+async function api(method, body, url = '/api/newpage/launch') {
+  const res = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: body ? JSON.stringify(body) : undefined
+  })
+  const data = await res.json().catch(() => ({}))
+  if (res.status === 401) { signOut(); throw new Error('Please sign in again.') }
+  if (!res.ok) throw new Error(data.error || 'Something went wrong.')
+  return data
+}
+
+function signOut() {
+  token = null
+  try { sessionStorage.removeItem('np_admin_token') } catch {}
+  $('members').hidden = true
+  $('launch').hidden = true
+  $('login').hidden = false
+}
+
+async function showLaunch() {
+  $('login').hidden = true
+  $('launch').hidden = false
+  $('members').hidden = false
+  loadMembers()
+  try { $('waiting').textContent = (await api('GET')).waiting } catch (e) { $('status').textContent = e.message }
+}
+
+$('login-form').addEventListener('submit', async e => {
+  e.preventDefault()
+  $('login-error').hidden = true
+  const res = await fetch('/api/auth/login', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: $('ad-email').value.trim(), password: $('ad-pass').value })
+  })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok || !data.token) {
+    $('login-error').textContent = data.error || 'Sign in failed.'
+    $('login-error').hidden = false
+    return
+  }
+  token = data.token
+  try { sessionStorage.setItem('np_admin_token', token) } catch {}
+  showLaunch()
+})
+
+$('test-btn').addEventListener('click', async () => {
+  $('status').textContent = 'Sending a test…'
+  try { await api('POST', { mode: 'test', checkoutUrl: $('checkout').value.trim() || null }); $('status').textContent = 'Test sent to your admin email.' }
+  catch (e) { $('status').textContent = e.message }
+})
+
+$('send-btn').addEventListener('click', () => {
+  $('confirm-n').textContent = $('waiting').textContent
+  $('confirm').hidden = false
+})
+$('confirm-no').addEventListener('click', () => { $('confirm').hidden = true })
+
+$('confirm-yes').addEventListener('click', async () => {
+  $('confirm').hidden = true
+  $('send-btn').disabled = true
+  let total = 0, failed = 0
+  try {
+    for (;;) {
+      const r = await api('POST', { mode: 'send', checkoutUrl: $('checkout').value.trim() || null })
+      total += r.sent; failed += r.failed
+      $('status').textContent = `Sent ${total}${failed ? `, ${failed} failed` : ''}. ${r.remaining} to go…`
+      if (r.remaining === 0 || r.sent === 0) break
+    }
+    $('status').textContent = `Done. Sent ${total}${failed ? `, ${failed} failed (they’ll be included if you send again)` : ''}.`
+  } catch (e) {
+    $('status').textContent = `Stopped: ${e.message} Sent ${total} so far. Sending again continues where it stopped.`
+  }
+  $('send-btn').disabled = false
+  try { $('waiting').textContent = (await api('GET')).waiting } catch {}
+})
+
+
+// ── Members ──
+const MEMBERS = '/api/newpage/members'
+const el = (tag, text, attrs = {}) => { const e = document.createElement(tag); if (text != null) e.textContent = text; for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e }
+
+async function loadMembers() {
+  const box = $('member-list')
+  try {
+    const { members } = await api('GET', null, MEMBERS)
+    box.replaceChildren()
+    if (!members.length) { box.append(el('p', 'No members yet.', { class: 'muted small' })); return }
+    for (const m of members) {
+      const row = el('div', null, { class: 'mem' })
+      const info = el('span', `${m.name || m.email}${m.name ? ' · ' + m.email : ''} · ${m.quadrant || 'no plan yet'} · ${m.source}${m.status !== 'active' ? ' · ' + m.status : ''}${m.last_login_at ? '' : ' · never signed in'}`)
+      const sel = el('select', null, { 'aria-label': `Status for ${m.email}`, style: 'min-height:44px;border:1.5px solid #C9D3E3;border-radius:10px;padding:6px 8px;background:#fff;font-size:15px' })
+      for (const s of ['active', 'paused', 'ended']) { const o = el('option', s, { value: s }); if (s === m.status) o.selected = true; sel.append(o) }
+      sel.addEventListener('change', async () => {
+        try { await api('POST', { id: m.id, status: sel.value }, MEMBERS) } catch (e) { alert(e.message) }
+        loadMembers()
+      })
+      row.append(info, sel); box.append(row)
+    }
+  } catch (e) { box.replaceChildren(el('p', e.message, { class: 'error' })) }
+}
+
+$('grant-form').addEventListener('submit', async e => {
+  e.preventDefault()
+  $('g-error').hidden = true
+  $('g-status').textContent = ''
+  const email = $('g-email').value.trim()
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { $('g-error').textContent = 'Enter a valid email.'; $('g-error').hidden = false; return }
+  try {
+    const r = await api('POST', { email, name: $('g-name').value.trim(), source: $('g-source').value, welcome: $('g-welcome').checked }, MEMBERS)
+    $('g-status').textContent = `${r.restored ? 'Access restored' : 'Access given'}${r.quadrant ? ` (plan: ${r.quadrant})` : ' (no quiz result yet, so they start with the check-in)'}${r.welcomeSent ? ', welcome email sent.' : r.welcomeSent === false && $('g-welcome').checked ? ', but the welcome email failed to send.' : '.'}`
+    $('g-email').value = ''; $('g-name').value = ''
+    loadMembers()
+  } catch (err) { $('g-error').textContent = err.message; $('g-error').hidden = false }
+})
+
+if (token) showLaunch()

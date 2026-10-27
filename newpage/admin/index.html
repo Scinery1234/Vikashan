@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>New Page admin</title>
+<link rel="icon" href="/newpage/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap">
+<link rel="stylesheet" href="/newpage/styles.css">
+<script type="module" src="/newpage/admin/admin.js"></script>
+</head>
+<body>
+<div class="paper">
+  <div class="margin-line" aria-hidden="true"></div>
+  <header class="top"><div class="top-in"><span class="brand"><span>new page</span></span><span class="count">Admin</span></div></header>
+  <main class="col">
+    <section class="screen" id="login">
+      <h2>Sign in</h2>
+      <p class="muted">Use your Vikashan admin email and password.</p>
+      <form id="login-form" class="card" novalidate>
+        <div class="field"><label for="ad-email">Email</label><input id="ad-email" type="email" autocomplete="username" required></div>
+        <div class="field"><label for="ad-pass">Password</label><input id="ad-pass" type="password" autocomplete="current-password" required></div>
+        <p class="error" id="login-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit">Sign in</button>
+      </form>
+    </section>
+
+    <section class="screen" id="members" hidden>
+      <h2>Members</h2>
+      <p>People who can sign in to the New Page app at <b>/newpage/app</b>. Adding someone sends them a welcome email. If they took the quiz, their plan starts from their result.</p>
+      <form id="grant-form" class="card" novalidate>
+        <div class="field"><label for="g-email">Email</label><input id="g-email" type="email" autocomplete="off" required></div>
+        <div class="field"><label for="g-name">Name (optional)</label><input id="g-name" type="text" autocomplete="off" maxlength="80"></div>
+        <div class="field"><label for="g-source">How they joined</label>
+          <select id="g-source" style="min-height:50px;border:1.5px solid #C9D3E3;border-radius:12px;padding:10px 14px;background:#fff;font-size:17px"><option value="purchase">Paid</option><option value="scholarship">Scholarship</option><option value="manual">Other</option></select></div>
+        <label class="check" for="g-welcome"><input id="g-welcome" type="checkbox" checked><span>Send the welcome email</span></label>
+        <p class="error" id="g-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit">Give access</button>
+        <p id="g-status" role="status"></p>
+      </form>
+      <div class="card"><span class="label">Everyone with access</span><div id="member-list"><p class="muted small">Loading…</p></div></div>
+    </section>
+
+    <section class="screen" id="launch" hidden>
+      <h2>Launch email</h2>
+      <p>Sends “New Page is open” once to everyone who tapped “Tell me when it opens”, on the quiz or the program page. People who unsubscribed are skipped, and nobody gets it twice.</p>
+      <div class="card">
+        <span class="label">Waiting to hear</span>
+        <p style="font-family: var(--display); font-weight: 700; font-size: 40px; line-height: 1" id="waiting">…</p>
+      </div>
+      <div class="card">
+        <div class="field">
+          <label for="checkout">Checkout link (optional)</label>
+          <input id="checkout" type="text" inputmode="url" placeholder="https://…">
+          <span class="small muted">Where “Start New Page” in the email goes. Leave empty to link to the program page.</span>
+        </div>
+        <button class="btn btn-secondary" type="button" id="test-btn">Send a test to me</button>
+        <button class="btn btn-primary" type="button" id="send-btn">Send to everyone waiting</button>
+        <div id="confirm" class="soft" hidden>
+          <p><b>Send to <span id="confirm-n"></span> people now?</b> This can’t be undone.</p>
+          <div class="cta-row" style="margin-top: 10px">
+            <button class="btn btn-primary" type="button" id="confirm-yes">Yes, send it</button>
+            <button class="btn btn-secondary" type="button" id="confirm-no">Cancel</button>
+          </div>
+        </div>
+        <p id="status" role="status"></p>
+      </div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

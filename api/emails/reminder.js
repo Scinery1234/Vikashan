@@ -52,17 +52,19 @@ export default async function handler(req, res) {
 
   // Process due payment plan instalments
   const today = now.toISOString().slice(0, 10)
-  const { data: duePlans } = await supabase
+  const { data: activePlans, error: plansError } = await supabase
     .from('packages')
     .select('*, clients(*)')
     .eq('payment_plan', true)
     .eq('status', 'active')
     .lte('next_charge_date', today)
-    .lt('instalments_paid', 'instalments_total')
+  if (plansError) console.error('Payment plan query failed:', plansError.message)
+  // The API can't compare two columns, so filter unpaid plans here.
+  const duePlans = (activePlans ?? []).filter(pkg => pkg.instalments_paid < pkg.instalments_total)
 
   const plansSent = { charged: 0, failed: 0 }
 
-  for (const pkg of duePlans ?? []) {
+  for (const pkg of duePlans) {
     try {
       const intent = await stripe.paymentIntents.create({
         amount: pkg.instalment_amount_cents,

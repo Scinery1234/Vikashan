@@ -4,6 +4,14 @@
     {
       "path": "/api/emails/reminder",
       "schedule": "*/15 * * * *"
+    },
+    {
+      "path": "/api/newpage/followups",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/newpage/reminders",
+      "schedule": "0 20 * * *"
     }
   ],
   "headers": [
