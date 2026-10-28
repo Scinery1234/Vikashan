@@ -1,8 +1,7 @@
-import { Resend } from 'resend'
+import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { followupEmail, dueDay } from '../../lib/newpage-emails.js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const DAY = 24 * 60 * 60 * 1000
 
 // Daily cron (vercel.json). Sends the quiz follow-up series.
@@ -33,7 +32,7 @@ export default async function handler(req, res) {
     })
     if (mail) {
       try {
-        await resend.emails.send({
+        await sendMail({
           from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
           to: lead.email, reply_to: process.env.ADMIN_EMAIL,
           subject: mail.subject, html: mail.html,

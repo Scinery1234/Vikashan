@@ -1,11 +1,10 @@
 import crypto from 'node:crypto'
-import { Resend } from 'resend'
+import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { rateLimit, isBot } from '../../lib/security.js'
 import { planEmail } from '../../lib/newpage-emails.js'
 import { validateAnswers, score, offersIntroCall, TIMEFRAMES, BLOCKERS, COACH } from '../../newpage/quiz-logic.js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const pickEnum = (v, list) => (list.some(o => o.v === v) ? v : null)
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : null)
@@ -69,7 +68,7 @@ export default async function handler(req, res) {
 
   try {
     const mail = planEmail({ name, quadrant: result.quadrant, answers, personal, introCall, token, struggling: result.struggling })
-    await resend.emails.send({
+    await sendMail({
       from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,
       to: email,
       reply_to: process.env.ADMIN_EMAIL,
