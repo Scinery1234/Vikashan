@@ -1,0 +1,49 @@
+{
+  "person": {
+    "name": "Jordan Park",
+    "birthName": "Jordan Elise Park",
+    "date": "1990-07-15",
+    "time": "14:30",
+    "tz": "Australia/Sydney",
+    "lat": -33.87,
+    "lon": 151.21,
+    "place": "Sydney, New South Wales, Australia"
+  },
+  "answers": {
+    "compass": {
+      "e1": 2,
+      "e2": -1,
+      "e3": -1,
+      "i1": 2,
+      "i2": 1,
+      "i3": -1,
+      "d1": -1,
+      "d2": -1,
+      "d3": 0,
+      "s1": 1,
+      "s2": 0,
+      "s3": -1
+    },
+    "statements": [
+      3,
+      2,
+      4,
+      3,
+      3,
+      3,
+      2,
+      2
+    ],
+    "situation": 0,
+    "satisfied": 2,
+    "wellbeing": 2
+  },
+  "draw": {
+    "seed": 2093188945,
+    "castAt": "2026-10-26T14:38:27.872Z"
+  },
+  "question": {
+    "text": "I have been a senior policy adviser in government for eight years. Should I leave this year to start my own consulting practice, or push for a bigger role where I am first?",
+    "askedAt": "2026-10-26T14:41:44.872Z"
+  }
+}

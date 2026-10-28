@@ -12,25 +12,102 @@
     {
       "path": "/api/newpage/reminders",
       "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/reading",
+      "schedule": "* * * * *"
+    }
+  ],
+  "functions": {
+    "api/reading.js": {
+      "maxDuration": 300,
+      "includeFiles": "lib/reading/astro/**"
+    },
+    "api/webhooks/stripe.js": {
+      "includeFiles": "lib/reading/astro/**"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "host",
+          "value": "reading.vikashan.org"
+        }
+      ],
+      "destination": "/reading/index.html"
+    },
+    {
+      "source": "/r/:id",
+      "has": [
+        {
+          "type": "host",
+          "value": "reading.vikashan.org"
+        }
+      ],
+      "destination": "/reading/index.html"
+    },
+    {
+      "source": "/sample",
+      "has": [
+        {
+          "type": "host",
+          "value": "reading.vikashan.org"
+        }
+      ],
+      "destination": "/reading/index.html"
+    },
+    {
+      "source": "/reading/r/:id",
+      "destination": "/reading/index.html"
+    },
+    {
+      "source": "/reading/sample",
+      "destination": "/reading/index.html"
     }
   ],
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET,POST,PUT,DELETE,OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type,Authorization" }
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET,POST,PUT,DELETE,OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type,Authorization"
+        }
       ]
     },
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Frame-Options", "value": "DENY" },
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://js.stripe.com; connect-src 'self' https://*.supabase.co https://api.resend.com; img-src 'self' data: https:;" }
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.stripe.com https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://js.stripe.com; connect-src 'self' https://*.supabase.co https://api.resend.com; img-src 'self' data: https:;"
+        }
       ]
     }
   ]

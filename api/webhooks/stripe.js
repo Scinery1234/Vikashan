@@ -30,6 +30,18 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Webhook signature verification failed' })
   }
 
+  // Career Reading (reading.vikashan.org): a one-off checkout queues the reading.
+  const obj = event.data.object
+  if (obj.metadata?.kind === 'career_reading') {
+    if ((event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') && obj.payment_status === 'paid') {
+      // Loaded only here: the reading engine carries the chart data.
+      const { readingService, baseOf } = await import('../../lib/reading/index.js')
+      const result = await readingService(baseOf(req)).paid(obj.metadata.reading_id, obj)
+      return res.json({ received: true, result })
+    }
+    return res.json({ received: true, result: 'ignored' })
+  }
+
   if (event.type === 'payment_intent.succeeded') {
     const intent = event.data.object
 
