@@ -2,7 +2,7 @@
 // notes as you chat without asking. This screen is where you see them, change
 // them, choose what Vik can see, and download or delete it all.
 import { h, download } from './ui.js'
-import { fileToB64 } from './docfiles.js'
+import { fileToB64, resumeFileProblem } from './docfiles.js'
 
 let stale = true
 // Called when the screen is opened, so notes Sky kept in the meantime show up.
@@ -62,16 +62,17 @@ export function contextScreen(ctx) {
       c.shares.map(s => h('div', { class: 'mem' }, h('span', {}, `${s.kind === 'chat' ? 'A chat' : 'Your context'} · ${fmt(s.created_at)}`), h('button', { class: 'link-btn blue', type: 'button', onclick: async () => { await run(ctx, 'share_delete', { id: s.id }, 'Taken back.'); ctx.render() } }, 'Take back')))))
 
   // 3. Resume
-  const fileInput = h('input', { type: 'file', id: 'cx-file', accept: '.docx,.pdf,.txt,.md', class: 'sr-only', onchange: async e => {
+  const fileInput = h('input', { type: 'file', id: 'cx-file', class: 'sr-only', onchange: async e => {
     const f = e.target.files[0]; if (!f) return
-    if (f.size > 3 * 1024 * 1024) { L.err = 'That file is over 3 MB. Try a smaller one, or paste the text.'; ctx.render(); return }
+    const problem = resumeFileProblem(f)
+    if (problem) { L.err = problem; ctx.render(); return }
     L.uploading = true; L.err = ''; ctx.render()
-    try { const d = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'extract', filename: f.name, file: await fileToB64(f) }); L.resumeText = d.text } catch (er) { L.err = er.message }
+    try { const d = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'extract', filename: f.name, file: await fileToB64(f) }); L.resumeText = d.text } catch (er) { L.err = er.code || er.status < 500 ? er.message : 'We couldn’t read that file just now. Paste your resume text instead, or try again in a minute.' }
     L.uploading = false; ctx.render()
   } })
   const resume = h('div', { class: 'card' },
     h('span', { class: 'label' }, '2. Your resume'),
-    h('p', { class: 'small muted' }, 'Upload it, or paste it, so Sky knows your background. You can replace or delete it any time.'),
+    h('p', { class: 'small muted' }, 'Upload a Word or PDF file (on a phone, pick it from Files), or paste it, so Sky knows your background. You can replace or delete it any time.'),
     h('div', { class: 'row' }, fileInput, h('label', { for: 'cx-file', class: 'btn btn-secondary', role: 'button', tabindex: '0', onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click() } } }, L.uploading ? 'Reading your file…' : c.resume.has ? 'Upload a different file' : 'Upload your resume')),
     h('div', { class: 'field' }, h('label', { for: 'cx-resume', class: 'sr-only' }, 'Your resume text'), h('textarea', { id: 'cx-resume', rows: '6', maxlength: '12000', placeholder: 'Or paste your resume here', oninput: e => { L.resumeText = e.target.value } }, L.resumeText || '')),
     h('div', { class: 'row' },

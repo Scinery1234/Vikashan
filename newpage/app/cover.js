@@ -1,13 +1,13 @@
 // Cover letter writer, in three short steps: read the job ad, give real proof
 // for what it asks for, then say why you want the role. The letter is written
 // from that evidence only, in Australian business-letter format.
-import { h, copyText } from './ui.js'
-import { templatePicker, pagePreview, saveB64, DOCX_TYPE, safeName } from './docfiles.js'
+import { h, copyText, download } from './ui.js'
+import { pagePreview, saveB64, DOCX_TYPE, safeName, coverDocHtml, asWordDoc } from './docfiles.js'
 
 const L = {
   step: 1, job: '', role: '', company: '', keywords: [], reqs: [], ev: {}, openKw: 0,
-  name: '', currentTitle: '', years: '', why: '', unique: '', phone: '', location: '', linkedin: '', resume: '', template: 'modern',
-  busy: false, analysing: false, err: '', cur: null, files: {}, docs: null, loading: false, hasResume: false, draft: null, saving: false, note: ''
+  name: '', currentTitle: '', years: '', why: '', unique: '', phone: '', location: '', linkedin: '', resume: '',
+  busy: false, editOpen: false, analysing: false, err: '', cur: null, files: {}, docs: null, loading: false, hasResume: false, draft: null, saving: false, note: ''
 }
 
 export const coverText = c => [c.greeting, '', ...c.paragraphs.flatMap(p => [p, '']), c.closing, '', c.signoff].join('\n').trim()
@@ -25,7 +25,6 @@ async function load(ctx) {
       L.phone = L.phone || r.content.contact?.phone || ''
       L.location = L.location || r.content.contact?.location || ''
       L.linkedin = L.linkedin || r.content.contact?.linkedin || ''
-      L.template = r.content.template || L.template
       L.currentTitle = L.currentTitle || r.content.experience?.[0]?.title || ''
     }
     const c = d.docs.find(x => x.kind === 'cover')
@@ -35,12 +34,12 @@ async function load(ctx) {
   ctx.render()
 }
 
-const key = d => d && d.id + ':' + (d.content.template || 'modern') + ':' + JSON.stringify(d.content).length
+const key = d => d && d.id + ':' + JSON.stringify(d.content).length
 async function ensureFiles(ctx) {
   const d = L.cur, k = key(d)
   if (!d || L.files[k] || L.files['busy:' + k]) return
   L.files['busy:' + k] = true
-  try { L.files[k] = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'cover', data: d.content, template: d.content.template || 'modern' }) } catch (e) { L.err = e.message }
+  try { L.files[k] = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'cover', data: d.content }) } catch (e) { L.files[k] = { failed: e.message } }
   delete L.files['busy:' + k]
   ctx.render()
 }
@@ -74,7 +73,7 @@ export function coverScreen(ctx) {
       const evidence = L.keywords.map(k => ({ keyword: k, ...(L.ev[k] || {}) }))
       const d = await ctx.call('/api/newpage/app', {
         action: 'doc_generate', kind: 'cover', job: L.job, role: L.role, company: L.company, keywords: L.keywords, evidence, name: L.name, currentTitle: L.currentTitle, years: L.years,
-        why: L.why, unique: L.unique, resume: L.hasResume ? '' : L.resume, template: L.template, contact: { phone: L.phone, location: L.location, linkedin: L.linkedin }
+        why: L.why, unique: L.unique, resume: L.hasResume ? '' : L.resume, contact: { phone: L.phone, location: L.location, linkedin: L.linkedin }
       })
       L.cur = d.doc; L.docs = [d.doc, ...L.docs.filter(x => x.id !== d.doc.id)]; L.draft = null
     } catch (e) { L.err = e.code === 'coach_off' ? 'The writer isn’t switched on yet.' : e.message }
@@ -116,7 +115,6 @@ export function coverScreen(ctx) {
       area('cv-why', 'Why do you want this role?', 'why', 4),
       area('cv-unique', 'What sets you apart from other applicants?', 'unique', 4),
       L.hasResume ? h('p', { class: 'small muted' }, 'We’ll use the resume you saved in the Resume writer.') : area('cv-res', 'Your resume', 'resume', 7, 'Paste it here, or write it in the Resume writer first.'),
-      h('div', { class: 'field' }, h('span', { class: 'label' }, 'Style (matches your resume)'), templatePicker(L.template, id => { L.template = id; ctx.render() })),
       L.err && h('p', { class: 'error', role: 'alert' }, L.err),
       h('div', { class: 'row' }, h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { L.step = 2; ctx.render() } }, 'Back'), h('button', { class: 'btn btn-primary', type: 'button', disabled: L.busy, onclick: generate }, L.busy ? 'Writing your letter… up to a minute' : 'Write my cover letter')),
       h('p', { class: 'small muted' }, 'Written by an AI from your resume and your examples. It’s told never to invent anything, but check every line before you send it.')
@@ -129,16 +127,12 @@ export function coverScreen(ctx) {
   const d = cur && (L.draft || (L.draft = { subject: cur.content.subject, greeting: cur.content.greeting, paragraphs: [...cur.content.paragraphs], closing: cur.content.closing, signoff: cur.content.signoff }))
   const result = cur && h('div', { id: 'doc-result', class: 'card doc-result' },
     h('span', { class: 'label' }, cur.title),
-    files ? pagePreview(files.html) : h('p', { class: 'loading small' }, 'Building the preview…'),
+    files?.failed && h('p', { class: 'soft small', role: 'status' }, 'The full Word builder isn’t responding, so this is a simpler version. The words are the same.'),
+    files ? pagePreview(files.failed ? coverDocHtml(cur.content) : files.html) : h('p', { class: 'loading small' }, 'Building the preview…'),
     h('div', { class: 'row doc-actions' },
-      h('button', { class: 'btn btn-primary', type: 'button', disabled: !files, onclick: () => saveB64(`${safeName(cur.title)}.docx`, files.docx, DOCX_TYPE) }, 'Download Word file'),
+      h('button', { class: 'btn btn-primary', type: 'button', disabled: !files, onclick: () => (files.failed ? download(`${safeName(cur.title)}.doc`, asWordDoc(coverDocHtml(cur.content), cur.title), 'application/msword') : saveB64(`${safeName(cur.title)}.docx`, files.docx, DOCX_TYPE)) }, files?.failed ? 'Download Word file (basic)' : 'Download Word file'),
       h('button', { class: 'btn btn-secondary', type: 'button', onclick: e => copyText(coverText(cur.content), e.currentTarget) }, 'Copy text')),
-    h('div', { class: 'field' }, h('span', { class: 'label' }, 'Style'),
-      templatePicker(cur.content.template || 'modern', async id => {
-        try { const r = await ctx.call('/api/newpage/app', { action: 'doc_template', id: cur.id, template: id }); L.cur = r.doc; L.docs = L.docs.map(x => (x.id === r.doc.id ? r.doc : x)); L.template = id } catch (e) { L.err = e.message }
-        ctx.render()
-      })),
-    h('details', { class: 'edit-text' }, h('summary', {}, 'Edit the words'),
+    h('details', { class: 'edit-text', ...(L.editOpen ? { open: '' } : {}), ontoggle: e => { L.editOpen = e.target.open } }, h('summary', {}, 'Edit the words'),
       h('div', { class: 'field' }, h('label', { for: 'ed-sub' }, 'Subject line'), h('input', { id: 'ed-sub', type: 'text', maxlength: '160', value: d.subject, oninput: e => { d.subject = e.target.value } })),
       d.paragraphs.map((p, i) => h('div', { class: 'field' }, h('label', { for: `ed-p${i}`, class: 'sr-only' }, `Paragraph ${i + 1}`), h('textarea', { id: `ed-p${i}`, rows: '5', maxlength: '1800', oninput: e => { d.paragraphs[i] = e.target.value } }, p))),
       h('button', { class: 'btn btn-secondary', type: 'button', disabled: L.saving, onclick: async () => {

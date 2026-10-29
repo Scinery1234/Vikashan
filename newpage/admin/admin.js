@@ -20,6 +20,7 @@ function signOut() {
   token = null
   try { sessionStorage.removeItem('np_admin_token') } catch {}
   $('members').hidden = true
+  $('health').hidden = true
   $('codes').hidden = true
   $('launch').hidden = true
   $('login').hidden = false
@@ -29,6 +30,7 @@ async function showLaunch() {
   $('login').hidden = true
   $('launch').hidden = false
   $('members').hidden = false
+  $('health').hidden = false
   $('codes').hidden = false
   loadMembers()
   loadCodes()
@@ -309,3 +311,21 @@ async function loadCodes(more) {
 $('more-codes').addEventListener('click', () => loadCodes(true))
 
 if (token) showLaunch()
+
+
+// ── System check ──
+$('health-btn').addEventListener('click', async () => {
+  const out = $('health-out'), b = $('health-btn')
+  b.disabled = true; out.replaceChildren(el('p', 'Checking… this can take up to 20 seconds.', { class: 'small muted' }))
+  try {
+    const r = await api('POST', {}, '/api/newpage/health')
+    out.replaceChildren(el('p', r.ok ? 'Everything is working.' : 'Some things need attention:', { class: r.ok ? 'small' : 'error' }))
+    for (const c of r.results) {
+      const row = el('div', null, { class: 'hc' + (c.ok ? '' : ' bad') })
+      const t = el('div'); t.append(el('b', c.name), el('span', c.detail, { class: 'd' }))
+      row.append(el('span', c.ok ? '✓' : '!', { class: 'dot', 'aria-label': c.ok ? 'Working' : 'Needs attention' }), t)
+      out.append(row)
+    }
+  } catch (e) { out.replaceChildren(el('p', e.message, { class: 'error' })) }
+  b.disabled = false
+})

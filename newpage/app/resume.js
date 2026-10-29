@@ -1,10 +1,10 @@
 // Resume writer. Upload or paste your current resume, say what job you're
-// aiming at, pick a style, and get an Australian-format resume built only from
+// aiming at, and get an Australian-format resume built only from
 // your own facts. The Word file comes from the Resume-Generator builder.
-import { h, copyText } from './ui.js'
-import { templatePicker, pagePreview, saveB64, DOCX_TYPE, safeName, fileToB64 } from './docfiles.js'
+import { h, copyText, download } from './ui.js'
+import { pagePreview, saveB64, DOCX_TYPE, safeName, fileToB64, resumeFileProblem, resumeDocHtml, asWordDoc } from './docfiles.js'
 
-const L = { text: null, fileName: '', job: '', extra: '', role: '', template: 'modern', busy: false, uploading: false, err: '', note: '', cur: null, files: {}, docs: null, loading: false, edit: '', editBusy: false, pasteOpen: false }
+const L = { text: null, fileName: '', job: '', extra: '', role: '', busy: false, uploading: false, err: '', note: '', cur: null, files: {}, docs: null, loading: false, edit: '', editBusy: false, pasteOpen: false }
 
 export function resumeText(r) {
   const out = []
@@ -34,35 +34,38 @@ async function load(ctx) {
     L.text = p.data.text || ''
     L.docs = d.docs
     const last = d.docs.find(x => x.kind === 'resume')
-    if (last && !L.cur) { L.cur = last; L.template = last.content.template || 'modern' }
+    if (last && !L.cur) L.cur = last
   } catch (e) { L.text = ''; L.docs = []; L.err = e.message }
   L.loading = false
   ctx.render()
 }
 
-// Word file and preview for the open resume, fetched once per resume + style.
+// Word file and preview for the open resume, fetched once per version. If the Word
+// builder can't be reached, a simpler preview and basic Word file take over.
+const keyOf = d => d.id + ':' + JSON.stringify(d.content).length
 async function ensureFiles(ctx) {
   const d = L.cur
   if (!d) return
-  const key = d.id + ':' + (d.content.template || 'modern') + ':' + JSON.stringify(d.content).length
+  const key = keyOf(d)
   if (L.files[key] || L.files['busy:' + key]) return
   L.files['busy:' + key] = true
   try {
-    L.files[key] = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'resume', data: d.content, template: d.content.template || 'modern' })
-  } catch (e) { L.err = e.message }
+    L.files[key] = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'resume', data: d.content })
+  } catch (e) { L.files[key] = { failed: e.message } }
   delete L.files['busy:' + key]
   ctx.render()
 }
-const filesFor = () => { const d = L.cur; return d && L.files[d.id + ':' + (d.content.template || 'modern') + ':' + JSON.stringify(d.content).length] }
+const filesFor = () => (L.cur ? L.files[keyOf(L.cur)] : null)
 
 async function upload(ctx, file) {
   if (!file) return
-  if (file.size > 3 * 1024 * 1024) { L.err = 'That file is over 3 MB. Try a smaller one, or paste the text.'; ctx.render(); return }
+  const problem = resumeFileProblem(file)
+  if (problem) { L.err = problem; ctx.render(); return }
   L.uploading = true; L.err = ''; ctx.render()
   try {
     const d = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'extract', filename: file.name, file: await fileToB64(file) })
     L.text = d.text; L.fileName = file.name; L.pasteOpen = true
-  } catch (e) { L.err = e.message }
+  } catch (e) { L.err = e.code || e.status < 500 ? e.message : 'We couldn’t read that file just now. Paste your resume text instead, or try again in a minute.' }
   L.uploading = false; ctx.render()
 }
 
@@ -77,16 +80,16 @@ export function resumeScreen(ctx) {
     if (L.busy) return
     L.busy = true; L.err = ''; L.note = ''; ctx.render()
     try {
-      const d = await ctx.call('/api/newpage/app', { action: 'doc_generate', kind: 'resume', background: L.text, job: L.job, additional: L.extra, role: L.role, template: L.template })
+      const d = await ctx.call('/api/newpage/app', { action: 'doc_generate', kind: 'resume', background: L.text, job: L.job, additional: L.extra, role: L.role })
       L.cur = d.doc; L.docs = [d.doc, ...(L.docs || []).filter(x => x.id !== d.doc.id)]
     } catch (e) { L.err = e.code === 'coach_off' ? 'The writer isn’t switched on yet.' : e.message }
     L.busy = false; ctx.render()
     if (L.cur && !L.err) document.getElementById('doc-result')?.scrollIntoView({ block: 'start' })
   }
 
-  const fileInput = h('input', { type: 'file', id: 'res-file', accept: '.docx,.pdf,.txt,.md', class: 'sr-only', onchange: e => upload(ctx, e.target.files[0]) })
+  const fileInput = h('input', { type: 'file', id: 'res-file', class: 'sr-only', onchange: e => upload(ctx, e.target.files[0]) })
   const form = h('form', { class: 'card doc-form', novalidate: true, onsubmit: e => { e.preventDefault(); generate() } },
-    h('div', { class: 'doc-step' }, h('span', { class: 'num' }, '1'), h('div', {}, h('b', {}, 'Your current resume'), h('p', { class: 'small muted' }, 'A Word or PDF file, or paste the text. An old, messy one is fine. We keep it so you only do this once.'))),
+    h('div', { class: 'doc-step' }, h('span', { class: 'num' }, '1'), h('div', {}, h('b', {}, 'Your current resume'), h('p', { class: 'small muted' }, 'A Word or PDF file (on a phone, pick it from Files), or paste the text. An old, messy one is fine. We keep it so you only do this once.'))),
     h('div', { class: 'row' },
       fileInput,
       h('label', { for: 'res-file', class: 'btn btn-secondary', role: 'button', tabindex: '0', onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click() } } }, L.uploading ? 'Reading your file…' : L.text ? 'Upload a different file' : 'Upload your resume'),
@@ -101,26 +104,21 @@ export function resumeScreen(ctx) {
     h('div', { class: 'field' }, h('label', { for: 'res-extra' }, 'Anything else to include? (optional)'),
       h('textarea', { id: 'res-extra', rows: '3', maxlength: '3000', placeholder: 'e.g. a project not on your old resume, a licence, a reason you’re changing fields', oninput: e => { L.extra = e.target.value } }, L.extra)),
 
-    h('div', { class: 'doc-step' }, h('span', { class: 'num' }, '3'), h('div', {}, h('b', {}, 'Style'), h('p', { class: 'small muted' }, 'You can change this after.'))),
-    templatePicker(L.template, id => { L.template = id; ctx.render() }),
-
     L.err && h('p', { class: 'error', role: 'alert' }, L.err),
     h('button', { class: 'btn btn-primary', type: 'submit', disabled: L.busy || L.uploading }, L.busy ? 'Writing your resume… up to a minute' : 'Write my resume'),
     h('p', { class: 'small muted' }, 'Written by an AI from your own resume. It’s told never to invent anything, but check every line before you send it.'))
 
   const cur = L.cur
   const files = filesFor()
+  const down = !!files?.failed
+  const fname = safeName(cur?.content.name ? 'resume-' + cur.content.name : cur?.title)
   const result = cur && h('div', { id: 'doc-result', class: 'card doc-result' },
     h('span', { class: 'label' }, cur.title),
-    files ? pagePreview(files.html) : h('p', { class: 'loading small' }, 'Building the preview…'),
+    down && h('p', { class: 'soft small', role: 'status' }, 'The full Word builder isn’t responding, so this is a simpler version. The words are the same. Please tell Vik if this keeps happening.'),
+    files ? pagePreview(down ? resumeDocHtml(cur.content) : files.html) : h('p', { class: 'loading small' }, 'Building the preview…'),
     h('div', { class: 'row doc-actions' },
-      h('button', { class: 'btn btn-primary', type: 'button', disabled: !files, onclick: () => saveB64(`${safeName(cur.content.name ? 'resume-' + cur.content.name : cur.title)}.docx`, files.docx, DOCX_TYPE) }, 'Download Word file'),
+      h('button', { class: 'btn btn-primary', type: 'button', disabled: !files, onclick: () => (down ? download(`${fname}.doc`, asWordDoc(resumeDocHtml(cur.content), cur.title), 'application/msword') : saveB64(`${fname}.docx`, files.docx, DOCX_TYPE)) }, down ? 'Download Word file (basic)' : 'Download Word file'),
       h('button', { class: 'btn btn-secondary', type: 'button', onclick: e => copyText(resumeText(cur.content), e.currentTarget) }, 'Copy text')),
-    h('div', { class: 'field' }, h('span', { class: 'label' }, 'Style'),
-      templatePicker(cur.content.template || 'modern', async id => {
-        try { const d = await ctx.call('/api/newpage/app', { action: 'doc_template', id: cur.id, template: id }); L.cur = d.doc; L.template = id; L.docs = L.docs.map(x => (x.id === d.doc.id ? d.doc : x)) } catch (e) { L.err = e.message }
-        ctx.render()
-      })),
     h('form', { class: 'field', onsubmit: async e => {
       e.preventDefault()
       if (L.editBusy || L.edit.trim().length < 4) return
@@ -134,7 +132,7 @@ export function resumeScreen(ctx) {
 
   const mine = (L.docs || []).filter(d => d.kind === 'resume' && (!cur || d.id !== cur.id))
   const saved = mine.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Saved resumes'),
-    mine.map(d => h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.cur = d; L.template = d.content.template || 'modern'; ctx.render(); document.getElementById('doc-result')?.scrollIntoView({ block: 'start' }) } }, `${d.title} · ${new Date(d.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`),
+    mine.map(d => h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.cur = d; ctx.render(); document.getElementById('doc-result')?.scrollIntoView({ block: 'start' }) } }, `${d.title} · ${new Date(d.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`),
       h('button', { class: 'x', type: 'button', 'aria-label': `Delete ${d.title}`, onclick: async () => { try { await ctx.call('/api/newpage/app', { action: 'doc_delete', id: d.id }); L.docs = L.docs.filter(x => x.id !== d.id) } catch (e) { L.err = e.message } ctx.render() } }, '×'))))
 
   return h('section', { class: 'screen docs' }, head, h('div', { class: 'docs-cols' }, h('div', {}, form), h('div', {}, result || h('div', { class: 'docs-empty muted small' }, 'Your resume appears here.'), saved)))

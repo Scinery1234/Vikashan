@@ -30,7 +30,7 @@ class Docx(unittest.TestCase):
         self.assertFalse(api.verify_session(""))
 
     def test_resume_all_templates(self):
-        for t in api.TEMPLATE_IDS:
+        for t in [x["id"] for x in rb.TEMPLATE_LIST]:
             data = rb.ResumeBuilder().build_word_document_bytes(rb.DUMMY_CANDIDATE, t)
             self.assertEqual(data[:2], b"PK")
 

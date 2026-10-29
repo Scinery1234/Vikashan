@@ -86,8 +86,8 @@ test('cleanResume and cleanCover drop junk and cap sizes', () => {
   assert.equal(r.education.length, 1)
   assert.equal(r.contact.email, '')
   assert.deepEqual(r.technical_skills, { Tools: ['Excel'] })
-  assert.equal(r.template, 'executive')
-  assert.equal(cleanResume({}, 'bogus').template, 'modern')
+  assert.equal(r.template, 'classic', 'there is one style')
+  assert.equal(cleanResume({}, 'bogus').template, 'classic')
   const c = cleanCover({ greeting: 'Hi', paragraphs: ['p1 — dash', '', 'p2'], closing: 'Thanks', signoff: 'Sam' }, { name: 'Sam' })
   assert.deepEqual(c.paragraphs, ['p1, dash', 'p2'])
   assert.equal(coverTitle('Nurse', 'Acme'), 'Cover letter: Nurse at Acme')
@@ -124,4 +124,18 @@ test('the app payload carries goals, coaches and the reminder setting', () => {
   assert.equal(me.coaches.length, 9)
   assert.equal(me.member.reminders, false)
   assert.equal(buildMe({ member: { ...member, email: 'a@b.co' }, progress: [], tasks: [], checkins: [], memory: [], messages: [] }).member.reminders, true)
+})
+
+test('an AI failure gives the member a useful message, and the log gets the real reason', async () => {
+  const { aiMessage, askJson } = await import('../lib/newpage-coach.js')
+  process.env.ANTHROPIC_API_KEY = 'k'
+  const real = globalThis.fetch
+  globalThis.fetch = async () => new Response(JSON.stringify({ error: { message: 'invalid x-api-key' } }), { status: 401, headers: { 'content-type': 'application/json' } })
+  try {
+    await assert.rejects(() => askJson({ system: 's', prompt: 'p', schema: { type: 'object', properties: {} } }), e => e.status === 401 && /invalid x-api-key/.test(e.message))
+  } finally { globalThis.fetch = real }
+  assert.match(aiMessage({ status: 401 }), /tell Vik/)
+  assert.match(aiMessage({ status: 404 }), /model/)
+  assert.match(aiMessage({ status: 429 }), /busy/)
+  assert.match(aiMessage(new Error('x')), /try again in a minute/)
 })

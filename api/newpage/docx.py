@@ -1,10 +1,10 @@
 """Word documents for New Page members, built with the Resume-Generator builder.
 
 POST JSON with a member session token:
-  {action: 'resume', data, template}  -> {docx (base64), html}
-  {action: 'cover',  data, template}  -> {docx (base64), html}
+  {action: 'resume', data}  -> {docx (base64), html}
+  {action: 'cover',  data}  -> {docx (base64), html}
   {action: 'extract', filename, file (base64)} -> {text}
-  {action: 'templates'} -> {templates: [...]}
+  {action: 'ping'} -> {ok: true}   (used by the admin system check)
 Stateless: nothing is stored here.
 """
 import base64
@@ -23,7 +23,7 @@ import doc_builder as rb  # noqa: E402  (copied unchanged from Resume-Generator)
 import cover_builder as cb  # noqa: E402
 
 MAX_BODY = 4_000_000
-TEMPLATE_IDS = [t["id"] for t in rb.TEMPLATE_LIST]
+STYLE = "classic"  # the one style offered: single column, easy for recruiters' systems to read
 
 
 def _b64url(s: str) -> bytes:
@@ -92,10 +92,10 @@ class handler(BaseHTTPRequestHandler):
             return respond(self, 401, {"error": "Please sign in again.", "code": "auth"})
 
         action = b.get("action")
-        template = b.get("template") if b.get("template") in TEMPLATE_IDS else "modern"
+        template = STYLE
         try:
-            if action == "templates":
-                return respond(self, 200, {"templates": rb.TEMPLATE_LIST})
+            if action == "ping":
+                return respond(self, 200, {"ok": True})
             if action == "extract":
                 text = extract_text(str(b.get("filename") or ""), base64.b64decode(b.get("file") or ""))
                 if len(text.strip()) < 40:

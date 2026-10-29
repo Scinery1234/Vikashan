@@ -4,7 +4,7 @@ import { requireMember } from '../../lib/newpage-auth.js'
 import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
 import { PROGRAM } from '../../newpage/program-content.js'
 import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
-import { coachSystem, toApiMessages, runCoach, askJson } from '../../lib/newpage-coach.js'
+import { coachSystem, toApiMessages, runCoach, askJson, aiMessage } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
 import { refreshContent } from '../../lib/newpage-content.js'
 import { exportMemory, eraseMemory } from '../../lib/newpage-memory-store.js'
@@ -186,7 +186,7 @@ export default async function handler(req, res) {
         return res.json({ result: task.read(out) })
       } catch (err) {
         console.error('Compass suggestion failed:', err)
-        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        return res.status(502).json({ error: aiMessage(err) })
       }
     }
 
@@ -250,7 +250,7 @@ export default async function handler(req, res) {
           content = cleanSections(await askJson({ system: SECTION_SYSTEM, prompt: SK.prompt(ctx, fields), schema: SECTIONS_SCHEMA, maxTokens: 4500 }))
         } catch (err) {
           console.error('Document failed:', err)
-          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+          return res.status(502).json({ error: aiMessage(err) })
         }
         if (!content.sections.length) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
         const title = (content.title || SK.label).slice(0, 160)
@@ -272,7 +272,7 @@ export default async function handler(req, res) {
           content = cleanResume(await askJson({ system: SYSTEM_PROMPT_GENERATE, prompt: buildGeneratePrompt({ documentsText: background, job, additional: clipText(b.additional, 3000) }), schema: RESUME_SCHEMA, maxTokens: 6000 }), template)
         } catch (err) {
           console.error('Resume failed:', err)
-          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+          return res.status(502).json({ error: aiMessage(err) })
         }
         if (!content.name && !content.experience.length) return res.status(502).json({ error: 'We couldn’t find a resume in what you gave us. Check it has your roles and dates, then try again.' })
         title = resumeTitle(content, role)
@@ -295,7 +295,7 @@ export default async function handler(req, res) {
           out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence) }), schema: COVER_SCHEMA, maxTokens: 3500 })
         } catch (err) {
           console.error('Cover letter failed:', err)
-          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+          return res.status(502).json({ error: aiMessage(err) })
         }
         const k = (b.contact && typeof b.contact === 'object') ? b.contact : {}
         const prev = lastResume?.contact || {}
@@ -326,16 +326,8 @@ export default async function handler(req, res) {
         content = cleanResume(await askJson({ system: SYSTEM_PROMPT_EDIT, prompt: buildEditPrompt({ resume: doc.content, instruction }), schema: RESUME_SCHEMA, maxTokens: 6000 }), doc.content.template)
       } catch (err) {
         console.error('Resume edit failed:', err)
-        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        return res.status(502).json({ error: aiMessage(err) })
       }
-      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
-      return res.json({ doc: { ...doc, content } })
-    }
-    case 'doc_template': {
-      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
-      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
-      if (!doc || !['resume', 'cover'].includes(doc.kind)) return res.status(404).json({ error: 'Unknown document.' })
-      const content = { ...doc.content, template: cleanTemplate(b.template) }
       await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
       return res.json({ doc: { ...doc, content } })
     }
@@ -597,7 +589,7 @@ export default async function handler(req, res) {
         reply = await runCoach({ system, messages: toApiMessages(data.messages, text), tools, learn })
       } catch (err) {
         console.error('Coach failed:', err)
-        return res.status(502).json({ error: 'The coach couldn’t answer just now. Please try again in a minute.' })
+        return res.status(502).json({ error: err.status ? aiMessage(err) : 'Sky couldn’t answer just now. Please try again in a minute.' })
       }
       await store([{ role: 'user', content: text }, { role: 'assistant', content: reply.text }])
       return res.json({ ...(await me(member, coach)), usedTools: reply.used.map(u => u.name) })

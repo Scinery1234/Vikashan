@@ -33,7 +33,7 @@ async function call(url, body, token = session) {
     body: JSON.stringify(body)
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) { const e = new Error(data.error || 'Something went wrong. Please try again.'); e.code = data.code; e.status = res.status; throw e }
+  if (!res.ok) { const e = new Error(data.error || (res.status === 504 || res.status === 502 ? 'That took too long and was stopped. Please try again in a minute.' : res.status === 413 ? 'That’s too big to send. Try something smaller.' : 'Something went wrong. Please try again.')); e.code = data.code; e.status = res.status; throw e }
   return data
 }
 
