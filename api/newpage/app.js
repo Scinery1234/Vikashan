@@ -158,6 +158,9 @@ export default async function handler(req, res) {
       } else await q.update({ done: !!b.done }).eq('id', b.id).eq('member_id', member.id)
       return res.json(await me(member, coachOf(b.coach)))
     }
+    case 'program_emails_set':
+      await supabase.from('newpage_members').update({ program_emails: !!b.on }).eq('id', member.id)
+      return res.json(await me({ ...member, program_emails: !!b.on }, coachOf(b.coach)))
     case 'reminders_set':
       await supabase.from('newpage_members').update({ reminders: !!b.on }).eq('id', member.id)
       return res.json(await me({ ...member, reminders: !!b.on }, coachOf(b.coach)))

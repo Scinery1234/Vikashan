@@ -153,6 +153,8 @@ async function renderMember(aside, id, msg = '') {
     el('p', `Last signed in: ${m.last_login_at ? fmtD(m.last_login_at) : 'never'}. Access: ${m.access_until ? 'until ' + fmtD(m.access_until) : 'no end date'}. Sessions: ${m.sessions_included ?? 1} included.`, { class: 'small muted' }))
   if (d.goals.length) { const ul = el('ul', null, { class: 'small' }); for (const g of d.goals) ul.append(el('li', `${g.done ? '✓ ' : ''}${g.title}${g.target ? ' (by ' + g.target + ')' : ''}`)); where.append(el('span', 'Their goals', { class: 'label' }), ul) }
 
+  where.append(el('p', d.programEmails ? `Program emails sent: ${d.emails.length ? d.emails.map(x => `${x.kind} (${fmtD(x.sent_at)})`).join(', ') : 'none yet'}.` : 'They have turned program emails off.', { class: 'small muted' }))
+
   // Sky's memory: only what the member has let Vik see
   const pv = d.privacy
   const LEVEL = { private: 'Nothing: they keep their chats private', share: 'Only what they choose to share', all: 'All their chats' }

@@ -124,6 +124,8 @@ function render() {
     list.append(wrap)
   }
   if (S.tab === 'plan') {
+    const prog = items.filter(it => it.q === 'program')
+    if (prog.length) list.append(el('div', null, { class: 'ce-group' }, el('h3', 'Emails during the four weeks'), emailGroup('Weekly nudges, booking, renewal and check-in emails', prog)))
     const shared = items.filter(it => it.q === 'shared').sort((a, b) => a.day - b.day)
     if (shared.length) list.append(el('div', null, { class: 'ce-group' }, el('h3', 'Follow-up emails sent to every type'), emailGroup('Days 28, 35 and 42', shared)))
   }

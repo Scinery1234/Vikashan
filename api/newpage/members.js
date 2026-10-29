@@ -87,15 +87,16 @@ export default async function handler(req, res) {
     const { data: row } = await supabase.from('newpage_members').select('*').eq('id', id).maybeSingle()
     if (!row) return res.status(404).json({ error: 'Unknown member.' })
     const m = { id: row.id, email: row.email, name: row.name, status: row.status, source: row.source, quadrant: row.quadrant, plan_started_at: row.plan_started_at, last_login_at: row.last_login_at, access_until: row.access_until, sessions_included: row.sessions_included, coach_notes: row.coach_notes }
-    const [tasks, checkins, progress, goals] = await Promise.all([
+    const [tasks, checkins, progress, goals, emails] = await Promise.all([
       supabase.from('newpage_tasks').select('id, title, due, done, source, block_start, block_mins, created_at').eq('member_id', id).order('created_at', { ascending: false }).limit(60),
       supabase.from('newpage_checkins').select('clarity, capacity, quadrant, created_at').eq('member_id', id).order('created_at', { ascending: false }).limit(5),
       supabase.from('newpage_progress').select('week, step').eq('member_id', id),
-      supabase.from('newpage_goals').select('title, target, done').eq('member_id', id).order('created_at', { ascending: true }).limit(20)
+      supabase.from('newpage_goals').select('title, target, done').eq('member_id', id).order('created_at', { ascending: true }).limit(20),
+      supabase.from('newpage_member_emails').select('kind, sent_at').eq('member_id', id).order('sent_at', { ascending: true }).limit(40)
     ])
     const privacy = await memberPrivacyView(row)
     const pos = programPosition(m.plan_started_at, Date.now())
-    return res.json({ member: m, position: { week: pos.week, day: pos.day, complete: !!pos.complete }, stepsDone: (progress.data || []).length, tasks: tasks.data || [], checkins: checkins.data || [], goals: goals.data || [], privacy })
+    return res.json({ member: m, position: { week: pos.week, day: pos.day, complete: !!pos.complete }, stepsDone: (progress.data || []).length, tasks: tasks.data || [], checkins: checkins.data || [], goals: goals.data || [], privacy, emails: emails.data || [], programEmails: row.program_emails !== false })
   }
   if (req.method === 'GET') {
     const { data, error } = await supabase.from('newpage_members')
