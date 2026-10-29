@@ -1,10 +1,9 @@
-import { Resend } from 'resend'
+import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { rateLimit } from '../../lib/security.js'
 import { signMagic, signSession, readToken } from '../../lib/newpage-auth.js'
 import { memberLoginEmail, APP_URL } from '../../lib/newpage-emails.js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 // POST { action: 'request', email }  sends a sign-in link to a member's email.
@@ -25,7 +24,7 @@ export default async function handler(req, res) {
       const link = `${APP_URL()}?t=${encodeURIComponent(signMagic(email))}`
       const mail = memberLoginEmail({ name: member.name, link })
       try {
-        await resend.emails.send({ from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`, to: email, reply_to: process.env.ADMIN_EMAIL, subject: mail.subject, html: mail.html })
+        await sendMail({ from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`, to: email, reply_to: process.env.ADMIN_EMAIL, subject: mail.subject, html: mail.html })
       } catch (err) {
         console.error('Sign-in email failed:', err)
         return res.status(502).json({ error: 'We couldn’t send the email. Please try again in a minute.' })

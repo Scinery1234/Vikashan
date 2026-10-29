@@ -220,7 +220,7 @@ CREATE TABLE IF NOT EXISTS newpage_tools (
 CREATE TABLE IF NOT EXISTS newpage_docs (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
   member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
-  kind text NOT NULL CHECK (kind IN ('resume','cover')),
+  kind text NOT NULL CHECK (kind IN ('resume','cover','report','linkedin','outreach','brief','progress')),
   title text NOT NULL,
   content jsonb NOT NULL,
   created_at timestamptz DEFAULT now()
@@ -230,3 +230,77 @@ CREATE INDEX IF NOT EXISTS newpage_docs_member_idx ON newpage_docs (member_id, c
 ALTER TABLE newpage_goals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_tools ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_docs ENABLE ROW LEVEL SECURITY;
+
+-- ── Membership length, included sessions, and the members-only session type ──
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS access_until timestamptz;       -- null = no end date
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS sessions_included integer DEFAULT 1;
+
+ALTER TABLE session_types ADD COLUMN IF NOT EXISTS members_only boolean DEFAULT false;
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS newpage_member_id uuid REFERENCES newpage_members(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_bookings_np_member ON bookings(newpage_member_id);
+
+INSERT INTO session_types (name, description, duration_mins, price_min_cents, price_max_cents, is_free, buffer_mins, max_per_day, members_only)
+SELECT 'New Page 1:1 session', 'Your 60-minute session with Vik, included in New Page.', 60, 0, 0, true, 15, 5, true
+WHERE NOT EXISTS (SELECT 1 FROM session_types WHERE name = 'New Page 1:1 session');
+
+-- ── Payments and scholarship codes ──
+-- One row per Stripe payment we've acted on. The unique session id stops a
+-- retried webhook from giving someone a second month.
+CREATE TABLE IF NOT EXISTS newpage_payments (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  stripe_session_id text UNIQUE NOT NULL,
+  kind text NOT NULL CHECK (kind IN ('join','renew','hours')),
+  email text,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE SET NULL,
+  amount_cents integer,
+  hours integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Scholarship codes: each works once and covers the whole program.
+CREATE TABLE IF NOT EXISTS newpage_codes (
+  code text PRIMARY KEY,
+  note text,
+  used_at timestamptz,
+  used_by_email text,
+  created_at timestamptz DEFAULT now()
+);
+
+ALTER TABLE newpage_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newpage_codes ENABLE ROW LEVEL SECURITY;
+
+-- 30 premade codes (five a month for six months), made once. Running this file again adds none.
+INSERT INTO newpage_codes (code)
+SELECT 'NP-' || upper(substr(h, 1, 4)) || '-' || upper(substr(h, 5, 4)) || '-' || upper(substr(h, 9, 4))
+FROM (SELECT encode(gen_random_bytes(6), 'hex') AS h FROM generate_series(1, 30)) t
+WHERE NOT EXISTS (SELECT 1 FROM newpage_codes);
+
+-- The program adds more document types (report, LinkedIn, outreach, session brief, progress report).
+ALTER TABLE newpage_docs DROP CONSTRAINT IF EXISTS newpage_docs_kind_check;
+ALTER TABLE newpage_docs ADD CONSTRAINT newpage_docs_kind_check CHECK (kind IN ('resume','cover','report','linkedin','outreach','brief','progress'));
+
+-- ── Notes: a private place for members to type and work things out ──
+CREATE TABLE IF NOT EXISTS newpage_notes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  title text NOT NULL DEFAULT '',
+  body text NOT NULL DEFAULT '',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_notes_member_idx ON newpage_notes (member_id, updated_at DESC);
+ALTER TABLE newpage_notes ENABLE ROW LEVEL SECURITY;
+
+-- ── Coach panel: tasks Vik adds, and Vik's private notes on a member ──
+ALTER TABLE newpage_tasks DROP CONSTRAINT IF EXISTS newpage_tasks_source_check;
+ALTER TABLE newpage_tasks ADD CONSTRAINT newpage_tasks_source_check CHECK (source IN ('you','coach','compass','vik'));
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS coach_notes text;
+
+-- ── Editable content: Vik's edits to the program, library and emailed plans ──
+-- One row per edited item. Each row holds only the fields that differ from the original.
+CREATE TABLE IF NOT EXISTS newpage_content (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL,
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE newpage_content ENABLE ROW LEVEL SECURITY;

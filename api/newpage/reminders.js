@@ -1,8 +1,7 @@
-import { Resend } from 'resend'
+import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { reminderEmail } from '../../lib/newpage-emails.js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const sydneyDate = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(now)
 
 // Daily cron (vercel.json), around 7am in Sydney. Emails each active member
@@ -29,7 +28,7 @@ export default async function handler(req, res) {
     items.sort((a, b) => Number(a.overdue) - Number(b.overdue) || (a.start || '99').localeCompare(b.start || '99'))
     const mail = reminderEmail({ name: m.name, items: items.slice(0, 8) })
     try {
-      await resend.emails.send({ from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`, to: m.email, reply_to: process.env.ADMIN_EMAIL, subject: mail.subject, html: mail.html })
+      await sendMail({ from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`, to: m.email, reply_to: process.env.ADMIN_EMAIL, subject: mail.subject, html: mail.html })
       await supabase.from('newpage_members').update({ last_reminder_on: today }).eq('id', m.id)
       sent.total++
     } catch (err) {

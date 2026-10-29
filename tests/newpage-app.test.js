@@ -11,6 +11,7 @@ const { verifyToken, signToken } = await import('../lib/auth.js')
 const { programPosition, cleanCheckin, detectCrisis, planFor, buildMe, CRISIS_REPLY } = await import('../lib/newpage-app.js')
 const { coachSystem, toApiMessages, COACH_TOOLS } = await import('../lib/newpage-coach.js')
 const { QUADRANTS } = await import('../newpage/quiz-logic.js')
+const { PROGRAM } = await import('../newpage/program-content.js')
 
 const DAY = 24 * 60 * 60 * 1000
 const answers = { s1: 4, s3: 4, s5: 3, s7: 3, s2: 2, s4: 3, s6: 2, s8: 2, sit: 'employed', sat: 2, feel: 2 }
@@ -78,7 +79,7 @@ test('me payload: current week, step progress, session window, and dot position'
   const me = buildMe({ member, progress: [{ week: 2, step: 0 }, { week: 1, step: 1 }], tasks: [], checkins: [], memory: [], messages: [], now, coachOn: true })
   assert.equal(me.program.week, 2)
   assert.equal(me.program.doneThisWeek, 1)
-  assert.equal(me.program.totalThisWeek, QUADRANTS.unstick.weeks[1].steps.length)
+  assert.equal(me.program.totalThisWeek, PROGRAM.unstick[1].tasks.length)
   assert.equal(me.program.sessionWindow, true)
   assert.ok(me.progress.includes('2-0') && me.progress.includes('1-1'))
   assert.deepEqual(me.position, { x: 33, y: 83 }, 'no check-in yet: position comes from the quiz result')
@@ -94,7 +95,7 @@ test('coach prompt carries the plan, week, tasks and notes, and the safety rules
     tasks: [{ title: 'Update resume', due: '2026-10-12', done: false }, { title: 'Old thing', done: true }],
     memory: [{ note: 'Wants a policy role.' }]
   })
-  assert.match(sys, /Unstick/); assert.match(sys, /week 2/); assert.match(sys, /Make it smaller/)
+  assert.match(sys, /Unstick/); assert.match(sys, /week 2/); assert.match(sys, /Find your reason/); assert.match(sys, /featured tool is the Compass/)
   assert.match(sys, /Update resume \(due 2026-10-12\)/); assert.ok(!/Old thing/.test(sys))
   assert.match(sys, /Wants a policy role/)
   assert.match(sys, /13 11 14/); assert.match(sys, /You are an AI/); assert.match(sys, /not therapy/)

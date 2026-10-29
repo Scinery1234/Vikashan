@@ -2,13 +2,25 @@ import { supabase } from '../../lib/supabase.js'
 import { rateLimit } from '../../lib/security.js'
 import { requireMember } from '../../lib/newpage-auth.js'
 import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
+import { PROGRAM } from '../../newpage/program-content.js'
 import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
 import { coachSystem, toApiMessages, runCoach, askJson } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
+import { refreshContent } from '../../lib/newpage-content.js'
+import { getAvailableSlots } from '../../lib/availability.js'
+import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
+import { sendConfirmation } from '../../lib/resend.js'
+import { stripe, renewSessionParams, hoursSessionParams } from '../../lib/newpage-stripe.js'
+import { cleanHours } from '../../lib/newpage-pricing.js'
+import { createOutlookEvent } from '../../lib/outlook.js'
+import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import {
   COMPASS_SYSTEM, COMPASS_TASKS, cleanCompass,
-  DOC_SYSTEM, RESUME_SCHEMA, COVER_SCHEMA, resumePrompt, coverPrompt, cleanResume, cleanCover, docTitle, clipText
+  clipText,
+  SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
+import { SYSTEM_PROMPT_GENERATE, SYSTEM_PROMPT_EDIT, RESUME_SCHEMA, buildGeneratePrompt, buildEditPrompt, cleanResume, cleanTemplate, resumeTitle, resumeText } from '../../lib/newpage-resume.js'
+import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SCHEMA, cleanAnalysis, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -20,16 +32,17 @@ const cleanTime = v => (typeof v === 'string' && TIME_RE.test(v) ? v : null)
 const cleanMins = v => (Number.isInteger(Number(v)) && Number(v) >= 5 && Number(v) <= 600 ? Number(v) : null)
 
 async function load(memberId, coach = 'career') {
-  const [progress, tasks, checkins, memory, messages, goals] = await Promise.all([
+  const [progress, tasks, checkins, memory, messages, goals, bookings] = await Promise.all([
     supabase.from('newpage_progress').select('week, step').eq('member_id', memberId),
     supabase.from('newpage_tasks').select('id, title, due, done, source, created_at, block_start, block_mins, goal_id').eq('member_id', memberId).order('created_at', { ascending: true }).limit(200),
     supabase.from('newpage_checkins').select('clarity, capacity, quadrant, created_at').eq('member_id', memberId).order('created_at', { ascending: true }).limit(60),
     supabase.from('newpage_memory').select('id, note').eq('member_id', memberId).order('created_at', { ascending: true }).limit(60),
     supabase.from('newpage_messages').select('role, content, created_at').eq('member_id', memberId).eq('coach', coach).order('id', { ascending: false }).limit(40),
-    supabase.from('newpage_goals').select('id, title, target, done').eq('member_id', memberId).order('created_at', { ascending: true }).limit(50)
+    supabase.from('newpage_goals').select('id, title, target, done').eq('member_id', memberId).order('created_at', { ascending: true }).limit(50),
+    supabase.from('bookings').select('id, date, start_time, status').eq('newpage_member_id', memberId).limit(100)
   ])
   return {
-    progress: progress.data || [], goals: goals.data || [],
+    progress: progress.data || [], goals: goals.data || [], bookings: bookings.data || [],
     tasks: (tasks.data || []).map(t => ({ id: t.id, title: t.title, due: t.due, done: t.done, source: t.source, goalId: t.goal_id || null, start: t.block_start ? String(t.block_start).slice(0, 5) : null, mins: t.block_mins || null })), checkins: checkins.data || [], memory: memory.data || [],
     messages: (messages.data || []).reverse()
   }
@@ -37,7 +50,7 @@ async function load(memberId, coach = 'career') {
 
 async function me(member, coach = 'career') {
   const data = await load(member.id, coach)
-  return { ...buildMe({ member, ...data, coachOn: !!process.env.ANTHROPIC_API_KEY }), coach }
+  return { ...buildMe({ member, ...data, sessions: sessionState(member.sessions_included, data.bookings), coachOn: !!process.env.ANTHROPIC_API_KEY }), coach }
 }
 
 // One endpoint for everything a signed-in member does: POST { action, ... }
@@ -46,6 +59,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
   const member = await requireMember(req, res)
   if (!member) return
+  await refreshContent()
   const b = req.body || {}
 
   switch (b.action) {
@@ -54,8 +68,8 @@ export default async function handler(req, res) {
 
     case 'progress': {
       const week = Number(b.week), step = Number(b.step)
-      const plan = member.quadrant ? QUADRANTS[member.quadrant].weeks : null
-      if (!plan || !Number.isInteger(week) || week < 1 || week > PROGRAM_WEEKS || !Number.isInteger(step) || step < 0 || step >= plan[week - 1].steps.length) {
+      const plan = member.quadrant ? PROGRAM[member.quadrant] : null
+      if (!plan || !Number.isInteger(week) || week < 1 || week > PROGRAM_WEEKS || !Number.isInteger(step) || step < 0 || step >= plan[week - 1].tasks.length) {
         return res.status(400).json({ error: 'That step doesn’t exist.' })
       }
       if (b.done) await supabase.from('newpage_progress').upsert({ member_id: member.id, week, step }, { onConflict: 'member_id,week,step' })
@@ -135,6 +149,30 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Notes: a private place for the member to type and work things out ──
+    case 'note_list': {
+      const { data } = await supabase.from('newpage_notes').select('id, title, body, updated_at').eq('member_id', member.id).order('updated_at', { ascending: false }).limit(100)
+      return res.json({ notes: data || [] })
+    }
+    case 'note_save': {
+      const title = clip(b.title, 120), body = clipText(b.body, 30000)
+      const now = new Date().toISOString()
+      if (b.id) {
+        if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown note.' })
+        const { data } = await supabase.from('newpage_notes').update({ title, body, updated_at: now }).eq('id', b.id).eq('member_id', member.id).select('id, title, body, updated_at').maybeSingle()
+        if (!data) return res.status(404).json({ error: 'That note is gone.' })
+        return res.json({ note: data })
+      }
+      const { count } = await supabase.from('newpage_notes').select('id', { count: 'exact', head: true }).eq('member_id', member.id)
+      if ((count || 0) >= 100) return res.status(400).json({ error: 'You have 100 notes. Delete one to make room.' })
+      const { data } = await supabase.from('newpage_notes').insert({ member_id: member.id, title, body, updated_at: now }).select('id, title, body, updated_at').single()
+      return res.json({ note: data })
+    }
+    case 'note_delete':
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown note.' })
+      await supabase.from('newpage_notes').delete().eq('id', b.id).eq('member_id', member.id)
+      return res.json({ ok: true })
+
     // ── Resume and cover letter ──
     case 'doc_list': {
       const { data } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(20)
@@ -145,30 +183,143 @@ export default async function handler(req, res) {
       await supabase.from('newpage_docs').delete().eq('id', b.id).eq('member_id', member.id)
       return res.json({ ok: true })
     case 'doc_generate': {
+      if (SECTION_KINDS[b.kind]) {
+        const SK = SECTION_KINDS[b.kind]
+        if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+        const fields = cleanFields(b.kind, b.fields)
+        const background = clipText(b.background, 12000)
+        if (b.kind === 'linkedin' && background) await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
+        const [data, cp, pr] = await Promise.all([
+          load(member.id),
+          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'compass').maybeSingle(),
+          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle()
+        ])
+        const ctx = memberContext({
+          member, compass: cp.data?.data, checkins: data.checkins, memory: data.memory, doneCount: data.progress.length,
+          taskDone: data.tasks.filter(t => t.done).length, profile: ['linkedin', 'report', 'progress', 'brief'].includes(b.kind) ? (background || clipText(pr.data?.data?.text, 4000)) : ''
+        })
+        const problem = SK.needs(ctx, fields)
+        if (problem) return res.status(400).json({ error: problem })
+        let content
+        try {
+          content = cleanSections(await askJson({ system: SECTION_SYSTEM, prompt: SK.prompt(ctx, fields), schema: SECTIONS_SCHEMA, maxTokens: 4500 }))
+        } catch (err) {
+          console.error('Document failed:', err)
+          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        }
+        if (!content.sections.length) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        const title = (content.title || SK.label).slice(0, 160)
+        const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: b.kind, title, content }).select('id, kind, title, content, created_at').single()
+        return res.json({ doc: saved || { kind: b.kind, title, content } })
+      }
       const kind = b.kind === 'cover' ? 'cover' : b.kind === 'resume' ? 'resume' : null
       if (!kind) return res.status(400).json({ error: 'Choose a resume or a cover letter.' })
-      const background = clipText(b.background, 12000)
-      if (background.length < 80) return res.status(400).json({ error: 'Paste your work history first: your roles, dates and what you achieved. A page or so is plenty.' })
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
-      if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-      const job = clipText(b.job, 6000), company = clipText(b.company, 120), role = clipText(b.role, 120)
-      await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
-      let content
-      try {
-        if (kind === 'resume') {
-          content = cleanResume(await askJson({ system: DOC_SYSTEM, prompt: resumePrompt({ background, job }), schema: RESUME_SCHEMA, maxTokens: 4000 }))
-        } else {
-          const { data: last } = await supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
-          const resume = last?.[0]?.content ? JSON.stringify(last[0].content).slice(0, 5000) : ''
-          content = cleanCover(await askJson({ system: DOC_SYSTEM, prompt: coverPrompt({ background, job, name: member.name || '', company, role, resume }), schema: COVER_SCHEMA, maxTokens: 2000 }))
+      const job = clipText(b.job, 8000), company = clipText(b.company, 120), role = clipText(b.role, 120)
+      const template = cleanTemplate(b.template)
+      let content, title
+      if (kind === 'resume') {
+        const background = clipText(b.background, 20000)
+        if (background.length < 80) return res.status(400).json({ error: 'Add your current resume first: upload it, or paste your roles, dates and what you achieved.' })
+        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+        await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background.slice(0, 12000) }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
+        try {
+          content = cleanResume(await askJson({ system: SYSTEM_PROMPT_GENERATE, prompt: buildGeneratePrompt({ documentsText: background, job, additional: clipText(b.additional, 3000) }), schema: RESUME_SCHEMA, maxTokens: 6000 }), template)
+        } catch (err) {
+          console.error('Resume failed:', err)
+          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
         }
-      } catch (err) {
-        console.error('Document failed:', err)
-        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        if (!content.name && !content.experience.length) return res.status(502).json({ error: 'We couldn’t find a resume in what you gave us. Check it has your roles and dates, then try again.' })
+        title = resumeTitle(content, role)
+      } else {
+        if (job.length < 60) return res.status(400).json({ error: 'Paste the job ad first.' })
+        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+        const [pr, last] = await Promise.all([
+          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle(),
+          supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
+        ])
+        const lastResume = last.data?.[0]?.content || null
+        const resume = clipText(b.resume, 20000) || (lastResume ? resumeText(lastResume) : clipText(pr.data?.data?.text, 12000))
+        if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Write or upload it in the Resume writer, then come back.' })
+        const { keywords, requirements } = analyseJob(job)
+        const keep = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : keywords
+        const name = clip(b.name, 100) || member.name || lastResume?.name || ''
+        const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
+        let out
+        try {
+          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence) }), schema: COVER_SCHEMA, maxTokens: 3500 })
+        } catch (err) {
+          console.error('Cover letter failed:', err)
+          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        }
+        const k = (b.contact && typeof b.contact === 'object') ? b.contact : {}
+        const prev = lastResume?.contact || {}
+        content = cleanCover(out, {
+          name, template,
+          contact: { phone: clip(k.phone, 40) || prev.phone, email: clip(k.email, 120) || prev.email || member.email, location: clip(k.location, 100) || prev.location, linkedin: clip(k.linkedin, 200) || prev.linkedin },
+          date: sydneyDate(), recipient: ['Hiring Manager', company].filter(Boolean)
+        })
+        if (content.paragraphs.length < 2) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        if (!content.subject && role) content.subject = `Application for ${role}`
+        title = coverTitle(role, company)
       }
-      const title = docTitle(kind, content, role, company)
       const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind, title, content }).select('id, kind, title, content, created_at').single()
       return res.json({ doc: saved || { kind, title, content } })
+    }
+
+    // Plain-words edit of a saved resume ("make the summary shorter"), using Resume-Generator's edit rules.
+    case 'doc_edit': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const instruction = clipText(b.instruction, 1000)
+      if (instruction.length < 4) return res.status(400).json({ error: 'Say what you’d like changed.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-docedit-${member.id}` })) return
+      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
+      if (!doc || doc.kind !== 'resume') return res.status(404).json({ error: 'Unknown document.' })
+      let content
+      try {
+        content = cleanResume(await askJson({ system: SYSTEM_PROMPT_EDIT, prompt: buildEditPrompt({ resume: doc.content, instruction }), schema: RESUME_SCHEMA, maxTokens: 6000 }), doc.content.template)
+      } catch (err) {
+        console.error('Resume edit failed:', err)
+        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+      }
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
+    }
+    case 'doc_template': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
+      if (!doc || !['resume', 'cover'].includes(doc.kind)) return res.status(404).json({ error: 'Unknown document.' })
+      const content = { ...doc.content, template: cleanTemplate(b.template) }
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
+    }
+    // The member edited their cover letter text by hand; keep it.
+    case 'doc_save': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
+      const d = b.content && typeof b.content === 'object' ? b.content : {}
+      const content = cleanCover(d, { name: doc.content.name, contact: doc.content.contact, date: doc.content.date, recipient: doc.content.recipient, template: doc.content.template })
+      if (content.paragraphs.length < 1) return res.status(400).json({ error: 'A letter needs at least one paragraph.' })
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
+    }
+    case 'cover_analyse': {
+      const job = clipText(b.job, 8000)
+      if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
+      const fallback = analyseJob(job)
+      if (!process.env.ANTHROPIC_API_KEY) return res.json(fallback)
+      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
+      try {
+        const out = await askJson({ system: COVER_SYSTEM, prompt: analysePrompt(job), schema: ANALYSE_SCHEMA, maxTokens: 1200 })
+        const r = cleanAnalysis(out)
+        return res.json(r.keywords.length >= 3 ? r : fallback)
+      } catch (err) {
+        console.error('Ad analysis failed, using the simple reader:', err)
+        return res.json(fallback)
+      }
     }
 
     case 'task_toggle':
@@ -178,6 +329,66 @@ export default async function handler(req, res) {
       if (b.action === 'task_delete') await q.delete().eq('id', b.id).eq('member_id', member.id)
       else await q.update({ done: !!b.done }).eq('id', b.id).eq('member_id', member.id)
       return res.json(await me(member, coachOf(b.coach)))
+    }
+
+    // ── The included 1:1 session with Vik ──
+    case 'slots': {
+      const date = String(b.date || '')
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Choose a date.' })
+      const { slots } = await getAvailableSlots(date)
+      return res.json({ date, slots: slots.filter(sl => !bookingProblem(date, sl.hour)) })
+    }
+    case 'session_book': {
+      if (!rateLimit(req, res, { max: 10, windowMs: 60 * 60 * 1000, key: `np-session-${member.id}` })) return
+      const date = String(b.date || ''), hour = Number(b.hour)
+      const problem = bookingProblem(date, hour)
+      if (problem) return res.status(400).json({ error: problem })
+      const state = sessionState(member.sessions_included, (await load(member.id)).bookings)
+      if (state.remaining < 1) return res.status(403).json({ error: 'You’ve used the session included in New Page. Reply to any email from Vik to add more hours.', code: 'no_sessions' })
+      const { slots } = await getAvailableSlots(date)
+      if (!slots.some(sl => sl.hour === hour)) return res.status(409).json({ error: 'Sorry, that time was just taken. Please choose another.', code: 'taken' })
+      const { data: type } = await supabase.from('session_types').select('*').eq('name', 'New Page 1:1 session').maybeSingle()
+      if (!type) return res.status(500).json({ error: 'Session booking isn’t set up yet. Please email Vik.' })
+
+      let { data: client } = await supabase.from('clients').select('*').eq('email', member.email).maybeSingle()
+      if (!client) ({ data: client } = await supabase.from('clients').insert({ name: member.name || member.email, email: member.email, status: 'active' }).select().single())
+      if (!client) return res.status(500).json({ error: 'Could not book that. Please try again.' })
+
+      const time = `${String(hour).padStart(2, '0')}:00`
+      const { data: booking, error } = await supabase.from('bookings').insert({
+        client_id: client.id, session_type_id: type.id, date, start_time: time, duration_mins: type.duration_mins,
+        meet_link: process.env.ZOOM_PERSONAL_LINK, amount_cents: 0, tier: 'free', status: 'confirmed', newpage_member_id: member.id,
+        notes: 'New Page included session'
+      }).select().single()
+      if (error || !booking) { console.error('Session booking failed:', error); return res.status(500).json({ error: 'Could not book that. Please try again.' }) }
+      await supabase.from('newpage_members').update({ session_booked: true }).eq('id', member.id)
+
+      const confirmed = { ...booking, session_type_name: type.name }
+      try {
+        await Promise.all([
+          sendConfirmation({ booking: confirmed, client, zoomLink: booking.meet_link }),
+          createOutlookEvent({ booking: confirmed, client, meetLink: booking.meet_link }),
+          createGoogleCalendarEvent({ booking: confirmed, client, meetLink: booking.meet_link })
+        ])
+      } catch (err) { console.error('Session confirmation failed:', err) }
+      return res.json({ ...(await me({ ...member, session_booked: true }, coachOf(b.coach))), booked: { date, time } })
+    }
+
+    // ── Paying for more: another month, or extra hours with Vik ──
+    case 'renew_checkout':
+    case 'hours_checkout': {
+      if (!rateLimit(req, res, { max: 10, windowMs: 60 * 60 * 1000, key: `np-buy-${member.id}` })) return
+      if (member.source === 'scholarship') return res.status(403).json({ error: 'Scholarship places can’t be renewed here. Reply to any email from Vik to talk about it.', code: 'scholarship' })
+      const hours = b.action === 'hours_checkout' ? cleanHours(b.hours) : 0
+      if (b.action === 'hours_checkout' && !hours) return res.status(400).json({ error: 'Choose between 1 and 8 hours.' })
+      try {
+        const params = b.action === 'renew_checkout' ? renewSessionParams({ member }) : hoursSessionParams({ member, hours })
+        const session = await stripe().checkout.sessions.create(params)
+        return res.json({ url: session.url })
+      } catch (err) {
+        console.error('Checkout failed:', err)
+        return res.status(502).json({ error: 'We couldn’t start the payment. Please try again in a minute.' })
+      }
     }
 
     case 'session_booked':

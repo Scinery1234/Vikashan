@@ -1,9 +1,8 @@
-import { Resend } from 'resend'
+import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { requireAdmin } from '../../lib/auth.js'
 import { launchEmail } from '../../lib/newpage-emails.js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const BATCH = 50 // per request, to stay inside the function time limit
 
 // The "New Page is open" email, sent from newpage/admin (admin login only).
@@ -48,7 +47,12 @@ export default async function handler(req, res) {
 
   if (mode === 'test') {
     const mail = launchEmail({ name: 'Vik', checkoutUrl: url })
-    await resend.emails.send({ from, to: process.env.ADMIN_EMAIL, subject: `[Test] ${mail.subject}`, html: mail.html })
+    try {
+      await sendMail({ from, to: process.env.ADMIN_EMAIL, subject: `[Test] ${mail.subject}`, html: mail.html })
+    } catch (err) {
+      console.error('Launch test email failed:', err)
+      return res.status(502).json({ error: `The test email didn’t send: ${err.message}` })
+    }
     return res.json({ ok: true, test: true, waiting: people.length })
   }
   if (mode !== 'send') return res.status(400).json({ error: 'Unknown mode' })
@@ -57,7 +61,7 @@ export default async function handler(req, res) {
   for (const p of people.slice(0, BATCH)) {
     const mail = launchEmail({ name: p.name, checkoutUrl: url, token: p.unsubscribe_token })
     try {
-      await resend.emails.send({ from, to: p.email, reply_to: process.env.ADMIN_EMAIL, subject: mail.subject, html: mail.html })
+      await sendMail({ from, to: p.email, reply_to: process.env.ADMIN_EMAIL, subject: mail.subject, html: mail.html })
       sent++
     } catch (err) {
       console.error('Launch email failed:', p.email, err)

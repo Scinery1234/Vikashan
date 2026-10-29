@@ -240,5 +240,5 @@ function summary(ctx, C) {
       h('dt', {}, 'Direction'), h('dd', {}, C.first || '—')),
     h('p', { class: 'small' }, C.north),
     h('button', { class: 'btn btn-secondary', type: 'button', onclick: e => copyText(text, e.currentTarget) }, 'Copy my Compass'),
-    h('p', { class: 'small muted' }, 'Your coaches know your direction and values. Bring this to your session with Vik.'))
+    h('p', { class: 'small muted' }, 'Sky knows your direction and values. Bring this to your session with Vik.'))
 }

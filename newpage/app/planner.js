@@ -1,6 +1,7 @@
 // The planner: tasks with dates and time blocks, goals, and calendar export.
 import { h, todayStr, addDays, fmtDay, addMinutes, download, ics, gcalUrl } from './ui.js'
 
+const SOURCE = { coach: 'From Sky', compass: 'Compass', vik: 'From Vik' }
 const L = { newTask: '', due: '', start: '', mins: '30', goal: '', newGoal: '', goalDate: '', editing: null, showDone: false, err: '' }
 
 export function plannerScreen(ctx) {
@@ -31,7 +32,7 @@ export function plannerScreen(ctx) {
         t.start && h('span', { class: 'time' }, `${t.start}–${addMinutes(t.start, t.mins || 30)}`),
         t.due && h('span', { class: 'due' }, t.due < today ? `${fmtDay(t.due)} · overdue` : t.due === today ? 'Today' : fmtDay(t.due)),
         t.goalId && goalName(t.goalId) && h('span', { class: 'src' }, goalName(t.goalId)),
-        t.source !== 'you' && h('span', { class: 'src' }, t.source),
+        t.source !== 'you' && h('span', { class: 'src' + (t.source === 'vik' ? ' vik' : '') }, SOURCE[t.source] || t.source),
         t.due && !t.done && h('a', { class: 'cal', href: gcalUrl(t), target: '_blank', rel: 'noopener', 'aria-label': `Add ${t.title} to Google Calendar` }, 'Google'),
         !t.done && h('button', { class: 'cal', type: 'button', onclick: () => { L.editing = t.id; render() } }, 'Edit')),
       h('button', { class: 'x', type: 'button', 'aria-label': `Delete ${t.title}`, onclick: () => run('task_delete', { id: t.id }) }, '×'))
@@ -87,7 +88,7 @@ export function plannerScreen(ctx) {
 
   return h('section', { class: 'screen' },
     h('div', {}, h('button', { class: 'link-btn back', type: 'button', onclick: () => ctx.go('tools') }, '← Tools'), h('h2', {}, 'Planner'),
-      h('p', { class: 'muted' }, 'Tasks, time blocks and goals. Your coaches can add to this list too.')),
+      h('p', { class: 'muted' }, 'Tasks, time blocks and goals. Sky can add to this list too.')),
     L.err && h('p', { class: 'error', role: 'alert' }, L.err),
     h('div', { class: 'plan-cols' }, h('div', { class: 'col-a' }, addForm,
     groups.map(([title, list]) => list.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, title), h('div', { class: 'tasks' }, list.map(row)))),

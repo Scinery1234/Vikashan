@@ -1,9 +1,8 @@
-import { Resend } from 'resend'
+import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { rateLimit, isBot } from '../../lib/security.js'
 import { esc } from '../../lib/newpage-emails.js'
 
-const resend = new Resend(process.env.RESEND_API_KEY)
 const MONTHLY_PLACES = 5
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const QUADS = new Set(['recharge', 'explore', 'unstick', 'launch'])
@@ -57,7 +56,7 @@ export default async function handler(req, res) {
 
   const from = `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`
   try {
-    await resend.emails.send({
+    await sendMail({
       from, to: process.env.ADMIN_EMAIL, reply_to: email,
       subject: `New Page scholarship application: ${name}`,
       html: `<p><b>${esc(name)}</b> (${esc(email)}) applied for a New Page scholarship.</p>
@@ -66,7 +65,7 @@ export default async function handler(req, res) {
         <p><b>Their situation:</b><br>${esc(situation).replace(/\n/g, '<br>')}</p>
         <p>Approved this month so far: ${count || 0} of ${MONTHLY_PLACES}. Set the status to "approved" or "declined" in the newpage_scholarships table.</p>`
     })
-    await resend.emails.send({
+    await sendMail({
       from, to: email, reply_to: process.env.ADMIN_EMAIL,
       subject: 'We’ve received your New Page scholarship application',
       html: `<p>Hi ${esc(name.split(' ')[0])},</p><p>Thanks for applying for a New Page scholarship. Vik reads every application personally and will reply by email.</p><p>Vik</p>`

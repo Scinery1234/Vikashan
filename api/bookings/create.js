@@ -32,6 +32,7 @@ export default async function handler(req, res) {
     .single()
 
   if (!sessionType) return res.status(404).json({ error: 'Session type not found' })
+  if (sessionType.members_only) return res.status(403).json({ error: 'That session is for New Page members. Sign in at /newpage/app to book it.' })
 
   // Use the configured Zoom personal room link for all sessions
   const zoomLink = process.env.ZOOM_PERSONAL_LINK

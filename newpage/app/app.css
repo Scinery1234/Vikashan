@@ -155,3 +155,127 @@
   .cp-steps, .compass > p { max-width: 860px; }
   .paper.wide .cp-footer { max-width: 860px; }
 }
+
+.stepper-row { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+.step-btn { width: 48px; height: 48px; border-radius: 12px; border: 2px solid var(--ink); background: #fff; font-size: 24px; cursor: pointer; color: var(--ink); }
+.step-btn:disabled { opacity: .35; cursor: default; }
+.stepper-row output { min-width: 80px; text-align: center; font-weight: 700; }
+
+.gs-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.gs-list li { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+.gs-list li > span:nth-child(2) { flex: 1 1 auto; }
+.gs-list .gs-done { color: var(--muted); } .gs-list .gs-done span:nth-child(2) { text-decoration: line-through; }
+
+/* Today and Plan use the width on desktop */
+.today-grid { display: contents; }
+.weeks.cols { display: flex; }
+@media (min-width: 900px) {
+  .today-grid { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 16px 24px; align-items: start; }
+  .today-grid > .week-card { grid-column: 1; grid-row: 1 / span 6; }
+  .today-grid > :not(.week-card) { grid-column: 2; }
+  .today-grid .two { grid-template-columns: minmax(0, 1fr); }
+}
+
+.tool-callout { display: flex; flex-direction: column; gap: 10px; background: var(--hl); border: 2px solid var(--ink); border-radius: 14px; padding: 14px 16px; }
+.tool-callout p { margin: 2px 0 0; }
+.tool-callout .btn { background: #fff; }
+
+/* Program: tasks with tools, readings, templates */
+.step { flex-wrap: wrap; }
+.mins { color: var(--muted); font-weight: 500; }
+.task-action { padding: 0 0 6px 40px; margin-top: -6px; }
+.steps-list > li { display: flex; flex-direction: column; }
+.deliverables { margin: 4px 0 8px; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.lessons { list-style: none; margin: 4px 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lesson-btn { width: 100%; text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); min-height: 56px; }
+.lesson-btn:hover { border-color: var(--ink); } .lesson-btn small { color: var(--muted); }
+.tmpl { background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 0 14px; margin: 4px 0; }
+.tmpl summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; font-weight: 600; }
+.tmpl pre { white-space: pre-wrap; font-family: var(--body); font-size: 15px; line-height: 1.5; background: var(--paper-2); border-radius: 10px; padding: 12px; margin: 0 0 10px; }
+.tmpl .btn { margin-bottom: 12px; }
+.prose { display: flex; flex-direction: column; gap: 12px; font-size: 17px; line-height: 1.6; max-width: 640px; }
+.prose p, .prose ul { margin: 0; } .prose ul { padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.prose h4 { margin: 8px 0 0; font-family: var(--display); font-size: 20px; }
+.group { margin: 10px 0 -4px; font-size: 22px; }
+.weeks details .label { display: block; margin: 10px 0 2px; }
+
+/* ── Resume and cover letter writers ── */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.doc-form { gap: 14px; }
+.doc-step { display: flex; gap: 12px; align-items: flex-start; margin-top: 6px; }
+.doc-step .num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; background: var(--hl); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.doc-step p { margin: 2px 0 0; }
+.tmpl-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.tmpl-opt { text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 8px 12px; cursor: pointer; font: inherit; color: var(--ink); display: flex; flex-direction: column; min-height: 52px; }
+.tmpl-opt small { color: var(--muted); font-size: 12px; }
+.tmpl-opt.on { border: 2px solid var(--ink); background: var(--hl); }
+.page-preview { border: 1.5px solid var(--rule); border-radius: 8px; overflow: hidden; background: #fff; }
+.stepper { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.stepper li { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.stepper li span { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--rule); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.stepper li + li::before { content: ''; width: 18px; border-top: 2px solid var(--rule); }
+.stepper li.on { color: var(--ink); } .stepper li.on span { background: var(--hl); border-color: var(--ink); }
+.stepper li.past span { background: var(--ink); border-color: var(--ink); color: #fff; }
+.kw-list { display: flex; flex-direction: column; gap: 8px; }
+.kw, .reqs, .edit-text { background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 0 14px; }
+.kw[open], .edit-text[open] { border-color: var(--ink); }
+.kw summary, .reqs summary, .edit-text summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 600; }
+.kw .ok { font-size: 13px; font-weight: 700; background: var(--hl); border-radius: 99px; padding: 1px 10px; }
+.kw > .field, .edit-text > .field { margin-bottom: 10px; }
+.reqs ul { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.edit-text > button { margin-bottom: 12px; }
+
+/* ── Sky, the AI Coach: header and the slide-in panel ── */
+.sky-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }
+.sky-head h2 { margin: 0; }
+.sky-focus { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.focus-btn { display: inline-flex; gap: 4px; align-items: center; }
+body.no-scroll { overflow: hidden; }
+.drawer-wrap { position: fixed; inset: 0; z-index: 50; display: flex; justify-content: flex-end; pointer-events: none; }
+.drawer-wrap.open { pointer-events: auto; }
+.drawer-back { position: absolute; inset: 0; background: rgba(21, 32, 59, 0); transition: background .2s ease; }
+.drawer-wrap.open .drawer-back { background: rgba(21, 32, 59, .45); }
+.drawer { position: relative; background: #fff; width: min(440px, 100%); height: 100%; display: flex; flex-direction: column; box-shadow: -10px 0 30px rgba(21, 32, 59, .2); transform: translateX(100%); transition: transform .22s ease; }
+.drawer-wrap.open .drawer { transform: none; }
+.drawer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 18px 18px 10px; border-bottom: 1.5px solid var(--rule); }
+.drawer-head h2 { margin: 0; }
+.drawer-body { overflow-y: auto; padding: 14px 18px calc(24px + env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; }
+.drawer-body p { margin: 0; }
+.sky-facts { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.focus-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.focus-card { border: 1.5px solid var(--rule); border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+.focus-card.on { border: 2px solid var(--ink); background: var(--paper-2); }
+.fc-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.fc-head h3 { margin: 0; font-size: 19px; }
+.focus-card p { font-size: 15px; }
+.fc-info { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; font-size: 14px; }
+.fc-info dt { color: var(--muted); font-weight: 600; } .fc-info dd { margin: 0; }
+.focus-card .btn { align-self: flex-start; min-height: 44px; font-size: 15px; padding: 6px 16px; margin-top: 4px; }
+@media (max-width: 699px) {
+  .drawer-wrap { align-items: flex-end; }
+  .drawer { width: 100%; height: 88%; border-radius: 18px 18px 0 0; transform: translateY(100%); box-shadow: 0 -10px 30px rgba(21, 32, 59, .2); }
+  .fc-info { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) { .drawer, .drawer-back { transition: none; } }
+
+/* ── Notes ── */
+.notes-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.notes-list { gap: 10px; }
+.notes-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.notes-top .btn { min-height: 44px; font-size: 15px; padding: 6px 16px; }
+.note-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.note-item { width: 100%; text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); min-height: 52px; }
+.note-item small { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-item.on { border: 2px solid var(--ink); background: var(--hl); }
+.note-editor { gap: 12px; }
+.note-editor textarea { min-height: 340px; }
+.note-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.note-back { display: none; }
+@media (max-width: 899px) {
+  .notes.show-editor .notes-list { display: none; }
+  .notes:not(.show-editor) .note-editor, .notes:not(.show-editor) .docs-empty { display: none; }
+  .notes.show-editor .note-back { display: flex; }
+}
+@media (min-width: 900px) { .notes-cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; } .note-editor textarea { min-height: 420px; } }
+.field textarea, .composer textarea { font-family: var(--body); }
+.task .src.vik, .plan-task .src.vik { background: var(--hl); color: var(--ink); }

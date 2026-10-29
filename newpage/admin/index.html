@@ -8,12 +8,22 @@
 <link rel="icon" href="/newpage/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap">
 <link rel="stylesheet" href="/newpage/styles.css">
+<style>.mem{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:12px 0;border-bottom:1px dashed #C9D3E3}.mem span{flex:1 1 100%;font-size:15px;line-height:1.4;overflow-wrap:anywhere}
+.mrow{display:flex;flex-direction:column;gap:8px;padding:12px 0;border-bottom:1px dashed #C9D3E3}.mwho{display:flex;flex-direction:column}.mwho span{overflow-wrap:anywhere}.mchips{display:flex;flex-wrap:wrap;gap:6px}.mchip{font-size:13px;background:#EEF2F9;border-radius:99px;padding:2px 10px}.mchip.warn{background:#FFE9E3;font-weight:700}.mrow .btn{align-self:flex-start;min-height:44px;font-size:15px;padding:6px 18px}
+.mp-wrap{position:fixed;inset:0;z-index:50;display:flex;justify-content:flex-end}.mp-back{position:absolute;inset:0;background:rgba(21,32,59,.45)}
+.mp{position:relative;background:#fff;width:min(560px,100%);height:100%;overflow-y:auto;padding:16px 18px 40px;display:flex;flex-direction:column;gap:14px;box-shadow:-10px 0 30px rgba(21,32,59,.2)}
+.mp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.mp-head h3{margin:0;font-size:24px}.mp-head p{margin:0}
+.mp-x{border:0;background:none;cursor:pointer;width:44px;height:44px;font-size:24px;color:#56607A;border-radius:10px}.mp-x:hover{background:#EEF2F9}
+.mp-when{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.mp .field input,.mp .field select,.mp textarea{width:100%;min-height:46px;border:1.5px solid #C9D3E3;border-radius:10px;padding:8px 10px;font:inherit;font-size:16px;background:#fff}.mp textarea{min-height:70px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.mp-task{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;padding:8px 0;border-bottom:1px dashed #C9D3E3}.mp-task span{overflow-wrap:anywhere}.mp-task small{grid-column:1}.mp-task .mp-x{grid-column:2;grid-row:1 / span 2}.mp-task.done span{color:#56607A;text-decoration:line-through}
+@media(max-width:520px){.mp-when{grid-template-columns:1fr}}
+</style>
 <script type="module" src="/newpage/admin/admin.js"></script>
 </head>
 <body>
 <div class="paper">
   <div class="margin-line" aria-hidden="true"></div>
-  <header class="top"><div class="top-in"><span class="brand"><span>new page</span></span><span class="count">Admin</span></div></header>
+  <header class="top"><div class="top-in"><span class="brand"><span>new page</span></span><span class="count">Admin · <a href="/newpage/admin/content">Edit content</a></span></div></header>
   <main class="col">
     <section class="screen" id="login">
       <h2>Sign in</h2>
@@ -28,18 +38,28 @@
 
     <section class="screen" id="members" hidden>
       <h2>Members</h2>
-      <p>People who can sign in to the New Page app at <b>/newpage/app</b>. Adding someone sends them a welcome email. If they took the quiz, their plan starts from their result.</p>
+      <p>People who can sign in to the New Page app at <b>/newpage/app</b>. Adding someone sends them a welcome email, and starts their 4 weeks. Press <b>Open</b> on a member to see where they are, add a task for them (with a date and time if you like), keep private notes, or change their access. If they took the quiz, their plan starts from their result.</p>
       <form id="grant-form" class="card" novalidate>
         <div class="field"><label for="g-email">Email</label><input id="g-email" type="email" autocomplete="off" required></div>
         <div class="field"><label for="g-name">Name (optional)</label><input id="g-name" type="text" autocomplete="off" maxlength="80"></div>
         <div class="field"><label for="g-source">How they joined</label>
           <select id="g-source" style="min-height:50px;border:1.5px solid #C9D3E3;border-radius:12px;padding:10px 14px;background:#fff;font-size:17px"><option value="purchase">Paid</option><option value="scholarship">Scholarship</option><option value="manual">Other</option></select></div>
+        <div class="field"><label for="g-access">How long they have access</label>
+          <select id="g-access" style="min-height:50px;border:1.5px solid #C9D3E3;border-radius:12px;padding:10px 14px;background:#fff;font-size:17px"><option value="4w">4 weeks (the program)</option><option value="1m">1 month</option><option value="3m">3 months</option><option value="none">No end date (for testing)</option></select></div>
         <label class="check" for="g-welcome"><input id="g-welcome" type="checkbox" checked><span>Send the welcome email</span></label>
         <p class="error" id="g-error" role="alert" hidden></p>
         <button class="btn btn-primary" type="submit">Give access</button>
         <p id="g-status" role="status"></p>
       </form>
+      <div class="card" id="brief-view" hidden></div>
       <div class="card"><span class="label">Everyone with access</span><div id="member-list"><p class="muted small">Loading…</p></div></div>
+    </section>
+
+    <section class="screen" id="codes" hidden>
+      <h2>Scholarship codes</h2>
+      <p>Give one code to each person you accept. A code works once and covers the four weeks and their session with Vik. They enter it at <b>/newpage/join</b>, or you can send them <b>/newpage/join?code=THE-CODE</b>.</p>
+      <div class="card"><div id="code-list"><p class="muted small">Loading…</p></div>
+        <button class="btn btn-secondary" type="button" id="more-codes">Make 5 more codes</button></div>
     </section>
 
     <section class="screen" id="launch" hidden>
