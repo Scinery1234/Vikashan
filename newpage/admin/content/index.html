@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>New Page · edit content</title>
+<link rel="icon" href="/newpage/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap">
+<link rel="stylesheet" href="/newpage/styles.css">
+<link rel="stylesheet" href="/newpage/admin/content/content.css">
+<script type="module" src="/newpage/admin/content/content.js"></script>
+</head>
+<body>
+<div class="paper wide">
+  <div class="margin-line" aria-hidden="true"></div>
+  <header class="top"><div class="top-in"><span class="brand"><span>new page</span></span><a class="count" href="/newpage/admin">← Admin</a></div></header>
+  <main class="col" id="main">
+    <section class="screen" id="need-login" hidden>
+      <h2>Sign in first</h2>
+      <p>Open <a href="/newpage/admin">the admin page</a>, sign in, then come back here.</p>
+    </section>
+    <section class="screen" id="editor" hidden>
+      <div>
+        <span class="note">content</span>
+        <h2>Edit the program</h2>
+        <p class="muted">Change any wording across the four programs, the resource library, the emailed plans and the follow-up emails. People who open the program, and plans emailed, from now on get the new text. Someone partway through sees it next time they open that page.</p>
+        <p class="small muted">You can change words, not the number of tasks, readings or templates, so nobody’s ticked-off progress goes out of step. “Reset to original” puts back the original text.</p>
+      </div>
+      <div class="ce-bar">
+        <div class="ce-tabs" role="tablist" id="tabs" aria-label="What to edit"></div>
+        <div class="field ce-search"><label for="q" class="sr-only">Search the text</label><input id="q" type="search" placeholder="Search all text…" autocomplete="off"></div>
+      </div>
+      <p class="small muted" id="summary" role="status"></p>
+      <div id="list"></div>
+    </section>
+  </main>
+</div>
+</body>
+</html>

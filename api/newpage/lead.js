@@ -3,6 +3,7 @@ import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { rateLimit, isBot } from '../../lib/security.js'
 import { planEmail } from '../../lib/newpage-emails.js'
+import { refreshContent } from '../../lib/newpage-content.js'
 import { validateAnswers, score, offersIntroCall, TIMEFRAMES, BLOCKERS, COACH } from '../../newpage/quiz-logic.js'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -67,6 +68,7 @@ export default async function handler(req, res) {
   }
 
   try {
+    await refreshContent()
     const mail = planEmail({ name, quadrant: result.quadrant, answers, personal, introCall, token, struggling: result.struggling })
     await sendMail({
       from: `${process.env.FROM_NAME} <${process.env.FROM_EMAIL}>`,

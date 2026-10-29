@@ -1,6 +1,7 @@
 import { sendMail } from '../../lib/newpage-mail.js'
 import { supabase } from '../../lib/supabase.js'
 import { followupEmail, dueDay } from '../../lib/newpage-emails.js'
+import { refreshContent } from '../../lib/newpage-content.js'
 
 const DAY = 24 * 60 * 60 * 1000
 
@@ -11,6 +12,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
+  await refreshContent()
   const now = Date.now()
   const { data: leads, error } = await supabase.from('newpage_leads')
     .select('id, email, name, quadrant, personal, created_at, last_followup_day, unsubscribe_token')

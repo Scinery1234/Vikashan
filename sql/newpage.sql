@@ -295,3 +295,12 @@ ALTER TABLE newpage_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE newpage_tasks DROP CONSTRAINT IF EXISTS newpage_tasks_source_check;
 ALTER TABLE newpage_tasks ADD CONSTRAINT newpage_tasks_source_check CHECK (source IN ('you','coach','compass','vik'));
 ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS coach_notes text;
+
+-- ── Editable content: Vik's edits to the program, library and emailed plans ──
+-- One row per edited item. Each row holds only the fields that differ from the original.
+CREATE TABLE IF NOT EXISTS newpage_content (
+  key text PRIMARY KEY,
+  value jsonb NOT NULL,
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE newpage_content ENABLE ROW LEVEL SECURITY;

@@ -1,0 +1,30 @@
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.ce-bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.ce-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.ce-tab { background: #fff; border: 1.5px solid var(--rule); border-radius: 99px; padding: 8px 16px; min-height: 44px; cursor: pointer; font: inherit; font-weight: 600; color: var(--ink); }
+.ce-tab[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.ce-tab small { font-weight: 700; margin-left: 4px; opacity: .8; }
+.ce-search { flex: 1 1 220px; max-width: 360px; }
+.ce-search input { width: 100%; min-height: 46px; border: 1.5px solid #C9D3E3; border-radius: 12px; padding: 8px 14px; font: inherit; font-size: 16px; background: #fff; }
+.ce-group { display: flex; flex-direction: column; gap: 8px; margin: 10px 0 18px; }
+.ce-group > h3 { margin: 0; font-size: 20px; }
+.ce-sub { display: flex; flex-direction: column; gap: 8px; }
+.ce-week { background: #fff; border: 1.5px solid var(--rule); border-radius: 14px; padding: 0 14px; }
+.ce-week[open] { border-color: var(--ink); padding-bottom: 14px; }
+.ce-week > summary { cursor: pointer; min-height: 56px; display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 19px; }
+.ce-item { background: var(--paper-2, #F5F7FB); border: 1.5px solid var(--rule); border-radius: 12px; padding: 0 12px; margin-top: 8px; }
+.ce-item[open] { background: #fff; border-color: var(--ink); padding-bottom: 12px; }
+.ce-item > summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.ce-item > summary > span:first-child { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.badge { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 1px 9px; background: var(--hl, #D4F36B); white-space: nowrap; }
+.badge.unsaved { background: #FFE9E3; }
+.ce-form { display: flex; flex-direction: column; gap: 12px; padding-top: 4px; }
+.ce-form textarea, .ce-form input[type=text], .ce-form input[type=number] { width: 100%; border: 1.5px solid #C9D3E3; border-radius: 10px; padding: 10px 12px; font: inherit; font-size: 16px; line-height: 1.45; background: #fff; box-sizing: border-box; }
+.ce-form textarea { resize: vertical; min-height: 90px; }
+.ce-form input[type=number] { max-width: 120px; }
+.ce-orig { font-size: 14px; }
+.ce-orig summary { cursor: pointer; color: var(--muted); min-height: 36px; display: flex; align-items: center; }
+.ce-orig pre { white-space: pre-wrap; font-family: var(--body); background: #F5F7FB; border-radius: 8px; padding: 10px; margin: 0; }
+.ce-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ce-actions .btn { min-height: 46px; font-size: 16px; padding: 8px 20px; }
+@media (min-width: 900px) { .ce-form.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px 18px; align-items: start; } }

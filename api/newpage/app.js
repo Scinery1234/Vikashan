@@ -6,6 +6,7 @@ import { PROGRAM } from '../../newpage/program-content.js'
 import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
 import { coachSystem, toApiMessages, runCoach, askJson } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
+import { refreshContent } from '../../lib/newpage-content.js'
 import { getAvailableSlots } from '../../lib/availability.js'
 import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
 import { sendConfirmation } from '../../lib/resend.js'
@@ -58,6 +59,7 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
   const member = await requireMember(req, res)
   if (!member) return
+  await refreshContent()
   const b = req.body || {}
 
   switch (b.action) {
