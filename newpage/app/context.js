@@ -73,7 +73,7 @@ export function contextScreen(ctx) {
   const resume = h('div', { class: 'card' },
     h('span', { class: 'label' }, '2. Your resume'),
     h('p', { class: 'small muted' }, 'Upload a Word or PDF file (on a phone, pick it from Files), or paste it, so Sky knows your background. You can replace or delete it any time.'),
-    h('div', { class: 'row' }, fileInput, h('label', { for: 'cx-file', class: 'btn btn-secondary', role: 'button', tabindex: '0', onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click() } } }, L.uploading ? 'Reading your file…' : c.resume.has ? 'Upload a different file' : 'Upload your resume')),
+    h('div', { class: 'row' }, fileInput, h('label', { for: 'cx-file', class: 'btn btn-secondary' }, L.uploading ? 'Reading your file…' : c.resume.has ? 'Upload a different file' : 'Upload your resume')),
     h('div', { class: 'field' }, h('label', { for: 'cx-resume', class: 'sr-only' }, 'Your resume text'), h('textarea', { id: 'cx-resume', rows: '6', maxlength: '12000', placeholder: 'Or paste your resume here', oninput: e => { L.resumeText = e.target.value } }, L.resumeText || '')),
     h('div', { class: 'row' },
       h('button', { class: 'btn btn-primary', type: 'button', disabled: !(L.resumeText || '').trim() || !c.ready, onclick: async () => { try { await ctx.call('/api/newpage/app', { action: 'tool_save', tool: 'profile', data: { text: L.resumeText } }); await load(ctx, true); L.msg = 'Resume saved.' } catch (e) { L.err = e.message } ctx.render() } }, 'Save resume'),

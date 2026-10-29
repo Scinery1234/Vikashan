@@ -92,7 +92,7 @@ export function resumeScreen(ctx) {
     h('div', { class: 'doc-step' }, h('span', { class: 'num' }, '1'), h('div', {}, h('b', {}, 'Your current resume'), h('p', { class: 'small muted' }, 'A Word or PDF file (on a phone, pick it from Files), or paste the text. An old, messy one is fine. We keep it so you only do this once.'))),
     h('div', { class: 'row' },
       fileInput,
-      h('label', { for: 'res-file', class: 'btn btn-secondary', role: 'button', tabindex: '0', onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click() } } }, L.uploading ? 'Reading your file…' : L.text ? 'Upload a different file' : 'Upload your resume'),
+      h('label', { for: 'res-file', class: 'btn btn-secondary' }, L.uploading ? 'Reading your file…' : L.text ? 'Upload a different file' : 'Upload your resume'),
       !L.pasteOpen && h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.pasteOpen = true; ctx.render() } }, L.text ? 'View or edit the text' : 'Or paste it')),
     L.fileName && h('p', { class: 'small' }, `Loaded ${L.fileName}. Check the text below, since PDFs can come out a little jumbled.`),
     (L.pasteOpen || L.text) && h('div', { class: 'field' }, h('label', { for: 'res-text', class: 'sr-only' }, 'Your resume text'),

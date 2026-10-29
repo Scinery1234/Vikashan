@@ -34,7 +34,7 @@ export function openSky(ctx) {
     h('p', {}, c.blurb),
     h('dl', { class: 'fc-info' }, h('dt', {}, 'Good for'), h('dd', {}, c.when), h('dt', {}, 'How it works'), h('dd', {}, c.how)),
     h('button', { class: c.id === current ? 'btn btn-secondary' : 'btn btn-primary', type: 'button', onclick: () => { close(); ctx.setFocus(c.id) } }, c.id === current ? 'Keep this focus' : `Talk about ${c.name.toLowerCase()}`))
-  const panel = h('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sky-title' },
+  const panel = h('div', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'sky-title' },
     h('div', { class: 'drawer-head' },
       h('div', {}, h('span', { class: 'note' }, 'your AI Coach'), h('h2', { id: 'sky-title' }, 'Meet Sky')),
       h('button', { class: 'x', type: 'button', 'aria-label': 'Close', id: 'sky-close', onclick: close }, '×')),

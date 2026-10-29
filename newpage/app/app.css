@@ -293,3 +293,6 @@ body.no-scroll { overflow: hidden; }
 .focus-icon { flex: 0 0 auto; width: var(--size, 36px); height: var(--size, 36px); border-radius: 50%; background: var(--tint, #EEF2F9); display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); }
 .focus-icon svg { width: 58%; height: 58%; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .fc-head { gap: 10px; } .fc-head h3 { flex: 1 1 auto; }
+
+/* The hidden file input stays focusable; show focus on its button-label */
+input.sr-only:focus-visible + label.btn { outline: 3px solid var(--ink); outline-offset: 2px; }

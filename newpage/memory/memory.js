@@ -23,7 +23,7 @@ async function api(action, extra = {}) {
 let confirming = false, message = ''
 async function show() {
   let s
-  try { s = await api('status') } catch (e) { main.replaceChildren(el('h2', 'This link has expired'), el('p', e.message)); return }
+  try { s = await api('status') } catch (e) { main.replaceChildren(el('h1', 'This link has expired'), el('p', e.message)); return }
   const hello = s.name ? `Hi ${s.name}. ` : ''
   let lead
   if (s.state === 'purged') lead = 'Your memory has been permanently deleted. Nothing is held.'
@@ -33,7 +33,7 @@ async function show() {
   const box = el('div', null, { class: 'card' })
   box.append(el('span', 'What’s held', { class: 'label' }), el('p', 'Your chats with Sky, the notes Sky keeps about you, your resume, your answers about yourself, your private notes, and anything you shared with Vik. It’s all encrypted. Your Compass, documents, tasks and progress are separate.'))
   main.replaceChildren(
-    el('div', null, {}, el('span', 'your privacy', { class: 'note' }), el('h2', 'Sky’s memory of you'), el('p', lead)),
+    el('div', null, {}, el('span', 'your privacy', { class: 'note' }), el('h1', 'Sky’s memory of you'), el('p', lead)),
     s.state === 'purged' ? null : box,
     s.state === 'purged' ? null : el('div', null, { class: 'card' },
       el('span', 'Your choices', { class: 'label' }),

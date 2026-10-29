@@ -127,7 +127,7 @@ async function openMember(id) {
   const wrap = el('div', null, { class: 'mp-wrap' })
   wrap.append(el('div', null, { class: 'mp-back' }))
   wrap.firstChild.addEventListener('click', closePanel)
-  const aside = el('aside', null, { class: 'mp', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Member' })
+  const aside = el('div', null, { class: 'mp', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Member' })
   wrap.append(aside)
   document.body.append(wrap); panel = wrap; document.body.style.overflow = 'hidden'
   aside.append(el('p', 'Loading…', { class: 'muted' }))
