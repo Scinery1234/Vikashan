@@ -198,3 +198,29 @@
 .prose h4 { margin: 8px 0 0; font-family: var(--display); font-size: 20px; }
 .group { margin: 10px 0 -4px; font-size: 22px; }
 .weeks details .label { display: block; margin: 10px 0 2px; }
+
+/* ── Resume and cover letter writers ── */
+.sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.doc-form { gap: 14px; }
+.doc-step { display: flex; gap: 12px; align-items: flex-start; margin-top: 6px; }
+.doc-step .num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; background: var(--hl); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; }
+.doc-step p { margin: 2px 0 0; }
+.tmpl-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.tmpl-opt { text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 8px 12px; cursor: pointer; font: inherit; color: var(--ink); display: flex; flex-direction: column; min-height: 52px; }
+.tmpl-opt small { color: var(--muted); font-size: 12px; }
+.tmpl-opt.on { border: 2px solid var(--ink); background: var(--hl); }
+.page-preview { border: 1.5px solid var(--rule); border-radius: 8px; overflow: hidden; background: #fff; }
+.stepper { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
+.stepper li { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+.stepper li span { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--rule); display: flex; align-items: center; justify-content: center; font-size: 13px; }
+.stepper li + li::before { content: ''; width: 18px; border-top: 2px solid var(--rule); }
+.stepper li.on { color: var(--ink); } .stepper li.on span { background: var(--hl); border-color: var(--ink); }
+.stepper li.past span { background: var(--ink); border-color: var(--ink); color: #fff; }
+.kw-list { display: flex; flex-direction: column; gap: 8px; }
+.kw, .reqs, .edit-text { background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 0 14px; }
+.kw[open], .edit-text[open] { border-color: var(--ink); }
+.kw summary, .reqs summary, .edit-text summary { cursor: pointer; min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 600; }
+.kw .ok { font-size: 13px; font-weight: 700; background: var(--hl); border-radius: 99px; padding: 1px 10px; }
+.kw > .field, .edit-text > .field { margin-bottom: 10px; }
+.reqs ul { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.edit-text > button { margin-bottom: 12px; }

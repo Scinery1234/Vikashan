@@ -230,6 +230,7 @@ async function openCoach(id) {
 const ctx = {
   get S() { return S },
   call: (url, body) => call(url, body),
+  token: () => session,
   beacon: (url, body) => { try { fetch(url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` }, body: JSON.stringify(body) }) } catch {} },
   act, buy: (action, body) => buy(action, body), render: () => render(), go: (tab, sub) => go(tab, sub),
   askCoach: (coach, text) => askCoach(text, coach)

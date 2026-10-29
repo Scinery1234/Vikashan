@@ -15,9 +15,11 @@ import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import {
   COMPASS_SYSTEM, COMPASS_TASKS, cleanCompass,
-  DOC_SYSTEM, RESUME_SCHEMA, COVER_SCHEMA, resumePrompt, coverPrompt, cleanResume, cleanCover, docTitle, clipText,
+  clipText,
   SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
+import { SYSTEM_PROMPT_GENERATE, SYSTEM_PROMPT_EDIT, RESUME_SCHEMA, buildGeneratePrompt, buildEditPrompt, cleanResume, cleanTemplate, resumeTitle, resumeText } from '../../lib/newpage-resume.js'
+import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SCHEMA, cleanAnalysis, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
@@ -187,28 +189,111 @@ export default async function handler(req, res) {
       }
       const kind = b.kind === 'cover' ? 'cover' : b.kind === 'resume' ? 'resume' : null
       if (!kind) return res.status(400).json({ error: 'Choose a resume or a cover letter.' })
-      const background = clipText(b.background, 12000)
-      if (background.length < 80) return res.status(400).json({ error: 'Paste your work history first: your roles, dates and what you achieved. A page or so is plenty.' })
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
-      if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-      const job = clipText(b.job, 6000), company = clipText(b.company, 120), role = clipText(b.role, 120)
-      await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
-      let content
-      try {
-        if (kind === 'resume') {
-          content = cleanResume(await askJson({ system: DOC_SYSTEM, prompt: resumePrompt({ background, job }), schema: RESUME_SCHEMA, maxTokens: 4000 }))
-        } else {
-          const { data: last } = await supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
-          const resume = last?.[0]?.content ? JSON.stringify(last[0].content).slice(0, 5000) : ''
-          content = cleanCover(await askJson({ system: DOC_SYSTEM, prompt: coverPrompt({ background, job, name: member.name || '', company, role, resume }), schema: COVER_SCHEMA, maxTokens: 2000 }))
+      const job = clipText(b.job, 8000), company = clipText(b.company, 120), role = clipText(b.role, 120)
+      const template = cleanTemplate(b.template)
+      let content, title
+      if (kind === 'resume') {
+        const background = clipText(b.background, 20000)
+        if (background.length < 80) return res.status(400).json({ error: 'Add your current resume first: upload it, or paste your roles, dates and what you achieved.' })
+        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+        await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background.slice(0, 12000) }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
+        try {
+          content = cleanResume(await askJson({ system: SYSTEM_PROMPT_GENERATE, prompt: buildGeneratePrompt({ documentsText: background, job, additional: clipText(b.additional, 3000) }), schema: RESUME_SCHEMA, maxTokens: 6000 }), template)
+        } catch (err) {
+          console.error('Resume failed:', err)
+          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
         }
-      } catch (err) {
-        console.error('Document failed:', err)
-        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        if (!content.name && !content.experience.length) return res.status(502).json({ error: 'We couldn’t find a resume in what you gave us. Check it has your roles and dates, then try again.' })
+        title = resumeTitle(content, role)
+      } else {
+        if (job.length < 60) return res.status(400).json({ error: 'Paste the job ad first.' })
+        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+        const [pr, last] = await Promise.all([
+          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle(),
+          supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
+        ])
+        const lastResume = last.data?.[0]?.content || null
+        const resume = clipText(b.resume, 20000) || (lastResume ? resumeText(lastResume) : clipText(pr.data?.data?.text, 12000))
+        if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Write or upload it in the Resume writer, then come back.' })
+        const { keywords, requirements } = analyseJob(job)
+        const keep = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : keywords
+        const name = clip(b.name, 100) || member.name || lastResume?.name || ''
+        const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
+        let out
+        try {
+          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence) }), schema: COVER_SCHEMA, maxTokens: 3500 })
+        } catch (err) {
+          console.error('Cover letter failed:', err)
+          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        }
+        const k = (b.contact && typeof b.contact === 'object') ? b.contact : {}
+        const prev = lastResume?.contact || {}
+        content = cleanCover(out, {
+          name, template,
+          contact: { phone: clip(k.phone, 40) || prev.phone, email: clip(k.email, 120) || prev.email || member.email, location: clip(k.location, 100) || prev.location, linkedin: clip(k.linkedin, 200) || prev.linkedin },
+          date: sydneyDate(), recipient: ['Hiring Manager', company].filter(Boolean)
+        })
+        if (content.paragraphs.length < 2) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        if (!content.subject && role) content.subject = `Application for ${role}`
+        title = coverTitle(role, company)
       }
-      const title = docTitle(kind, content, role, company)
       const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind, title, content }).select('id, kind, title, content, created_at').single()
       return res.json({ doc: saved || { kind, title, content } })
+    }
+
+    // Plain-words edit of a saved resume ("make the summary shorter"), using Resume-Generator's edit rules.
+    case 'doc_edit': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const instruction = clipText(b.instruction, 1000)
+      if (instruction.length < 4) return res.status(400).json({ error: 'Say what you’d like changed.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-docedit-${member.id}` })) return
+      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
+      if (!doc || doc.kind !== 'resume') return res.status(404).json({ error: 'Unknown document.' })
+      let content
+      try {
+        content = cleanResume(await askJson({ system: SYSTEM_PROMPT_EDIT, prompt: buildEditPrompt({ resume: doc.content, instruction }), schema: RESUME_SCHEMA, maxTokens: 6000 }), doc.content.template)
+      } catch (err) {
+        console.error('Resume edit failed:', err)
+        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+      }
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
+    }
+    case 'doc_template': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
+      if (!doc || !['resume', 'cover'].includes(doc.kind)) return res.status(404).json({ error: 'Unknown document.' })
+      const content = { ...doc.content, template: cleanTemplate(b.template) }
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
+    }
+    // The member edited their cover letter text by hand; keep it.
+    case 'doc_save': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
+      const d = b.content && typeof b.content === 'object' ? b.content : {}
+      const content = cleanCover(d, { name: doc.content.name, contact: doc.content.contact, date: doc.content.date, recipient: doc.content.recipient, template: doc.content.template })
+      if (content.paragraphs.length < 1) return res.status(400).json({ error: 'A letter needs at least one paragraph.' })
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
+    }
+    case 'cover_analyse': {
+      const job = clipText(b.job, 8000)
+      if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
+      const fallback = analyseJob(job)
+      if (!process.env.ANTHROPIC_API_KEY) return res.json(fallback)
+      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
+      try {
+        const out = await askJson({ system: COVER_SYSTEM, prompt: analysePrompt(job), schema: ANALYSE_SCHEMA, maxTokens: 1200 })
+        const r = cleanAnalysis(out)
+        return res.json(r.keywords.length >= 3 ? r : fallback)
+      } catch (err) {
+        console.error('Ad analysis failed, using the simple reader:', err)
+        return res.json(fallback)
+      }
     }
 
     case 'task_toggle':
