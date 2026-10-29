@@ -17,7 +17,7 @@ export const PLANS = {
         'Put it in your calendar at the same time each day, so you’re not relying on willpower.',
         'At the end of the week, write one line: what changed, even slightly, on the days you did it?'
       ],
-      withNewPage: 'The Recovery Coach is a calm space to talk through how you’re really going, and your planner keeps the reset in your calendar with reminders.'
+      withNewPage: 'Sky’s Recovery focus is a calm space to talk through how you’re really going, and your planner keeps the reset in your calendar with reminders.'
     },
     {
       title: 'Lighten the load',
@@ -37,7 +37,7 @@ export const PLANS = {
         'Finish this sentence three times, quickly, without editing: “I’d like more of…”',
         'Look at what repeats. That’s a clue, not a decision. Keep these notes for next week.'
       ],
-      withNewPage: 'Your Career Coach helps you put words to what you notice, and the Recovery Coach is there if it’s a heavy week.'
+      withNewPage: 'Sky, your AI Coach, helps you put words to what you notice, and its Recovery focus is there if it’s a heavy week.'
     },
     {
       title: 'Check in and make a gentle map',
@@ -48,7 +48,7 @@ export const PLANS = {
         'Your North Star: write a short paragraph picturing your number one value fully lived by your number one “I am”, in an ordinary week. Don’t worry about jobs. Then write what work would need to be like for you to have energy left over: the most hours a week, how much stress is okay, and where you’d like to work.',
         'Choose your next small step. If you feel steadier, try the Explore plan. If you’re still low on energy, repeat weeks 1 and 2 and be kind to yourself. That’s pacing, not failing. If you’ve felt flat or exhausted for more than a few weeks, it’s worth talking to your GP or a counsellor.'
       ],
-      withNewPage: 'The Compass takes you through your values, who you are, your North Star and what you need from work, in small pieces at your own pace. It saves to your account, and your coaches know what you find. Your Career Coach helps you choose the next step, and the 1:1 session with Vik is a good place to talk it through.',
+      withNewPage: 'The Compass takes you through your values, who you are, your North Star and what you need from work, in small pieces at your own pace. It saves to your account, and Sky knows what you find. Sky helps you choose the next step, and the 1:1 session with Vik is a good place to talk it through.',
       tool: 'compass'
     }
   ],
@@ -62,7 +62,7 @@ export const PLANS = {
         'Strengths: write three things you know (subjects, industries, how things work), three things you can do well (skills people ask you for) and three things you love doing, even if you’re not paid for them.',
         'Ask two people who know you well: “When do you see me at my best?” Write down what they say, word for word.'
       ],
-      withNewPage: 'Your Career Coach talks through anything that surprises you, and your planner keeps the two conversations in your calendar.'
+      withNewPage: 'Sky talks through anything that surprises you, and your planner keeps the two conversations in your calendar.'
     },
     {
       title: 'Generate options',
@@ -84,7 +84,7 @@ export const PLANS = {
         'Choose what to test: lay your top ideas from week 2 beside your values, your strengths and your North Star. Pick a top choice and a second choice, and write one line on why each made the list.',
         'Plan three small experiments for your top two choices: a 20-minute coffee chat with someone doing the work, a free taster (a short course, a webinar, a day of volunteering), and a close read of five job ads. Put each in your calendar with a date, and do the first one this week.'
       ],
-      withNewPage: 'The Compass takes you through all of this in ten short steps: values, who you are, your North Star, what you need, strengths, mixing ideas, choosing, a plan and first steps. You can use your answers from weeks 1 and 2 as you go. It saves to your account, and your coaches know what you find. Your planner schedules each experiment.',
+      withNewPage: 'The Compass takes you through all of this in ten short steps: values, who you are, your North Star, what you need, strengths, mixing ideas, choosing, a plan and first steps. You can use your answers from weeks 1 and 2 as you go. It saves to your account, and Sky knows what you find. Your planner schedules each experiment.',
       tool: 'compass'
     },
     {
@@ -96,7 +96,7 @@ export const PLANS = {
         'Write a simple plan: Now (what you’ll do in the next month), Building (skills or contacts to build over 3 to 6 months) and Making the move (what the move itself looks like). Put your first three steps in your calendar with dates.',
         'Retake the quiz. You may well be in Launch.'
       ],
-      withNewPage: 'Your Career Coach helps you make sense of what you learned and turns your plan into goals and tasks in your planner, and the 1:1 session with Vik is a good place to test your direction.'
+      withNewPage: 'Sky helps you make sense of what you learned and turns your plan into goals and tasks in your planner, and the 1:1 session with Vik is a good place to test your direction.'
     }
   ],
 
@@ -109,7 +109,7 @@ export const PLANS = {
         'Shrink it until it takes 15 minutes or less. Ask: what is the very first physical action? “Open the document and fix the first section” is a first action. “Work on my resume” isn’t. Do it this week, at a set time.',
         'Afterwards, notice what made starting hard. Fear of getting it wrong? Too many steps? Low energy? Not knowing where to begin? Write one line.'
       ],
-      withNewPage: 'The Action Coach helps you work out what’s underneath the avoidance, without judgement.'
+      withNewPage: 'Sky’s Action focus helps you work out what’s underneath the avoidance, without judgement.'
     },
     {
       title: 'Find your reason',
@@ -120,7 +120,7 @@ export const PLANS = {
         'Your North Star: write a short paragraph picturing your number one value fully lived by your number one “I am”, in an ordinary week. It can be about any part of life.',
         'Your goal: write it in one sentence, like “Get a role as … by …”, then check it against your North Star. Does it serve your number one value? If not, adjust the goal until it does. This is the reason to come back to when starting feels heavy.'
       ],
-      withNewPage: 'The Compass takes you through your values, who you are and your North Star, then helps you choose a direction and plan your first steps. It saves to your account, and your coaches know what you find. The Executive Function Coach helps you get your goal into clear steps.',
+      withNewPage: 'The Compass takes you through your values, who you are and your North Star, then helps you choose a direction and plan your first steps. It saves to your account, and Sky knows what you find. Sky’s Executive function focus helps you get your goal into clear steps.',
       tool: 'compass'
     },
     {
@@ -133,7 +133,7 @@ export const PLANS = {
         'Show up to your three blocks, even if you only do 10 minutes. Work in 25-minute stretches with a timer, then take a 5-minute break.',
         'If a block slips, don’t ask why you failed. Ask what got in the way, and what would make it easier next time. Move the block to another day instead of skipping it.'
       ],
-      withNewPage: 'The Executive Function Coach helps you break goals down, your planner holds the blocks and emails you a reminder each morning, and the Action Coach is there when a block slips.'
+      withNewPage: 'Sky’s Executive function focus helps you break goals down, your planner holds the blocks and emails you a reminder each morning, and Sky’s Action focus is there when a block slips.'
     },
     {
       title: 'Finish something you can see',
@@ -157,7 +157,7 @@ export const PLANS = {
         'Your North Star: write a short paragraph picturing your number one value fully lived by your number one “I am”. Does your target role fit that picture? If it’s close, keep it. If something’s off, switch to one of your other two roles, or write what you’d change.',
         'Write your plan in three lines: Now (the next month), Building (the next 3 to 6 months) and Making the move. The “Now” line is the rest of this program: your resume, your applications, and getting ready for interviews.'
       ],
-      withNewPage: 'The Compass takes you through all of this in ten short steps: values, who you are, your North Star, what you need from work, strengths, choosing, a plan and first steps. It saves to your account, and your coaches know what you find. Your Career Coach can help you pressure-test your choice.',
+      withNewPage: 'The Compass takes you through all of this in ten short steps: values, who you are, your North Star, what you need from work, strengths, choosing, a plan and first steps. It saves to your account, and Sky knows what you find. Sky can help you pressure-test your choice.',
       tool: 'compass'
     },
     {
@@ -168,7 +168,7 @@ export const PLANS = {
         'Update your resume so each of those words appears honestly, with a specific example behind it: what you did, and the result.',
         'Write a one-paragraph answer to “Why this role, and why now?” Use your North Star from last week as the “why”. It becomes the base of your cover letters and interview answers.'
       ],
-      withNewPage: 'The resume writer tailors your resume to each ad, and your Career Coach helps you sharpen your “why”.'
+      withNewPage: 'The resume writer tailors your resume to each ad, and Sky helps you sharpen your “why”.'
     },
     {
       title: 'Build your pipeline and apply',
@@ -190,7 +190,7 @@ export const PLANS = {
         'Do your weekly review: what’s moving, what’s stuck, and what’s next?',
         'Retake the quiz.'
       ],
-      withNewPage: 'Your Career Coach runs mock interviews, and the 1:1 session with Vik is often used for interview preparation.'
+      withNewPage: 'Sky runs mock interviews, and the 1:1 session with Vik is often used for interview preparation.'
     }
   ]
 }

@@ -72,7 +72,7 @@ export const READINGS_LAUNCH = {
       '- Does your top choice honour your top values?',
       '- Does it meet your must-haves?',
       '- Does it connect to your North Star, even loosely?',
-      'If the answer to all three is yes, you’ve confirmed your direction and the next three weeks have a clear target. If one answer is no, you’ve found a question worth talking about with your coach, or in your session with Vik.',
+      'If the answer to all three is yes, you’ve confirmed your direction and the next three weeks have a clear target. If one answer is no, you’ve found a question worth talking about with Sky, or in your session with Vik.',
       '## A worked example',
       'Daniel’s target is “project manager in construction”. His Compass shows his top values are Family, Fairness and Learning, and his North Star mentions being home for dinner most nights and mentoring younger people. The job he’s targeting involves long site days. He doesn’t drop it. He adds “project coordinator in a head-office role” to his alternatives and checks whether either honours his evenings. That’s a better position than discovering it in an interview.',
       '## Try this',
@@ -265,7 +265,7 @@ export const READINGS_LAUNCH = {
       '- **No result.** A story that stops at the action is unfinished.',
       '- **Memorising word for word.** Know the shape, and tell it naturally.',
       '## Try this',
-      'Choose your five stories and give each a one-line title. Then use the Interview Coach to build the first one.'
+      'Choose your five stories and give each a one-line title. Then use Sky’s Interview focus to build the first one.'
     ]
   },
   'l4-offer': {
@@ -326,7 +326,7 @@ export const READINGS_LAUNCH = {
       '## If anxiety is bigger than this',
       'If interview nerves feel overwhelming or keep stopping you from applying, it’s worth talking to your GP or a counsellor. It’s common and treatable.',
       '## Try this',
-      'Do a practice run out loud with the Interview Coach. Then do it again. Familiarity is what makes the real thing feel easier.'
+      'Do a practice run out loud with Sky’s Interview focus. Then do it again. Familiarity is what makes the real thing feel easier.'
     ]
   }
 }

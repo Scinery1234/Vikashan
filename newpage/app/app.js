@@ -5,6 +5,8 @@ import { compassScreen, compassStatus, COMPASS_STEPS } from './compass.js'
 import { docsScreen } from './docs.js'
 import { sessionScreen } from './session.js'
 import { sectionsScreen, sectionKinds } from './sections.js'
+import { openSky, skySeen } from './sky.js'
+import { notesScreen, noteFrom, flushNotes } from './notes.js'
 import { copyText } from './ui.js'
 
 const KEY = 'np_app_session'
@@ -106,12 +108,12 @@ const stepDone = (week, i) => S.me.progress.includes(`${week}-${i}`)
 function toolCallout(w) {
   if (w.tool !== 'compass') return null
   return h('div', { class: 'tool-callout' },
-    h('div', {}, h('b', {}, 'This week’s tool: the Compass'), h('p', { class: 'small' }, 'Ten short steps from what matters to you to three first steps. It saves as you go, and your coaches will know what you find.')),
+    h('div', {}, h('b', {}, 'This week’s tool: the Compass'), h('p', { class: 'small' }, 'Ten short steps from what matters to you to three first steps. It saves as you go, and Sky will know what you find.')),
     h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('tools', 'compass') }, 'Open the Compass'))
 }
 
 const TOOL_LABELS = { compass: 'Open the Compass', planner: 'Open the planner', resume: 'Open the resume writer', cover: 'Open the cover letter writer', linkedin: 'Open the LinkedIn writer', outreach: 'Open the message writer', report: 'Create my report', brief: 'Fill in my brief', progress: 'Create my report', session: 'Book or see my session' }
-const COACH_NAMES = c => (S.me.coaches.find(x => x.id === c) || {}).name || 'your coach'
+const COACH_NAMES = c => { const n = (S.me.coaches.find(x => x.id === c) || {}).name; return n ? `Sky (${n})` : 'Sky' }
 
 // One task in the program: a tick-box, how long it takes, and a button that takes them to the right tool or coach.
 function taskRow(week, i, task) {
@@ -149,7 +151,7 @@ function lessonList(week) {
 
 function templateList(week) {
   return week.templates.map(t => h('details', { class: 'tmpl' }, h('summary', {}, t.title),
-    h('pre', {}, t.text), h('button', { class: 'btn btn-secondary', type: 'button', onclick: e => copyText(t.text, e.currentTarget) }, 'Copy')))
+    h('pre', {}, t.text), h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', type: 'button', onclick: () => noteFrom(ctx, t.title, t.text) }, 'Work on this in Notes'), h('button', { class: 'btn btn-secondary', type: 'button', onclick: e => copyText(t.text, e.currentTarget) }, 'Copy'))))
 }
 
 function lessonScreen() {
@@ -162,7 +164,7 @@ function lessonScreen() {
     h('button', { class: 'link-btn back', type: 'button', onclick: () => go('plan') }, '← Program'),
     h('span', { class: 'note' }, wk ? `week ${wk} · ${found.minutes} min` : `library · ${found.minutes} min`), h('h2', {}, found.title),
     h('div', { class: 'prose' }, body(found.body)),
-    h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`I just read “${found.title}”. `) }, 'Talk it through with your coach'),
+    h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`I just read “${found.title}”. `) }, 'Talk it through with Sky'),
     h('button', { class: 'link-btn', type: 'button', onclick: () => go('today') }, 'Back to today'))
 }
 
@@ -233,8 +235,11 @@ const ctx = {
   token: () => session,
   beacon: (url, body) => { try { fetch(url, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session}` }, body: JSON.stringify(body) }) } catch {} },
   act, buy: (action, body) => buy(action, body), render: () => render(), go: (tab, sub) => go(tab, sub),
-  askCoach: (coach, text) => askCoach(text, coach)
+  askCoach: (coach, text) => askCoach(text, coach),
+  setFocus: id => { if (id !== S.coach) openCoach(id); else go('coach') }
 }
+
+window.__npCtx = ctx
 
 // ── Today ────────────────────────────────────────────────────────
 function todayScreen() {
@@ -255,7 +260,7 @@ function todayScreen() {
       h('span', { class: 'note' }, p.complete ? 'four weeks done' : `day ${p.day} of 28`),
       h('h1', {}, first ? `Hi ${first}.` : 'Welcome back.')),
     S.info && h('div', { class: 'soft', role: 'status' }, S.info),
-    p.complete && h('div', { class: 'soft' }, h('b', {}, 'You’ve done your four weeks. '), 'Retake the check-in to see how far you’ve moved, and talk to your coach about what’s next.'),
+    p.complete && h('div', { class: 'soft' }, h('b', {}, 'You’ve done your four weeks. '), 'Retake the check-in to see how far you’ve moved, and talk to Sky about what’s next.'),
     h('div', { class: 'today-grid' },
     gettingStarted(me),
     h('div', { class: 'week-card' },
@@ -264,7 +269,7 @@ function todayScreen() {
       h('div', { class: 'bar', role: 'progressbar', 'aria-valuenow': String(pct), 'aria-valuemin': '0', 'aria-valuemax': '100', 'aria-label': 'This week’s progress' }, h('i', { style: { width: pct + '%' } })),
       h('ul', { class: 'steps-list' }, week.tasks.map((t, i) => taskRow(p.week, i, t))),
       toolCallout(week),
-      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`I’m on week ${p.week}, “${week.title}”. `) }, 'Stuck? Ask your coach about this week')),
+      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => askCoach(`I’m on week ${p.week}, “${week.title}”. `) }, 'Stuck? Ask Sky about this week')),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'By the end of this week you’ll have'),
       h('ul', { class: 'deliverables' }, week.deliverables.map(d => h('li', {}, d)))),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Read this week'), lessonList(week)),
@@ -296,7 +301,7 @@ function gettingStarted(me) {
     h('ul', { class: 'gs-list' },
       row(!!me.plan, 'Do your 2-minute check-in', 'Start', () => go('me')),
       row(done, 'Tick off your first step below', 'See it', () => window.scrollTo({ top: 0, behavior: 'smooth' })),
-      row(me.messages.length > 0 || !!S.coachUsed, 'Say hello to your Career Coach', 'Say hello', () => go('coach')),
+      row(me.messages.length > 0 || !!S.coachUsed, 'Say hello to Sky, your AI Coach', 'Say hello', () => go('coach')),
       row(me.sessions.upcoming.length > 0, 'Book your 1:1 with Vik (best in week 2 or 3)', 'Book', () => go('tools', 'session'))))
 }
 
@@ -374,21 +379,23 @@ function coachScreen() {
     render(); scrollChat()
   }
   return h('section', { class: 'screen chat' },
-    h('div', {}, h('span', { class: 'note' }, 'your coaches'), h('h2', {}, info.name),
-      h('p', { class: 'small muted' }, `${info.blurb} An AI that shares what it knows with your other coaches. It’s coaching, not therapy, and it can’t replace your session with Vik.`)),
-    h('div', { class: 'chips coach-pick', role: 'group', 'aria-label': 'Choose a coach' }, me.coaches.map(c =>
-      h('button', { class: 'chip', type: 'button', 'aria-pressed': String(c.id === S.coach), onclick: () => { if (c.id !== S.coach) openCoach(c.id) } }, c.name))),
+    h('div', { class: 'sky-head' },
+      h('div', {}, h('span', { class: 'note' }, 'your AI Coach'), h('h2', {}, 'Sky')),
+      h('div', { class: 'sky-focus' },
+        h('button', { class: 'chip focus-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: () => openSky(ctx) }, h('span', { class: 'muted' }, 'Focus: '), h('b', {}, info.name), ' ▾'),
+        h('button', { class: 'link-btn blue', type: 'button', onclick: () => openSky(ctx) }, 'What can Sky help with?'))),
+    h('p', { class: 'small muted' }, `${info.blurb} Sky is an AI. It’s coaching, not therapy, and it can’t replace your session with Vik.`),
     !me.coachOn && h('p', { class: 'soft' }, 'The coach isn’t switched on yet. Everything else in New Page works.'),
     S.crisis && h('div', { class: 'crisis', role: 'alert' }, h('b', {}, 'Support is available right now'),
       h('p', {}, 'Lifeline 13 11 14 (24/7) · Beyond Blue 1300 22 4636 · Emergency 000')),
     h('div', { class: 'msgs', id: 'msgs' },
       me.messages.length ? me.messages.map(m => h('div', { class: `msg ${m.role}` }, m.content))
         : h('div', { class: 'msg assistant' }, `Hi${me.member.name ? ' ' + me.member.name.split(' ')[0] : ''}. ${info.open}`),
-      S.coachSending && h('div', { class: 'msg assistant typing', 'aria-label': 'Coach is typing' }, '···')),
+      S.coachSending && h('div', { class: 'msg assistant typing', 'aria-label': 'Sky is typing' }, '···')),
     !me.messages.length && h('div', { class: 'starters' }, starters.map(s => h('button', { class: 'chip', type: 'button', onclick: () => send(s) }, s))),
     S.coachError && h('p', { class: 'error', role: 'alert' }, S.coachError),
     h('form', { class: 'composer', onsubmit: e => { e.preventDefault(); send(S.coachDraft) } },
-      h('textarea', { id: 'coach-box', rows: '1', maxlength: '2000', placeholder: 'Type a message…', 'aria-label': 'Message your coach', disabled: S.coachSending || !me.coachOn, oninput: e => { S.coachDraft = e.target.value; e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; const sendBtn = document.getElementById('coach-send'); if (sendBtn) sendBtn.disabled = S.coachSending || !S.coachDraft.trim() },
+      h('textarea', { id: 'coach-box', rows: '1', maxlength: '2000', placeholder: 'Type a message…', 'aria-label': 'Message Sky', disabled: S.coachSending || !me.coachOn, oninput: e => { S.coachDraft = e.target.value; e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; const sendBtn = document.getElementById('coach-send'); if (sendBtn) sendBtn.disabled = S.coachSending || !S.coachDraft.trim() },
         onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(S.coachDraft) } } }, S.coachDraft),
       h('button', { id: 'coach-send', class: 'btn btn-primary', type: 'submit', disabled: S.coachSending || !me.coachOn || !S.coachDraft.trim() }, 'Send')),
     me.messages.length > 0 && h('button', { class: 'link-btn', type: 'button', onclick: async () => { if (!S.confirmClear) { S.confirmClear = true; render(); return } S.confirmClear = false; try { await act('coach_clear', { coach: S.coach }) } catch (err) { S.error = err.message } render() } },
@@ -411,6 +418,7 @@ const TOOL_GROUPS = [
     ['brief', 'Session brief', 'Four questions so Vik can start on what matters.']]],
   ['Stay on track', [
     ['planner', 'Planner', 'Tasks, time blocks, goals and a morning reminder.'],
+    ['notes', 'Notes', 'A private place to type and work things out. Program templates open here too.'],
     ['progress', 'Progress Report', 'What you did, what changed, and your next 30 days.']]]
 ]
 const TOOLS = TOOL_GROUPS.flatMap(([, items]) => items)
@@ -418,6 +426,7 @@ let compassNote = ''
 function toolsScreen() {
   if (S.tool === 'session') return sessionScreen(ctx)
   if (S.tool === 'planner') return plannerScreen(ctx)
+  if (S.tool === 'notes') return notesScreen(ctx)
   if (S.tool === 'compass') return compassScreen(ctx)
   if (S.tool === 'resume' || S.tool === 'cover') return docsScreen(ctx, S.tool)
   if (sectionKinds.includes(S.tool)) return sectionsScreen(ctx, S.tool)
@@ -427,13 +436,13 @@ function toolsScreen() {
   compassStatus(ctx).then(c => { const n = c ? (c.done ? 'Finished' : c.step > 0 || c.values.length ? `Step ${c.step + 1} of 10: ${COMPASS_STEPS[c.step]}` : '') : ''; if (n !== compassNote) { compassNote = n; if (S.tab === 'tools' && !S.tool) render() } })
   const status = { session: me.sessions.upcoming.length ? 'Booked' : me.sessions.remaining ? `${me.sessions.remaining} included` : '', planner: due ? `${due} due today` : open ? `${open} open` : '', compass: compassNote, resume: '', cover: '', report: '', linkedin: '', outreach: '', brief: '', progress: '' }
   return h('section', { class: 'screen' },
-    h('div', {}, h('span', { class: 'note' }, 'your toolkit'), h('h2', {}, 'Tools'), h('p', { class: 'muted' }, 'These save to your account, and your coaches know about your tasks.')),
+    h('div', {}, h('span', { class: 'note' }, 'your toolkit'), h('h2', {}, 'Tools'), h('p', { class: 'muted' }, 'These save to your account, and Sky knows about your tasks.')),
     TOOL_GROUPS.map(([group, items]) => [h('h3', { class: 'group' }, group), h('div', { class: 'toolgrid' }, items.map(([id, name, blurb]) =>
       h('button', { class: 'toolcard', type: 'button', onclick: () => go('tools', id) },
         h('b', {}, name), h('span', {}, blurb), status[id] && h('small', {}, status[id]))))]),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Need to talk something through?'),
-      h('p', { class: 'small' }, 'Your coaches are in the Coach tab: Career, Recovery, Action, Executive Function, Reducing the Charge, CBT, Interview, Offer and Negotiation, and the Clarity Compass.'),
-      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('coach') }, 'Go to your coaches')))
+      h('p', { class: 'small' }, 'Sky, your AI Coach, is in the Coach tab, with nine focus areas: career, recovery, action, interview, decisions and more.'),
+      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('coach') }, 'Talk to Sky')))
 }
 
 // ── Me ───────────────────────────────────────────────────────────
@@ -464,11 +473,11 @@ function meScreen() {
     me.checkins.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your check-ins'),
       h('ul', { class: 'hist', style: { margin: 0, padding: 0, 'list-style': 'none' } }, [...me.checkins].reverse().map(c =>
         h('li', {}, h('span', {}, fmtDate(c.at)), h('b', {}, QUADRANTS[c.quadrant].name), h('span', { class: 'muted' }, `clarity ${c.clarity}, capacity ${c.capacity}`))))),
-    h('div', { class: 'card' }, h('span', { class: 'label' }, 'What your coach remembers'),
+    h('div', { class: 'card' }, h('span', { class: 'label' }, 'What Sky remembers'),
       me.memory.length ? [me.memory.map(m => h('div', { class: 'mem' }, h('span', {}, m.note),
         h('button', { class: 'x', type: 'button', 'aria-label': `Forget: ${m.note}`, onclick: async () => { try { await act('memory_delete', { id: m.id }) } catch (err) { S.error = err.message } render() } }, '×'))),
         h('button', { class: 'link-btn', type: 'button', onclick: async () => { try { await act('memory_delete', { all: true }) } catch (err) { S.error = err.message } render() } }, 'Forget everything')]
-        : h('p', { class: 'muted small' }, 'Nothing yet. When your coach saves a note to help it remember you, it appears here. You can delete any of it, any time.'),
+        : h('p', { class: 'muted small' }, 'Nothing yet. When Sky saves a note to help it remember you, it appears here. You can delete any of it, any time.'),
       h('p', { class: 'small muted' }, 'Vik can also see your plan, progress and check-ins to prepare for your session.')),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your account'),
       h('dl', { class: 'kv' }, h('dt', {}, 'Name'), h('dd', {}, me.member.name || '—'), h('dt', {}, 'Email'), h('dd', {}, me.member.email),
@@ -500,6 +509,7 @@ const ICONS = {
 const TABS = [['today', 'Today'], ['plan', 'Program'], ['coach', 'Coach'], ['tools', 'Tools'], ['me', 'Me']]
 
 function go(tab, sub) {
+  if (S.tab === 'tools' && S.tool === 'notes' && !(tab === 'tools' && sub === 'notes')) flushNotes(ctx)
   S.tab = tab; S.error = ''; S.lessonId = null
   S.tool = tab === 'tools' ? sub || null : null
   try { history.replaceState(null, '', `#${tab}${S.tool ? '/' + S.tool : ''}`) } catch {}
@@ -514,7 +524,7 @@ function renderTabs() {
   if (!show) return
   tabbar.replaceChildren(h('div', { class: 'tabbar-in' }, TABS.map(([k, label]) => {
     const needsCheckin = k === 'me' && !S.me.plan
-    const btn = h('button', { class: 'tab', type: 'button', 'aria-current': S.tab === k ? 'page' : null, onclick: () => go(k) }, label, needsCheckin && h('span', { class: 'dotbadge', 'aria-label': 'Check-in needed' }))
+    const btn = h('button', { class: 'tab', type: 'button', 'aria-current': S.tab === k ? 'page' : null, onclick: () => { go(k); if (k === 'coach' && !skySeen()) setTimeout(() => openSky(ctx), 250) } }, label, needsCheckin && h('span', { class: 'dotbadge', 'aria-label': 'Check-in needed' }))
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
     svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('aria-hidden', 'true')
     svg.innerHTML = ICONS[k] // fixed strings above, never user data

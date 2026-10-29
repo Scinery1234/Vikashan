@@ -23,10 +23,10 @@ test('specialist coaches share the member context, memory and safety line', () =
     assert.ok(sys.includes(COACHES[id].prompt.slice(0, 40)), id)
     assert.ok(sys.includes('Wants a policy role.') && sys.includes('Call Jo'), id)
     assert.ok(sys.includes('Lifeline 13 11 14'), id)
-    assert.ok(!sys.includes('You are the Career Coach inside New Page'), id)
+    assert.ok(sys.includes('You are Sky, the AI Coach') && sys.includes(`"${COACHES[id].name}" focus`) && !sys.includes('The member has chosen the "Career" focus'), id)
   }
   const career = coachSystem({ member, tasks: [], memory: [], coach: 'career' })
-  assert.ok(career.includes('You are the Career Coach inside New Page'))
+  assert.ok(career.includes('You are Sky, the AI Coach') && career.includes('never pretend to be Vik'))
 })
 
 test('the coach is told the Compass when there is one', () => {

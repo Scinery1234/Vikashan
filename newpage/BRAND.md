@@ -30,7 +30,8 @@ Things New Page is not:
 | **New Page** | The program. Title case in sentences ("Join New Page"). The logo wordmark is always lowercase: **new page**. |
 | **Vik** | The coach (Vikashan). Use "Vik" in friendly copy and emails, which are signed "Vik". |
 | **Purposefields** | Vikashan's not-for-profit arm. Mention it only for scholarships ("supported by Purposefields"). |
-| Tools | Keep their own names: The Compass, Planner, Resume writer, Cover letter writer, Career Coach, CBT Coach, Action Coach, Executive Function Coach, Reducing the Charge, Recovery Coach, Clarity Compass. |
+| **Sky** | The AI Coach inside New Page. Always "Sky" or "Sky, your AI Coach", never "Vik" and never "the Career Coach". Sky has nine focus areas (Career, Recovery, Action, Executive function, Reducing the charge, CBT, Interview, Offer and negotiation, Clarity compass). Say plainly that Sky is an AI. |
+| Tools | Keep their own names: The Compass, Planner, Notes, Resume writer, Cover letter writer. |
 | Quadrants | **Recharge, Explore, Unstick, Launch.** Only reveal these after someone finishes the quiz. Don't name them, or say there are four, on the quiz start screen or in ads. |
 
 ## 3. Logo

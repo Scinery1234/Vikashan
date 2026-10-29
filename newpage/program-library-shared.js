@@ -52,7 +52,7 @@ export const SHARED_LIBRARY = [
     body: [
       'Interviewers rarely ask clever questions. They ask the same twenty, in different clothes. If you know what each question is really after, and have stories ready, you can answer almost anything calmly.',
       '## How to use this guide',
-      'Read the questions in each group and write one or two rough bullet points for each. Then say your answers out loud, ideally to the Interview Coach or a friend. Don’t memorise. Know the shape.',
+      'Read the questions in each group and write one or two rough bullet points for each. Then say your answers out loud, ideally to Sky’s Interview focus or a friend. Don’t memorise. Know the shape.',
       '## Opening questions',
       '- **Tell me about yourself.** *They want a 60-second story: where you’ve been, what you’re good at, and why you’re here. Not your life story.* A good shape: present (what you do now), past (one or two relevant highlights), future (why this role).',
       '- **Why this role?** *They want to know you’ve thought about it. Link something specific in the role to something you care about or are good at.*',

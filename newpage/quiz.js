@@ -192,7 +192,7 @@ function newPageCard(where) {
     h('span', { class: 'offer-title' }, 'New Page: 4 weeks with a coach in your corner'),
     h('ul', {},
       h('li', {}, 'Your plan, loaded into a planner with morning reminders'),
-      h('li', {}, 'Seven AI coaches for when you’re stuck, low on energy, or deciding, plus resume and cover letter tools'),
+      h('li', {}, 'Sky, an AI Coach for when you’re stuck, low on energy, or deciding, plus resume and cover letter tools'),
       h('li', {}, 'A 60-minute 1:1 session with Vik')),
     h('p', { class: 'small muted' }, `${CONFIG.price} for 4 weeks${CONFIG.programOpen ? '' : ' · opening soon'}`),
     h('p', { class: 'small' }, h('b', {}, 'Change your mind within 7 days? '), 'Full refund. ',

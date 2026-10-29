@@ -307,7 +307,7 @@ export const READINGS_EXPLORE = {
       '## When you’re still torn',
       'Notice which way you lean when you imagine telling someone. Notice which you’d be relieved to be told was the answer. If it’s still a tie, choose the more reversible one, or the one that teaches you more.',
       '## Talk it through',
-      'The Clarity Compass coach and your session with Vik are good places to say the decision aloud. Often the answer appears while you’re explaining it.',
+      'Sky’s Clarity compass focus and your session with Vik are good places to say the decision aloud. Often the answer appears while you’re explaining it.',
       '## A worked example',
       'After his experiments, Ravi leans toward moving from accounting into data analysis. Quitting his job would be hard to reverse, so he decides on a reversible first step: a 12-week part-time course while keeping his job, with a review in three months. His decision note says: “Direction: data analysis. Why: I lost track of time analysing, and it fits my need for variety. Leaving for now: management consulting. Review: January.”',
       '## Try this',

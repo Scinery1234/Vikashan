@@ -152,7 +152,7 @@ test('launch email links to checkout when given, else the program page, and esca
 })
 
 test('free plan steps stand alone: only the optional note names New Page tools', () => {
-  const tools = /(Recovery Coach|Action Coach|Executive Function Coach|Career Coach|Reducing the Charge|Clarity Compass|The Compass|Resume Generator|Cover Letter Generator|resume writer|cover letter writer|planner|MadeHappen)/i
+  const tools = /(Sky|Recovery Coach|Action Coach|Executive Function Coach|Career Coach|Reducing the Charge|Clarity Compass|The Compass|Resume Generator|Cover Letter Generator|resume writer|cover letter writer|planner|MadeHappen)/i
   for (const q of Object.values(QUADRANTS)) {
     for (const w of q.weeks) {
       for (const step of w.steps) assert.ok(!tools.test(step), `${q.name} "${w.title}": ${step.slice(0, 60)}`)

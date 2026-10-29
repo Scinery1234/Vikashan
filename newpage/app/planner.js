@@ -87,7 +87,7 @@ export function plannerScreen(ctx) {
 
   return h('section', { class: 'screen' },
     h('div', {}, h('button', { class: 'link-btn back', type: 'button', onclick: () => ctx.go('tools') }, '← Tools'), h('h2', {}, 'Planner'),
-      h('p', { class: 'muted' }, 'Tasks, time blocks and goals. Your coaches can add to this list too.')),
+      h('p', { class: 'muted' }, 'Tasks, time blocks and goals. Sky can add to this list too.')),
     L.err && h('p', { class: 'error', role: 'alert' }, L.err),
     h('div', { class: 'plan-cols' }, h('div', { class: 'col-a' }, addForm,
     groups.map(([title, list]) => list.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, title), h('div', { class: 'tasks' }, list.map(row)))),

@@ -125,3 +125,12 @@ test('every full reading belongs to a lesson, ends with something to try, and pr
     assert.ok(!/\bguaranteed\b|you will (definitely|certainly)|studies prove|\d+% of (people|employers)/i.test(body.join(' ')), `${id} makes no outcome promises or invented statistics`)
   }
 })
+
+test('the AI is always Sky: no content uses the old coach names or lets the AI pose as Vik', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs')
+  const files = [...readdirSync('newpage').filter(f => f.endsWith('.js')).map(f => 'newpage/' + f), ...readdirSync('newpage/app').map(f => 'newpage/app/' + f), 'newpage/program/index.html', 'lib/newpage-emails.js']
+  for (const f of files) {
+    const s = readFileSync(f, 'utf8')
+    assert.ok(!/\b(Career|Recovery|Action|Interview|CBT|Executive Function) Coach\b/.test(s), `${f} still uses an old coach name`)
+  }
+})

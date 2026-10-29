@@ -215,9 +215,9 @@ export const LIBRARY = {
         '## A message you can copy',
         '“Hi [name], it’s Friday! Did: [one or two things]. Next week: [one or two things]. Hard bit: [one line]. Thanks for being my check-in.”',
         '## If your buddy goes quiet',
-        'People get busy. Send your message anyway, and don’t take silence as a judgement. If it’s become a burden for them, thank them warmly and ask someone else, or use the Action Coach as a weekly check-in.',
+        'People get busy. Send your message anyway, and don’t take silence as a judgement. If it’s become a burden for them, thank them warmly and ask someone else, or use Sky’s Action focus as a weekly check-in.',
         '## Make the check-in useful',
-        'When you read your own three lines back before sending, you’ll often notice something: a pattern in what helps, or a task you keep avoiding. That’s half the value. Notice it, and use it to choose next week’s first step. If the same hard bit appears three weeks running, take it to the Action Coach or to your session with Vik.'
+        'When you read your own three lines back before sending, you’ll often notice something: a pattern in what helps, or a task you keep avoiding. That’s half the value. Notice it, and use it to choose next week’s first step. If the same hard bit appears three weeks running, take it to Sky (Action focus) or to your session with Vik.'
       ]
     }
   ],
@@ -453,7 +453,7 @@ export const LIBRARY = {
         '- The **Fair Work Ombudsman** for questions about hours, breaks and your rights.',
         '- Your **GP,** if your health is being affected. Your doctor can also talk about time off or adjustments.',
         '## If you’re thinking of leaving',
-        'That’s allowed. A heavy workload that doesn’t change can be a sign the job isn’t sustainable. If you’re leaning that way, don’t decide in the worst week. Do the exercises in this program, and talk it through with your coach and with Vik.',
+        'That’s allowed. A heavy workload that doesn’t change can be a sign the job isn’t sustainable. If you’re leaning that way, don’t decide in the worst week. Do the exercises in this program, and talk it through with Sky and with Vik.',
         '## A reminder',
         'Being honest about capacity isn’t weakness. It’s how people keep working well over years.',
         '## A follow-up email you can copy',

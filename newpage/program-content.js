@@ -57,7 +57,7 @@ export const PROGRAM = {
         { text: 'Write your target role in one line: “I’m looking for … roles in …”. Add two other roles you’d also be happy with.', minutes: 10 },
         { text: 'Work through the Compass: your values, who you are, your North Star, what you need from work, strengths, choosing, and a plan with first steps.', minutes: 60, tool: 'compass' },
         { text: 'Create your Career Direction Report. It pulls your Compass, your check-in and your notes into one personal document.', minutes: 5, tool: 'report' },
-        { text: 'Talk through anything the report surprised you with. Ask your coach to pressure-test your top choice.', minutes: 15, coach: 'career', prompt: 'I’ve done the Compass and read my Career Direction Report. Please pressure-test my top choice: what might I be missing?' },
+        { text: 'Talk through anything the report surprised you with. Ask Sky to pressure-test your top choice.', minutes: 15, coach: 'career', prompt: 'I’ve done the Compass and read my Career Direction Report. Please pressure-test my top choice: what might I be missing?' },
         { text: 'Book your 60-minute session with Vik for next week, when you have a draft resume to bring.', minutes: 5, tool: 'session' }
       ],
       templates: [
@@ -98,7 +98,7 @@ export const PROGRAM = {
       tasks: [
         { text: 'Find three real job ads for your target role. Highlight the words and skills that appear in all three.', minutes: 15 },
         { text: 'Paste your work history and one of the ads into the resume writer. Read every line and fix anything that isn’t true.', minutes: 30, tool: 'resume' },
-        { text: 'Write your answer to “Why this role, and why now?”. Use your North Star as the “why”. Ask your coach to tighten it to 60 seconds.', minutes: 20, coach: 'career', prompt: 'Help me write a 60-second answer to “Why this role, and why now?”. Use my North Star from the Compass as the why.' },
+        { text: 'Write your answer to “Why this role, and why now?”. Use your North Star as the “why”. Ask Sky to tighten it to 60 seconds.', minutes: 20, coach: 'career', prompt: 'Help me write a 60-second answer to “Why this role, and why now?”. Use my North Star from the Compass as the why.' },
         { text: 'Rewrite your LinkedIn headline, About section and experience bullets so they match your resume.', minutes: 25, tool: 'linkedin' },
         { text: 'Fill in your session brief, so Vik can start on the real issues straight away.', minutes: 10, tool: 'brief' },
         { text: 'Have your 60-minute session with Vik if you’ve booked it for this week.', minutes: 60, tool: 'session' }
@@ -448,7 +448,7 @@ export const PROGRAM = {
         { text: 'Set a 20-minute timer. Write at least ten roles, industries or ways of working that could use your top values and strengths.', minutes: 20 },
         { text: 'Mix it up: pair one thing you know, one thing you do well and one thing you love, and see what job that points to.', minutes: 20 },
         { text: 'Score each idea from 1 to 5 on energy, fit and realism. Circle your top two.', minutes: 20, coach: 'career', prompt: 'Help me score my career ideas on energy, fit with my values and realism.' },
-        { text: 'If you’re torn between two, work through the choice with the Clarity Compass coach.', minutes: 25, coach: 'clarity', prompt: 'I’m torn between two career ideas. Can we work through the decision?' },
+        { text: 'If you’re torn between two, work through the choice with Sky’s Clarity compass focus.', minutes: 25, coach: 'clarity', prompt: 'I’m torn between two career ideas. Can we work through the decision?' },
         { text: 'Fill in your session brief, so Vik can start on the real questions.', minutes: 10, tool: 'brief' }
       ],
       templates: [
@@ -582,7 +582,7 @@ export const PROGRAM = {
       tasks: [
         { text: 'Choose one small daily reset that takes 10 minutes or less, and put it in your calendar at the same time each day.', minutes: 10, tool: 'planner' },
         { text: 'Do your reset every day for seven days.', minutes: 70 },
-        { text: 'Check in with the Recovery Coach on how you’re really going. No fixing needed.', minutes: 15, coach: 'recovery', prompt: 'I’m tired and a bit flat. Can we talk about how I’m really going?' },
+        { text: 'Check in with Sky’s Recovery focus on how you’re really going. No fixing needed.', minutes: 15, coach: 'recovery', prompt: 'I’m tired and a bit flat. Can we talk about how I’m really going?' },
         { text: 'At the end of the week, write one line: what changed, even slightly, on the days you did it?', minutes: 5 }
       ],
       templates: [
@@ -623,7 +623,7 @@ export const PROGRAM = {
       tasks: [
         { text: 'Write down everything that’s weighing on you, work and life, in one messy list. Don’t organise it.', minutes: 15 },
         { text: 'Circle the career worry that takes up the most room, and write the smallest thing that would make it feel lighter.', minutes: 10 },
-        { text: 'Talk it through, gently, with Reducing the Charge.', minutes: 20, coach: 'charge', prompt: 'There’s a career worry that feels very heavy. Can we put it down together?' },
+        { text: 'Talk it through, gently, with Sky’s Reducing the charge focus.', minutes: 20, coach: 'charge', prompt: 'There’s a career worry that feels very heavy. Can we put it down together?' },
         { text: 'Pick one thing on the list to drop, delay or hand to someone else this week, and do it.', minutes: 15 },
         { text: 'Keep your daily reset going.', minutes: 70, tool: 'planner' }
       ],

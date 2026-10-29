@@ -278,3 +278,15 @@ WHERE NOT EXISTS (SELECT 1 FROM newpage_codes);
 -- The program adds more document types (report, LinkedIn, outreach, session brief, progress report).
 ALTER TABLE newpage_docs DROP CONSTRAINT IF EXISTS newpage_docs_kind_check;
 ALTER TABLE newpage_docs ADD CONSTRAINT newpage_docs_kind_check CHECK (kind IN ('resume','cover','report','linkedin','outreach','brief','progress'));
+
+-- ── Notes: a private place for members to type and work things out ──
+CREATE TABLE IF NOT EXISTS newpage_notes (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  title text NOT NULL DEFAULT '',
+  body text NOT NULL DEFAULT '',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_notes_member_idx ON newpage_notes (member_id, updated_at DESC);
+ALTER TABLE newpage_notes ENABLE ROW LEVEL SECURITY;

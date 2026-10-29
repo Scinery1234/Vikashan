@@ -147,6 +147,30 @@ export default async function handler(req, res) {
       }
     }
 
+    // ── Notes: a private place for the member to type and work things out ──
+    case 'note_list': {
+      const { data } = await supabase.from('newpage_notes').select('id, title, body, updated_at').eq('member_id', member.id).order('updated_at', { ascending: false }).limit(100)
+      return res.json({ notes: data || [] })
+    }
+    case 'note_save': {
+      const title = clip(b.title, 120), body = clipText(b.body, 30000)
+      const now = new Date().toISOString()
+      if (b.id) {
+        if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown note.' })
+        const { data } = await supabase.from('newpage_notes').update({ title, body, updated_at: now }).eq('id', b.id).eq('member_id', member.id).select('id, title, body, updated_at').maybeSingle()
+        if (!data) return res.status(404).json({ error: 'That note is gone.' })
+        return res.json({ note: data })
+      }
+      const { count } = await supabase.from('newpage_notes').select('id', { count: 'exact', head: true }).eq('member_id', member.id)
+      if ((count || 0) >= 100) return res.status(400).json({ error: 'You have 100 notes. Delete one to make room.' })
+      const { data } = await supabase.from('newpage_notes').insert({ member_id: member.id, title, body, updated_at: now }).select('id, title, body, updated_at').single()
+      return res.json({ note: data })
+    }
+    case 'note_delete':
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown note.' })
+      await supabase.from('newpage_notes').delete().eq('id', b.id).eq('member_id', member.id)
+      return res.json({ ok: true })
+
     // ── Resume and cover letter ──
     case 'doc_list': {
       const { data } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(20)

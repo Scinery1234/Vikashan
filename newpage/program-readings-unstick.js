@@ -185,7 +185,7 @@ export const READINGS_UNSTICK = {
       '- The block was at a bad time. Move it.',
       '- The task was too big. Shrink it.',
       '- Something unexpected came up. Plan a back-up slot.',
-      '- I was dreading it. Name why, and talk to the Action Coach.',
+      '- I was dreading it. Name why, and talk to Sky in Action focus.',
       '## Move, don’t skip',
       'When a block slips, move it to another day rather than letting it vanish. A skipped block quietly turns into a skipped week. A moved block keeps the promise.',
       '## Redefine the streak',
@@ -289,7 +289,7 @@ export const READINGS_UNSTICK = {
       '## Look for what worked',
       'Next to each win, note what helped: a time, a place, a person, a trick. Over a month you’ll see what to repeat.',
       '## A worked example',
-      'Jordan’s wins list after four weeks has 23 entries. Looking back, 17 happened in the morning blocks. He decides to move his other work blocks to mornings too. He also notices that “talking to the Action Coach for 15 minutes” appears four times before bigger wins. He keeps that.',
+      'Jordan’s wins list after four weeks has 23 entries. Looking back, 17 happened in the morning blocks. He decides to move his other work blocks to mornings too. He also notices that “talking to Sky for 15 minutes” appears four times before bigger wins. He keeps that.',
       '## Try this',
       'Start your wins list now and write down everything you’ve done this month, however small. Then read it aloud.'
     ]
