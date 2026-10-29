@@ -89,6 +89,9 @@ $('confirm-yes').addEventListener('click', async () => {
 const MEMBERS = '/api/newpage/members'
 const el = (tag, text, attrs = {}) => { const e = document.createElement(tag); if (text != null) e.textContent = text; for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e }
 
+const fmtD = d => new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+const btn = (text, cls = 'btn btn-secondary') => el('button', text, { type: 'button', class: cls, style: 'min-height:44px;font-size:14px;padding:6px 12px' })
+
 async function loadMembers() {
   const box = $('member-list')
   try {
@@ -96,62 +99,140 @@ async function loadMembers() {
     box.replaceChildren()
     if (!members.length) { box.append(el('p', 'No members yet.', { class: 'muted small' })); return }
     const today = Date.now()
-    const fmt = d => new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
     for (const m of members) {
       const ended = m.access_until && new Date(m.access_until).getTime() < today
-      const row = el('div', null, { class: 'mem' })
-      const access = m.access_until ? (ended ? `access ended ${fmt(m.access_until)}` : `access until ${fmt(m.access_until)}`) : 'no end date'
-      const info = el('span', `${m.name || m.email}${m.name ? ' · ' + m.email : ''} · ${m.quadrant || 'no plan yet'} · ${m.source} · ${access} · session ${m.sessions_used}/${m.sessions_included ?? 1}${m.status !== 'active' ? ' · ' + m.status.toUpperCase() : ''}${m.last_login_at ? '' : ' · never signed in'}`)
-      const sel = el('select', null, { 'aria-label': `Status for ${m.email}`, style: 'min-height:44px;border:1.5px solid #C9D3E3;border-radius:10px;padding:6px 8px;background:#fff;font-size:15px' })
-      for (const s of ['active', 'paused', 'ended']) { const o = el('option', s, { value: s }); if (s === m.status) o.selected = true; sel.append(o) }
-      sel.addEventListener('change', async () => {
-        try { await api('POST', { id: m.id, status: sel.value }, MEMBERS) } catch (e) { alert(e.message) }
-        loadMembers()
-      })
-      const renew = el('button', 'Renewal paid: +1 month', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
-      renew.addEventListener('click', async () => {
-        if (!confirm(`Add one month and one more session for ${m.email}? Only do this once they have paid for the renewal.`)) return
-        try { await api('POST', { id: m.id, renew: true }, MEMBERS) } catch (e) { alert(e.message) }
-        loadMembers()
-      })
-      const date = el('button', 'Set end date', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
-      date.addEventListener('click', async () => {
-        const v = prompt('Access ends on (YYYY-MM-DD), or leave blank for no end date:', m.access_until ? m.access_until.slice(0, 10) : '')
-        if (v === null) return
-        try { await api('POST', { id: m.id, accessUntil: v.trim() || null }, MEMBERS) } catch (e) { alert(e.message) }
-        loadMembers()
-      })
-      const more = el('button', '+1 session', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
-      more.addEventListener('click', async () => {
-        try { await api('POST', { id: m.id, sessionsIncluded: (m.sessions_included ?? 1) + 1 }, MEMBERS) } catch (e) { alert(e.message) }
-        loadMembers()
-      })
-      row.append(info, sel, renew, date, more)
-      if (m.has_brief) {
-        const brief = el('button', 'Session brief', { type: 'button', class: 'btn btn-secondary', style: 'min-height:44px;font-size:14px;padding:6px 12px' })
-        brief.addEventListener('click', async () => {
-          try {
-            const { member, brief: b } = await api('GET', null, `${MEMBERS}?brief=${m.id}`)
-            const view = $('brief-view'); view.replaceChildren()
-            view.append(el('span', `Session brief: ${member?.name || member?.email || ''}`, { class: 'label' }))
-            if (!b) { view.append(el('p', 'No brief yet.')) } else {
-              const c = b.content
-              view.append(el('h3', c.title || b.title))
-              view.append(el('p', `Written ${new Date(b.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}`, { class: 'small muted' }))
-              for (const s of c.sections || []) {
-                view.append(el('h4', s.heading))
-                for (const p of s.paragraphs || []) view.append(el('p', p))
-                if ((s.bullets || []).length) { const ul = el('ul'); for (const x of s.bullets) ul.append(el('li', x)); view.append(ul) }
-              }
-            }
-            view.hidden = false; view.scrollIntoView({ block: 'start' })
-          } catch (e) { alert(e.message) }
-        })
-        row.append(brief)
-      }
+      const access = m.access_until ? (ended ? `ended ${fmtD(m.access_until)}` : `until ${fmtD(m.access_until)}`) : 'no end date'
+      const row = el('div', null, { class: 'mrow' })
+      const who = el('div', null, { class: 'mwho' })
+      who.append(el('b', m.name || m.email), el('span', m.name ? m.email : '', { class: 'small muted' }))
+      const chips = el('div', null, { class: 'mchips' })
+      for (const t of [m.quadrant || 'no plan yet', `access ${access}`, `session ${m.sessions_used}/${m.sessions_included ?? 1}`, m.status !== 'active' ? m.status.toUpperCase() : '', m.last_login_at ? '' : 'never signed in']) if (t) chips.append(el('span', t, { class: 'mchip' + (t === m.status.toUpperCase() ? ' warn' : '') }))
+      const open = btn('Open', 'btn btn-primary')
+      open.addEventListener('click', () => openMember(m.id))
+      row.append(who, chips, open)
       box.append(row)
     }
   } catch (e) { box.replaceChildren(el('p', e.message, { class: 'error' })) }
+}
+
+// ── One member: the coach panel ──
+let panel = null
+function closePanel() { panel?.remove(); panel = null; document.body.style.overflow = '' }
+
+async function openMember(id) {
+  closePanel()
+  const wrap = el('div', null, { class: 'mp-wrap' })
+  wrap.append(el('div', null, { class: 'mp-back' }))
+  wrap.firstChild.addEventListener('click', closePanel)
+  const aside = el('aside', null, { class: 'mp', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Member' })
+  wrap.append(aside)
+  document.body.append(wrap); panel = wrap; document.body.style.overflow = 'hidden'
+  aside.append(el('p', 'Loading…', { class: 'muted' }))
+  const onKey = e => { if (e.key === 'Escape') { closePanel(); document.removeEventListener('keydown', onKey) } }
+  document.addEventListener('keydown', onKey)
+  try { await renderMember(aside, id) } catch (e) { aside.replaceChildren(el('p', e.message, { class: 'error' })) }
+}
+
+async function renderMember(aside, id, msg = '') {
+  const d = await api('GET', null, `${MEMBERS}?detail=${id}`)
+  const m = d.member
+  const head = el('div', null, { class: 'mp-head' })
+  const title = el('div'); title.append(el('h3', m.name || m.email), el('p', `${m.email}${m.name ? '' : ''}`, { class: 'small muted' }))
+  const close = el('button', '×', { type: 'button', class: 'mp-x', 'aria-label': 'Close' }); close.addEventListener('click', closePanel)
+  head.append(title, close)
+
+  // Where they are
+  const c = d.checkins[0]
+  const where = el('div', null, { class: 'card' })
+  where.append(el('span', 'Where they are', { class: 'label' }),
+    el('p', m.quadrant ? `Plan: ${m.quadrant}. ${d.position.complete ? 'Finished the four weeks.' : `Week ${d.position.week}, day ${d.position.day}.`} ${d.stepsDone} program steps ticked off.` : 'No plan yet: they haven’t done the check-in.'),
+    el('p', c ? `Latest check-in: clarity ${c.clarity}/16, capacity ${c.capacity}/16 (${c.quadrant}) on ${fmtD(c.created_at)}.` : 'No check-ins yet.', { class: 'small' }),
+    el('p', `Last signed in: ${m.last_login_at ? fmtD(m.last_login_at) : 'never'}. Access: ${m.access_until ? 'until ' + fmtD(m.access_until) : 'no end date'}. Sessions: ${m.sessions_included ?? 1} included.`, { class: 'small muted' }))
+  if (d.goals.length) { const ul = el('ul', null, { class: 'small' }); for (const g of d.goals) ul.append(el('li', `${g.done ? '✓ ' : ''}${g.title}${g.target ? ' (by ' + g.target + ')' : ''}`)); where.append(el('span', 'Their goals', { class: 'label' }), ul) }
+
+  // Add a task for them
+  const add = el('form', null, { class: 'card', novalidate: '' })
+  const tIn = el('input', null, { type: 'text', maxlength: '200', id: 'mp-title', placeholder: 'e.g. Ring two recruiters and note what they say' })
+  const dIn = el('input', null, { type: 'date', id: 'mp-due', 'aria-label': 'Due date' })
+  const sIn = el('input', null, { type: 'time', id: 'mp-start', 'aria-label': 'Start time' })
+  const mIn = el('select', null, { id: 'mp-mins', 'aria-label': 'Length' })
+  for (const n of [15, 30, 45, 60, 90, 120]) { const o = el('option', `${n} min`, { value: String(n) }); if (n === 30) o.selected = true; mIn.append(o) }
+  const noteIn = el('textarea', null, { id: 'mp-note', rows: '2', maxlength: '500', placeholder: 'A short note for them (optional, goes in the email)' })
+  const notify = el('input', null, { type: 'checkbox', id: 'mp-notify', checked: '' })
+  const status = el('p', msg, { role: 'status', class: 'small' })
+  const go = el('button', 'Add to their list', { type: 'submit', class: 'btn btn-primary' })
+  const row = (label, input) => { const f = el('div', null, { class: 'field' }); const l = el('label', label, { for: input.id }); f.append(l, input); return f }
+  const when = el('div', null, { class: 'mp-when' }); when.append(row('Date', dIn), row('Time (optional)', sIn), row('Length', mIn))
+  const chk = el('label', null, { class: 'check', for: 'mp-notify' }); chk.append(notify, el('span', 'Email them about it'))
+  add.append(el('span', 'Add a task for them', { class: 'label' }), row('Task', tIn), when, noteIn, chk, go, status)
+  add.addEventListener('submit', async e => {
+    e.preventDefault(); status.textContent = ''
+    go.disabled = true
+    try {
+      const r = await api('POST', { id, addTask: { title: tIn.value, due: dIn.value || null, start: sIn.value || null, mins: mIn.value, notify: notify.checked, note: noteIn.value } }, MEMBERS)
+      await renderMember(aside, id, `Added${dIn.value ? ' and scheduled' : ''}.${notify.checked ? (r.emailed ? ' Email sent.' : ` The email didn’t send (${r.emailError || 'unknown reason'}), but the task is on their list.`) : ''}`)
+      return
+    } catch (err) { status.textContent = err.message; status.className = 'small error' }
+    go.disabled = false
+  })
+
+  // Their tasks
+  const tasks = el('div', null, { class: 'card' })
+  tasks.append(el('span', `Their tasks (${d.tasks.filter(t => !t.done).length} open)`, { class: 'label' }))
+  if (!d.tasks.length) tasks.append(el('p', 'None yet.', { class: 'small muted' }))
+  for (const t of d.tasks) {
+    const r = el('div', null, { class: 'mp-task' + (t.done ? ' done' : '') })
+    const when = [t.due ? fmtD(t.due) : '', t.block_start ? t.block_start.slice(0, 5) + (t.block_mins ? ` (${t.block_mins} min)` : '') : ''].filter(Boolean).join(' · ')
+    r.append(el('span', `${t.done ? '✓ ' : ''}${t.title}`), el('small', [when, t.source === 'vik' ? 'from you' : t.source === 'coach' ? 'from Sky' : t.source === 'compass' ? 'Compass' : ''].filter(Boolean).join(' · '), { class: 'muted' }))
+    if (t.source === 'vik') {
+      const x = el('button', '×', { type: 'button', class: 'mp-x', 'aria-label': `Remove ${t.title}` })
+      x.addEventListener('click', async () => { try { await api('POST', { id, deleteTask: t.id }, MEMBERS); await renderMember(aside, id) } catch (err) { alert(err.message) } })
+      r.append(x)
+    }
+    tasks.append(r)
+  }
+
+  // Private notes
+  const notes = el('div', null, { class: 'card' })
+  const nIn = el('textarea', m.coach_notes || '', { rows: '5', maxlength: '10000', id: 'mp-notes', 'aria-label': 'Your private notes' })
+  const nSave = btn('Save notes'); const nStat = el('span', '', { class: 'small muted', role: 'status' })
+  nSave.addEventListener('click', async () => { try { await api('POST', { id, coachNotes: nIn.value }, MEMBERS); nStat.textContent = 'Saved.' } catch (err) { nStat.textContent = err.message } })
+  notes.append(el('span', 'Your private notes', { class: 'label' }), el('p', 'Only you can see these. They never show in the member’s app.', { class: 'small muted' }), nIn, el('div', null, { class: 'row' }))
+  notes.lastChild.append(nSave, nStat)
+
+  // Account actions
+  const acct = el('div', null, { class: 'card' })
+  const sel = el('select', null, { 'aria-label': 'Status', style: 'min-height:44px;border:1.5px solid #C9D3E3;border-radius:10px;padding:6px 8px;background:#fff;font-size:15px' })
+  for (const v of ['active', 'paused', 'ended']) { const o = el('option', v, { value: v }); if (v === m.status) o.selected = true; sel.append(o) }
+  sel.addEventListener('change', async () => { try { await api('POST', { id, status: sel.value }, MEMBERS) } catch (e) { alert(e.message) } loadMembers(); renderMember(aside, id) })
+  const renew = btn('Renewal paid: +1 month')
+  renew.addEventListener('click', async () => { if (!confirm(`Add one month and one more session for ${m.email}? Only do this once they have paid for the renewal.`)) return; try { await api('POST', { id, renew: true }, MEMBERS) } catch (e) { alert(e.message) } loadMembers(); renderMember(aside, id) })
+  const date = btn('Set end date')
+  date.addEventListener('click', async () => { const v = prompt('Access ends on (YYYY-MM-DD), or leave blank for no end date:', m.access_until ? m.access_until.slice(0, 10) : ''); if (v === null) return; try { await api('POST', { id, accessUntil: v.trim() || null }, MEMBERS) } catch (e) { alert(e.message) } loadMembers(); renderMember(aside, id) })
+  const more = btn('+1 session')
+  more.addEventListener('click', async () => { try { await api('POST', { id, sessionsIncluded: (m.sessions_included ?? 1) + 1 }, MEMBERS) } catch (e) { alert(e.message) } loadMembers(); renderMember(aside, id) })
+  const brief = btn('View session brief')
+  brief.addEventListener('click', async () => {
+    try {
+      const { member, brief: b } = await api('GET', null, `${MEMBERS}?brief=${id}`)
+      const view = $('brief-view'); view.replaceChildren()
+      view.append(el('span', `Session brief: ${member?.name || member?.email || ''}`, { class: 'label' }))
+      if (!b) view.append(el('p', 'No brief yet.')); else {
+        const cc = b.content
+        view.append(el('h3', cc.title || b.title), el('p', `Written ${new Date(b.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long' })}`, { class: 'small muted' }))
+        for (const sct of cc.sections || []) {
+          view.append(el('h4', sct.heading))
+          for (const p of sct.paragraphs || []) view.append(el('p', p))
+          if ((sct.bullets || []).length) { const ul = el('ul'); for (const x of sct.bullets) ul.append(el('li', x)); view.append(ul) }
+        }
+      }
+      view.hidden = false; closePanel(); view.scrollIntoView({ block: 'start' })
+    } catch (e) { alert(e.message) }
+  })
+  const arow = el('div', null, { class: 'row' }); arow.append(sel, renew, date, more, brief)
+  acct.append(el('span', 'Account', { class: 'label' }), arow)
+
+  aside.replaceChildren(head, where, add, tasks, notes, acct)
 }
 
 $('grant-form').addEventListener('submit', async e => {

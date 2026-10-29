@@ -290,3 +290,8 @@ CREATE TABLE IF NOT EXISTS newpage_notes (
 );
 CREATE INDEX IF NOT EXISTS newpage_notes_member_idx ON newpage_notes (member_id, updated_at DESC);
 ALTER TABLE newpage_notes ENABLE ROW LEVEL SECURITY;
+
+-- ── Coach panel: tasks Vik adds, and Vik's private notes on a member ──
+ALTER TABLE newpage_tasks DROP CONSTRAINT IF EXISTS newpage_tasks_source_check;
+ALTER TABLE newpage_tasks ADD CONSTRAINT newpage_tasks_source_check CHECK (source IN ('you','coach','compass','vik'));
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS coach_notes text;

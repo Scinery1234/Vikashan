@@ -192,7 +192,7 @@ function taskList(tasks, limit) {
       h('label', {},
         h('input', { type: 'checkbox', checked: t.done, onchange: async e => { try { await act('task_toggle', { id: t.id, done: e.target.checked }) } catch (err) { S.error = err.message } render() } }),
         h('span', { class: 't' }, t.title)),
-      t.source === 'coach' && h('span', { class: 'src' }, 'coach'),
+      (t.source === 'coach' || t.source === 'vik') && h('span', { class: 'src' + (t.source === 'vik' ? ' vik' : '') }, t.source === 'vik' ? 'From Vik' : 'From Sky'),
       t.due && h('span', { class: 'due' }, fmtDate(t.due)),
       h('button', { class: 'x', type: 'button', 'aria-label': `Delete ${t.title}`, onclick: async () => { try { await act('task_delete', { id: t.id }) } catch (err) { S.error = err.message } render() } }, '×')))
       : h('p', { class: 'muted small' }, 'No tasks yet. Add the next small thing you’ll do.'),

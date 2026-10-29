@@ -278,3 +278,4 @@ body.no-scroll { overflow: hidden; }
 }
 @media (min-width: 900px) { .notes-cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; } .note-editor textarea { min-height: 420px; } }
 .field textarea, .composer textarea { font-family: var(--body); }
+.task .src.vik, .plan-task .src.vik { background: var(--hl); color: var(--ink); }
