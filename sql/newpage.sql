@@ -343,3 +343,14 @@ CREATE TABLE IF NOT EXISTS newpage_access_log (
 );
 CREATE INDEX IF NOT EXISTS newpage_access_log_member_idx ON newpage_access_log (member_id, created_at DESC);
 ALTER TABLE newpage_access_log ENABLE ROW LEVEL SECURITY;
+
+-- ── Program emails: which ones each member has been sent, and whether they want them ──
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS program_emails boolean DEFAULT true;
+CREATE TABLE IF NOT EXISTS newpage_member_emails (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  sent_at timestamptz DEFAULT now(),
+  UNIQUE (member_id, kind)
+);
+ALTER TABLE newpage_member_emails ENABLE ROW LEVEL SECURITY;
