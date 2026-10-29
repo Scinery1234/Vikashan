@@ -3,6 +3,8 @@ import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import { sendConfirmation, sendPaymentPlanReceipt } from '../../lib/resend.js'
 import Stripe from 'stripe'
+import { pricingProblem, slotProblem } from '../../lib/booking-price.js'
+import { ensureClient, lookupClient } from '../../lib/booking-client.js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -21,34 +23,35 @@ export default async function handler(req, res) {
   if (!clientName || !clientEmail || !date || !time || !sessionTypeId || !amountCentsPerSession || !sessionsTotal || !paymentMethodId || !planAmountCents) {
     return res.status(400).json({ error: 'Missing required fields' })
   }
-  const totalCents = amountCentsPerSession * sessionsTotal
-  const freqMin = { weekly: 5000, fortnightly: 10000, monthly: 20000 }
-  const minCents = totalCents < 20000 ? 2500 : (freqMin[planFreq] || 5000)
-  if (planAmountCents < minCents) {
-    return res.status(400).json({ error: `Minimum payment is $${minCents / 100}.` })
+  if (!Number.isInteger(amountCentsPerSession) || !Number.isInteger(sessionsTotal) || !Number.isInteger(planAmountCents) || typeof paymentMethodId !== 'string') {
+    return res.status(400).json({ error: 'Missing required fields' })
   }
-
-  const firstInstalmentCents = Math.min(planAmountCents, amountCentsPerSession * sessionsTotal)
+  const FREQ_DAYS = { weekly: 7, fortnightly: 14, monthly: 30 }
+  if (!FREQ_DAYS[planFreq]) return res.status(400).json({ error: 'Choose how often to pay.' })
 
   const { data: sessionType } = await supabase
     .from('session_types').select('*').eq('id', sessionTypeId).single()
   if (!sessionType) return res.status(404).json({ error: 'Session type not found' })
   if (sessionType.members_only) return res.status(403).json({ error: 'That session is for New Page members.' })
 
-  const meetLink = process.env.ZOOM_PERSONAL_LINK
-  const totalCents = amountCentsPerSession * sessionsTotal
-  const instalmentCents = firstInstalmentCents
-  const freqDays = { weekly: 7, fortnightly: 14, monthly: 30 }
-  const daysUntilNext = freqDays[planFreq] || 30
+  // The browser suggests a rate and an instalment; the server decides what is allowed. A payment plan has no upfront discount.
+  const problem = pricingProblem({ sessionType, tier, amountCentsPerSession, sessionsTotal, upfront: false, client: await lookupClient(clientEmail) })
+  if (problem) return res.status(400).json({ error: problem })
+  const slot = await slotProblem(date, time)
+  if (slot) return res.status(409).json({ error: slot })
 
-  // Upsert client
-  const { data: client, error: clientError } = await supabase
-    .from('clients')
-    .upsert(
-      { name: clientName, email: clientEmail, phone: clientPhone || null, mailing_opt_in: !!mailingOptIn, status: 'lead' },
-      { onConflict: 'email', ignoreDuplicates: false }
-    )
-    .select().single()
+  const totalCents = amountCentsPerSession * sessionsTotal
+  const freqMin = { weekly: 5000, fortnightly: 10000, monthly: 20000 }
+  const minCents = totalCents < 20000 ? 2500 : freqMin[planFreq]
+  if (planAmountCents < minCents) return res.status(400).json({ error: `Minimum payment is $${minCents / 100}.` })
+  if (planAmountCents > totalCents) return res.status(400).json({ error: 'That is more than the total.' })
+
+  const firstInstalmentCents = Math.min(planAmountCents, totalCents)
+  const meetLink = process.env.ZOOM_PERSONAL_LINK
+  const instalmentCents = firstInstalmentCents
+  const daysUntilNext = FREQ_DAYS[planFreq]
+
+  const { client, error: clientError } = await ensureClient({ name: clientName, email: clientEmail, phone: clientPhone, mailingOptIn })
   if (clientError) return res.status(500).json({ error: 'Failed to create client' })
 
   // Create or retrieve Stripe customer
@@ -71,9 +74,9 @@ export default async function handler(req, res) {
     customer: customer.id,
     payment_method: paymentMethodId,
     confirm: true,
-    description: `${sessionType.name} — instalment 1 of 3 — ${clientName}`,
+    description: `${sessionType.name} — instalment 1 — ${clientName}`,
     receipt_email: clientEmail,
-    metadata: { clientEmail, instalment: '1', instalmentTotal: '3' }
+    metadata: { clientEmail, instalment: '1' }
   })
 
   if (intent.status !== 'succeeded') {

@@ -2,10 +2,9 @@ import { supabase } from '../../lib/supabase.js'
 import { sendConfirmation } from '../../lib/resend.js'
 import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
-import Stripe from 'stripe'
 import { rateLimit, isBot, sanitiseObject } from '../../lib/security.js'
-
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
+import { slotProblem } from '../../lib/booking-price.js'
+import { ensureClient } from '../../lib/booking-client.js'
 
 export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(200).end()
@@ -18,7 +17,7 @@ export default async function handler(req, res) {
   const {
     clientName, clientEmail, clientPhone,
     date, time, sessionTypeId,
-    tier, amountCents, notes, mailingOptIn
+    notes, mailingOptIn
   } = body
 
   if (!clientName || !clientEmail || !date || !time || !sessionTypeId) {
@@ -33,25 +32,16 @@ export default async function handler(req, res) {
 
   if (!sessionType) return res.status(404).json({ error: 'Session type not found' })
   if (sessionType.members_only) return res.status(403).json({ error: 'That session is for New Page members. Sign in at /newpage/app to book it.' })
+  // This endpoint books free calls only. Paid sessions go through /api/packages/create,
+  // which works out the price itself. A price sent from the browser is never used.
+  if (!sessionType.is_free) return res.status(400).json({ error: 'That session needs to be paid for. Please use the booking page.' })
+  const problem = await slotProblem(date, time)
+  if (problem) return res.status(409).json({ error: problem })
 
   // Use the configured Zoom personal room link for all sessions
   const zoomLink = process.env.ZOOM_PERSONAL_LINK
 
-  const { data: client, error: clientError } = await supabase
-    .from('clients')
-    .upsert(
-      {
-        name: clientName,
-        email: clientEmail,
-        phone: clientPhone || null,
-        mailing_opt_in: !!mailingOptIn,
-        status: 'lead'
-      },
-      { onConflict: 'email', ignoreDuplicates: false }
-    )
-    .select()
-    .single()
-
+  const { client, error: clientError } = await ensureClient({ name: clientName, email: clientEmail, phone: clientPhone, mailingOptIn })
   if (clientError) return res.status(500).json({ error: 'Failed to create client' })
 
   const { data: booking, error: bookingError } = await supabase
@@ -63,8 +53,8 @@ export default async function handler(req, res) {
       start_time: time,
       duration_mins: sessionType.duration_mins,
       meet_link: zoomLink,
-      amount_cents: amountCents ?? 0,
-      tier: tier ?? 'free',
+      amount_cents: 0,
+      tier: 'free',
       notes: notes || null,
       status: 'pending'
     })
@@ -91,32 +81,12 @@ export default async function handler(req, res) {
   }
 
   // Free / discovery call — confirm immediately
-  if (!amountCents || amountCents === 0) {
-    await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', booking.id)
-    const confirmedBooking = { ...booking, session_type_name: sessionType.name }
-    await Promise.all([
-      sendConfirmation({ booking: confirmedBooking, client, zoomLink }),
-      createOutlookEvent({ booking: confirmedBooking, client, meetLink: zoomLink }),
-      createGoogleCalendarEvent({ booking: confirmedBooking, client, meetLink: zoomLink })
-    ])
-    return res.json({ success: true, bookingId: booking.id, zoomLink })
-  }
-
-  // Paid session — create Stripe PaymentIntent
-  const intent = await stripe.paymentIntents.create({
-    amount: amountCents,
-    currency: 'aud',
-    metadata: { bookingId: booking.id, clientEmail },
-    description: `${sessionType.name} — ${date} ${time}`,
-  })
-
-  await supabase.from('bookings')
-    .update({ stripe_payment_intent_id: intent.id })
-    .eq('id', booking.id)
-
-  res.json({
-    bookingId: booking.id,
-    clientSecret: intent.client_secret,
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY
-  })
+  await supabase.from('bookings').update({ status: 'confirmed' }).eq('id', booking.id)
+  const confirmedBooking = { ...booking, session_type_name: sessionType.name }
+  await Promise.all([
+    sendConfirmation({ booking: confirmedBooking, client, zoomLink }),
+    createOutlookEvent({ booking: confirmedBooking, client, meetLink: zoomLink }),
+    createGoogleCalendarEvent({ booking: confirmedBooking, client, meetLink: zoomLink })
+  ])
+  return res.json({ success: true, bookingId: booking.id, zoomLink })
 }
