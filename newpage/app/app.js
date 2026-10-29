@@ -6,7 +6,9 @@ import { docsScreen } from './docs.js'
 import { sessionScreen } from './session.js'
 import { sectionsScreen, sectionKinds } from './sections.js'
 import { openSky, skySeen } from './sky.js'
+import { focusIcon } from './icons.js'
 import { notesScreen, noteFrom, flushNotes } from './notes.js'
+import { contextScreen, markContextStale } from './context.js'
 import { copyText } from './ui.js'
 
 const KEY = 'np_app_session'
@@ -382,9 +384,13 @@ function coachScreen() {
     h('div', { class: 'sky-head' },
       h('div', {}, h('span', { class: 'note' }, 'your AI Coach'), h('h2', {}, 'Sky')),
       h('div', { class: 'sky-focus' },
-        h('button', { class: 'chip focus-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: () => openSky(ctx) }, h('span', { class: 'muted' }, 'Focus: '), h('b', {}, info.name), ' ▾'),
+        h('button', { class: 'chip focus-btn', type: 'button', 'aria-haspopup': 'dialog', onclick: () => openSky(ctx) }, focusIcon(info.id, 26), h('span', { class: 'muted' }, 'Focus: '), h('b', {}, info.name), ' ▾'),
         h('button', { class: 'link-btn blue', type: 'button', onclick: () => openSky(ctx) }, 'What can Sky help with?'))),
     h('p', { class: 'small muted' }, `${info.blurb} Sky is an AI. It’s coaching, not therapy, and it can’t replace your session with Vik.`),
+    me.member.memoryRestored && !S.restoredSeen && h('p', { class: 'soft', role: 'status' }, 'Welcome back. Sky remembers you, and your chats and notes are exactly as you left them.'),
+    !me.member.privacy && h('div', { class: 'tool-callout' },
+      h('div', {}, h('b', {}, 'Set up Sky (2 minutes)'), h('p', { class: 'small' }, 'Choose what Vik can see, and tell Sky about you: your resume, your Myers-Briggs type and more. Sky keeps notes as you chat, so you never repeat yourself.')),
+      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('tools', 'context') }, 'Set up Sky')),
     !me.coachOn && h('p', { class: 'soft' }, 'The coach isn’t switched on yet. Everything else in New Page works.'),
     S.crisis && h('div', { class: 'crisis', role: 'alert' }, h('b', {}, 'Support is available right now'),
       h('p', {}, 'Lifeline 13 11 14 (24/7) · Beyond Blue 1300 22 4636 · Emergency 000')),
@@ -398,9 +404,27 @@ function coachScreen() {
       h('textarea', { id: 'coach-box', rows: '1', maxlength: '2000', placeholder: 'Type a message…', 'aria-label': 'Message Sky', disabled: S.coachSending || !me.coachOn, oninput: e => { S.coachDraft = e.target.value; e.target.style.height = 'auto'; e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'; const sendBtn = document.getElementById('coach-send'); if (sendBtn) sendBtn.disabled = S.coachSending || !S.coachDraft.trim() },
         onkeydown: e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(S.coachDraft) } } }, S.coachDraft),
       h('button', { id: 'coach-send', class: 'btn btn-primary', type: 'submit', disabled: S.coachSending || !me.coachOn || !S.coachDraft.trim() }, 'Send')),
+    me.messages.length > 0 && shareBlock(me),
     me.messages.length > 0 && h('button', { class: 'link-btn', type: 'button', onclick: async () => { if (!S.confirmClear) { S.confirmClear = true; render(); return } S.confirmClear = false; try { await act('coach_clear', { coach: S.coach }) } catch (err) { S.error = err.message } render() } },
       S.confirmClear ? 'Tap again to clear this conversation' : 'Clear this conversation'))
 }
+// "Share this chat with Vik", shown according to the member's privacy choice.
+function shareBlock(me) {
+  const level = me.member.privacy
+  if (level === 'all') return h('p', { class: 'small muted' }, 'Vik can read your chats. ', h('button', { class: 'link-btn blue inline', type: 'button', onclick: () => go('tools', 'context') }, 'Change who can see them'))
+  if (level !== 'share') return h('button', { class: 'link-btn blue', type: 'button', onclick: () => go('tools', 'context') }, 'Want Vik to see this chat? Choose in Your context')
+  if (S.shareMsg) return h('p', { class: 'small', role: 'status' }, S.shareMsg, ' ', h('button', { class: 'link-btn blue inline', type: 'button', onclick: () => { S.shareMsg = ''; render() } }, 'OK'))
+  if (!S.shareOpen) return h('button', { class: 'btn btn-secondary share-btn', type: 'button', onclick: () => { S.shareOpen = true; render() } }, 'Share this chat with Vik')
+  return h('form', { class: 'card share-form', onsubmit: async e => {
+    e.preventDefault()
+    try { await call('/api/newpage/app', { action: 'share_chat', coach: S.coach, note: S.shareNote || '' }); S.shareMsg = 'Shared with Vik. You can take it back in Your context.'; S.shareOpen = false; S.shareNote = '' } catch (err) { S.coachError = err.message }
+    render()
+  } },
+    h('p', { class: 'small' }, 'Vik will see this conversation as it is now. It’s just this chat, not your others.'),
+    h('div', { class: 'field' }, h('label', { for: 'share-note' }, 'A note for Vik (optional)'), h('input', { id: 'share-note', type: 'text', maxlength: '300', value: S.shareNote || '', oninput: e => { S.shareNote = e.target.value } })),
+    h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', type: 'submit' }, 'Share it'), h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { S.shareOpen = false; render() } }, 'Cancel')))
+}
+
 function scrollChat() { const m = document.getElementById('msgs'); if (m) m.lastElementChild?.scrollIntoView({ block: 'end' }) }
 
 // ── Tools ────────────────────────────────────────────────────────
@@ -416,6 +440,8 @@ const TOOL_GROUPS = [
   ['Your 1:1 with Vik', [
     ['session', 'Book your session', 'Book the 60-minute session that comes with New Page.'],
     ['brief', 'Session brief', 'Four questions so Vik can start on what matters.']]],
+  ['Sky and your privacy', [
+    ['context', 'Your context', 'What Sky knows about you, what Vik can see, and your controls.']]],
   ['Stay on track', [
     ['planner', 'Planner', 'Tasks, time blocks, goals and a morning reminder.'],
     ['notes', 'Notes', 'A private place to type and work things out. Program templates open here too.'],
@@ -427,6 +453,7 @@ function toolsScreen() {
   if (S.tool === 'session') return sessionScreen(ctx)
   if (S.tool === 'planner') return plannerScreen(ctx)
   if (S.tool === 'notes') return notesScreen(ctx)
+  if (S.tool === 'context') return contextScreen(ctx)
   if (S.tool === 'compass') return compassScreen(ctx)
   if (S.tool === 'resume' || S.tool === 'cover') return docsScreen(ctx, S.tool)
   if (sectionKinds.includes(S.tool)) return sectionsScreen(ctx, S.tool)
@@ -477,8 +504,9 @@ function meScreen() {
       me.memory.length ? [me.memory.map(m => h('div', { class: 'mem' }, h('span', {}, m.note),
         h('button', { class: 'x', type: 'button', 'aria-label': `Forget: ${m.note}`, onclick: async () => { try { await act('memory_delete', { id: m.id }) } catch (err) { S.error = err.message } render() } }, '×'))),
         h('button', { class: 'link-btn', type: 'button', onclick: async () => { try { await act('memory_delete', { all: true }) } catch (err) { S.error = err.message } render() } }, 'Forget everything')]
-        : h('p', { class: 'muted small' }, 'Nothing yet. When Sky saves a note to help it remember you, it appears here. You can delete any of it, any time.'),
-      h('p', { class: 'small muted' }, 'Vik can also see your plan, progress and check-ins to prepare for your session.')),
+        : h('p', { class: 'muted small' }, 'Nothing yet. Sky keeps short notes as you chat, without asking. They appear here, and you can delete any of them, any time.'),
+      h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('tools', 'context') }, 'Your context: resume, about you, privacy'),
+      h('p', { class: 'small muted' }, 'Vik can also see your plan, progress and check-ins to prepare for your session. What he can see of your chats is up to you.')),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your account'),
       h('dl', { class: 'kv' }, h('dt', {}, 'Name'), h('dd', {}, me.member.name || '—'), h('dt', {}, 'Email'), h('dd', {}, me.member.email),
         h('dt', {}, 'Started'), h('dd', {}, new Date(me.member.startedAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }))),
@@ -510,6 +538,7 @@ const TABS = [['today', 'Today'], ['plan', 'Program'], ['coach', 'Coach'], ['too
 
 function go(tab, sub) {
   if (S.tab === 'tools' && S.tool === 'notes' && !(tab === 'tools' && sub === 'notes')) flushNotes(ctx)
+  if (tab === 'tools' && sub === 'context') markContextStale()
   S.tab = tab; S.error = ''; S.lessonId = null
   S.tool = tab === 'tools' ? sub || null : null
   try { history.replaceState(null, '', `#${tab}${S.tool ? '/' + S.tool : ''}`) } catch {}

@@ -87,7 +87,7 @@ $('confirm-yes').addEventListener('click', async () => {
 
 // ── Members ──
 const MEMBERS = '/api/newpage/members'
-const el = (tag, text, attrs = {}) => { const e = document.createElement(tag); if (text != null) e.textContent = text; for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); return e }
+const el = (tag, text, attrs = {}, ...kids) => { const e = document.createElement(tag); if (text != null) e.textContent = text; for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); e.append(...kids.flat().filter(Boolean)); return e }
 
 const fmtD = d => new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
 const btn = (text, cls = 'btn btn-secondary') => el('button', text, { type: 'button', class: cls, style: 'min-height:44px;font-size:14px;padding:6px 12px' })
@@ -95,7 +95,8 @@ const btn = (text, cls = 'btn btn-secondary') => el('button', text, { type: 'but
 async function loadMembers() {
   const box = $('member-list')
   try {
-    const { members } = await api('GET', null, MEMBERS)
+    const { members, encryption } = await api('GET', null, MEMBERS)
+    const warn = $('enc-warn'); if (warn) warn.hidden = encryption !== false
     box.replaceChildren()
     if (!members.length) { box.append(el('p', 'No members yet.', { class: 'muted small' })); return }
     const today = Date.now()
@@ -106,7 +107,7 @@ async function loadMembers() {
       const who = el('div', null, { class: 'mwho' })
       who.append(el('b', m.name || m.email), el('span', m.name ? m.email : '', { class: 'small muted' }))
       const chips = el('div', null, { class: 'mchips' })
-      for (const t of [m.quadrant || 'no plan yet', `access ${access}`, `session ${m.sessions_used}/${m.sessions_included ?? 1}`, m.status !== 'active' ? m.status.toUpperCase() : '', m.last_login_at ? '' : 'never signed in']) if (t) chips.append(el('span', t, { class: 'mchip' + (t === m.status.toUpperCase() ? ' warn' : '') }))
+      for (const t of [m.quadrant || 'no plan yet', `access ${access}`, `session ${m.sessions_used}/${m.sessions_included ?? 1}`, m.status !== 'active' ? m.status.toUpperCase() : '', m.memory_state && m.memory_state !== 'active' ? `memory ${m.memory_state === 'trash' ? 'in the Trash' : 'deleted'}` : '', m.last_login_at ? '' : 'never signed in']) if (t) chips.append(el('span', t, { class: 'mchip' + (t === m.status.toUpperCase() ? ' warn' : '') }))
       const open = btn('Open', 'btn btn-primary')
       open.addEventListener('click', () => openMember(m.id))
       row.append(who, chips, open)
@@ -149,6 +150,37 @@ async function renderMember(aside, id, msg = '') {
     el('p', c ? `Latest check-in: clarity ${c.clarity}/16, capacity ${c.capacity}/16 (${c.quadrant}) on ${fmtD(c.created_at)}.` : 'No check-ins yet.', { class: 'small' }),
     el('p', `Last signed in: ${m.last_login_at ? fmtD(m.last_login_at) : 'never'}. Access: ${m.access_until ? 'until ' + fmtD(m.access_until) : 'no end date'}. Sessions: ${m.sessions_included ?? 1} included.`, { class: 'small muted' }))
   if (d.goals.length) { const ul = el('ul', null, { class: 'small' }); for (const g of d.goals) ul.append(el('li', `${g.done ? '✓ ' : ''}${g.title}${g.target ? ' (by ' + g.target + ')' : ''}`)); where.append(el('span', 'Their goals', { class: 'label' }), ul) }
+
+  // Sky's memory: only what the member has let Vik see
+  const pv = d.privacy
+  const LEVEL = { private: 'Nothing: they keep their chats private', share: 'Only what they choose to share', all: 'All their chats' }
+  const mem = el('div', null, { class: 'card' })
+  mem.append(el('span', 'Sky memory and privacy', { class: 'label' }),
+    el('p', `They let you see: ${pv.level ? LEVEL[pv.level] : 'nothing yet (they haven’t chosen)'}.`),
+    el('p', pv.encryption ? 'Stored encrypted.' : 'Private storage isn’t set up, so nothing can be shared with you yet.', { class: 'small muted' }))
+  if (pv.memoryState === 'trash') mem.append(el('p', `Their memory is in the Trash${pv.deleteOn ? ` and is permanently deleted on ${fmtD(pv.deleteOn)}` : ''}. You can’t see it.`, { class: 'small' }))
+  else if (pv.trashOn) mem.append(el('p', `Their membership ended. Their memory moves to the Trash on ${fmtD(pv.trashOn)}.`, { class: 'small' }))
+  const msgs = (arr, who) => { const ul = el('div', null, { class: 'mp-chat' }); for (const x of arr) ul.append(el('p', `${x.role === 'user' ? who : 'Sky'}${x.focus ? ' (' + x.focus + ')' : ''}: ${x.content}`, { class: x.role === 'user' ? 'me' : '' })); return ul }
+  for (const sh of pv.shares) {
+    const det = el('details', null, { class: 'mp-share' }, el('summary', `${sh.kind === 'chat' ? 'A chat' : 'Their context'} · shared ${fmtD(sh.at)}${sh.content.note ? ' · “' + sh.content.note.slice(0, 60) + '”' : ''}`))
+    if (sh.kind === 'chat') det.append(msgs(sh.content.messages || [], m.name || 'Them'))
+    else {
+      for (const [k, v] of Object.entries(sh.content.about || {})) det.append(el('p', `${k}: ${v}`, { class: 'small' }))
+      if ((sh.content.notes || []).length) { det.append(el('b', 'Notes Sky keeps')); const ul = el('ul'); for (const n of sh.content.notes) ul.append(el('li', n)); det.append(ul) }
+      if (sh.content.resume) det.append(el('details', null, {}, el('summary', 'Their resume'), el('pre', sh.content.resume, { class: 'mp-pre' })))
+    }
+    mem.append(det)
+  }
+  if (pv.chats) {
+    const det = el('details', null, { class: 'mp-share' }, el('summary', `Their chats and what Sky has learned (${pv.chats.messages.length} messages)`))
+    det.append(msgs(pv.chats.messages, m.name || 'Them'))
+    if (pv.chats.notes.length) { det.append(el('b', 'Notes Sky keeps')); const ul = el('ul'); for (const n of pv.chats.notes) ul.append(el('li', n)); det.append(ul) }
+    for (const [k, v] of Object.entries(pv.chats.about)) det.append(el('p', `${k}: ${v}`, { class: 'small' }))
+    if (pv.chats.resume) det.append(el('details', null, {}, el('summary', 'Their resume'), el('pre', pv.chats.resume, { class: 'mp-pre' })))
+    mem.append(det)
+  }
+  if (!pv.shares.length && !pv.chats) mem.append(el('p', 'Nothing has been shared with you.', { class: 'small muted' }))
+  mem.append(el('p', 'Each time you open something here, it’s noted in the member’s own privacy log.', { class: 'small muted' }))
 
   // Add a task for them
   const add = el('form', null, { class: 'card', novalidate: '' })
@@ -229,10 +261,12 @@ async function renderMember(aside, id, msg = '') {
       view.hidden = false; closePanel(); view.scrollIntoView({ block: 'start' })
     } catch (e) { alert(e.message) }
   })
-  const arow = el('div', null, { class: 'row' }); arow.append(sel, renew, date, more, brief)
+  const erase = btn('Delete Sky memory now')
+  erase.addEventListener('click', async () => { if (!confirm(`Permanently delete everything Sky holds for ${m.email}: chats, notes, resume, answers and shares? This can’t be undone. Use it for a deletion request.`)) return; try { await api('POST', { id, eraseMemory: true }, MEMBERS) } catch (e) { alert(e.message) } loadMembers(); renderMember(aside, id) })
+  const arow = el('div', null, { class: 'row' }); arow.append(sel, renew, date, more, brief, erase)
   acct.append(el('span', 'Account', { class: 'label' }), arow)
 
-  aside.replaceChildren(head, where, add, tasks, notes, acct)
+  aside.replaceChildren(head, where, mem, add, tasks, notes, acct)
 }
 
 $('grant-form').addEventListener('submit', async e => {

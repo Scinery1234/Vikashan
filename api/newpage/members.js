@@ -3,6 +3,11 @@ import { requireAdmin } from '../../lib/auth.js'
 import { grantMember } from '../../lib/newpage-grant.js'
 import { renewedUntil } from '../../lib/newpage-members.js'
 import { programPosition } from '../../lib/newpage-app.js'
+import { cryptoReady } from '../../lib/newpage-crypto.js'
+import { openVault, openText, openJson } from '../../lib/newpage-vault.js'
+import { eraseMemory } from '../../lib/newpage-memory-store.js'
+import { cleanAbout } from '../../lib/newpage-context.js'
+import { endedAt, trashOn, purgeOn } from '../../lib/newpage-retention.js'
 import { vikTaskEmail } from '../../lib/newpage-emails.js'
 import { sendMail, fromAddress } from '../../lib/newpage-mail.js'
 
@@ -12,6 +17,47 @@ const STATUSES = ['active', 'paused', 'ended']
 const ID_RE = /^[0-9a-f-]{36}$/i
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+
+// What Vik may see of a member's chats and what Sky has learned, decided by the
+// member's own privacy choice. Reading it is logged where the member can see it.
+async function memberPrivacyView(row) {
+  const level = row.privacy || null
+  const state = row.memory_state || 'active'
+  const ended = endedAt(row)
+  const out = {
+    level, learn: row.learn !== false, encryption: cryptoReady(), memoryState: state,
+    endedOn: ended && row.status !== 'active' ? new Date(ended).toISOString() : null,
+    trashOn: row.access_ended_at && state === 'active' ? trashOn(new Date(row.access_ended_at).getTime()).toISOString() : null,
+    deleteOn: state === 'trash' && row.memory_trashed_at ? purgeOn(row.memory_trashed_at).toISOString() : null,
+    shares: [], chats: null
+  }
+  if (state !== 'active') return out
+  const v = await openVault(row)
+  const dec = (f, s) => openText(v, f, s)
+  const { data: shares } = await supabase.from('newpage_shares').select('id, kind, content, created_at').eq('member_id', row.id).order('created_at', { ascending: false }).limit(30)
+  out.shares = !['share', 'all'].includes(level) ? [] : (shares || []).map(s => { let content = null; try { content = JSON.parse(dec('share', s.content)) } catch { /* unreadable */ } return { id: s.id, kind: s.kind, at: s.created_at, content } }).filter(s => s.content)
+  if (level === 'all') {
+    const [msgs, notes, about, profile] = await Promise.all([
+      supabase.from('newpage_messages').select('coach, role, content, created_at').eq('member_id', row.id).order('id', { ascending: false }).limit(200),
+      supabase.from('newpage_memory').select('note').eq('member_id', row.id).order('created_at', { ascending: true }).limit(100),
+      supabase.from('newpage_tools').select('data').eq('member_id', row.id).eq('tool', 'about').maybeSingle(),
+      supabase.from('newpage_tools').select('data').eq('member_id', row.id).eq('tool', 'profile').maybeSingle()
+    ])
+    out.chats = {
+      messages: (msgs.data || []).reverse().map(m => ({ focus: m.coach, role: m.role, content: dec('msg', m.content), at: m.created_at })),
+      notes: (notes.data || []).map(n => dec('mem', n.note)),
+      about: cleanAbout(openJson(v, 'tool:about', about.data?.data)),
+      resume: (openJson(v, 'tool:profile', profile.data?.data)?.text || '').slice(0, 12000)
+    }
+  }
+  const what = out.chats ? 'chats and what Sky has learned' : out.shares.length ? 'what you shared' : null
+  if (what) {
+    // One line in the member's log per ten minutes, however often the panel is refreshed.
+    const { data: last } = await supabase.from('newpage_access_log').select('what, created_at').eq('member_id', row.id).order('created_at', { ascending: false }).limit(1)
+    if (!last?.[0] || last[0].what !== what || Date.now() - new Date(last[0].created_at).getTime() > 10 * 60 * 1000) await supabase.from('newpage_access_log').insert({ member_id: row.id, what })
+  }
+  return out
+}
 
 // Admin only. Gives someone access to the New Page app (later, the New Page
 // checkout will do the same thing), and lists and updates members.
@@ -38,20 +84,22 @@ export default async function handler(req, res) {
   if (req.method === 'GET' && req.query?.detail) {
     const id = String(req.query.detail)
     if (!ID_RE.test(id)) return res.status(400).json({ error: 'Unknown member.' })
-    const { data: m } = await supabase.from('newpage_members').select('id, email, name, status, source, quadrant, plan_started_at, last_login_at, access_until, sessions_included, coach_notes').eq('id', id).maybeSingle()
-    if (!m) return res.status(404).json({ error: 'Unknown member.' })
+    const { data: row } = await supabase.from('newpage_members').select('*').eq('id', id).maybeSingle()
+    if (!row) return res.status(404).json({ error: 'Unknown member.' })
+    const m = { id: row.id, email: row.email, name: row.name, status: row.status, source: row.source, quadrant: row.quadrant, plan_started_at: row.plan_started_at, last_login_at: row.last_login_at, access_until: row.access_until, sessions_included: row.sessions_included, coach_notes: row.coach_notes }
     const [tasks, checkins, progress, goals] = await Promise.all([
       supabase.from('newpage_tasks').select('id, title, due, done, source, block_start, block_mins, created_at').eq('member_id', id).order('created_at', { ascending: false }).limit(60),
       supabase.from('newpage_checkins').select('clarity, capacity, quadrant, created_at').eq('member_id', id).order('created_at', { ascending: false }).limit(5),
       supabase.from('newpage_progress').select('week, step').eq('member_id', id),
       supabase.from('newpage_goals').select('title, target, done').eq('member_id', id).order('created_at', { ascending: true }).limit(20)
     ])
+    const privacy = await memberPrivacyView(row)
     const pos = programPosition(m.plan_started_at, Date.now())
-    return res.json({ member: m, position: { week: pos.week, day: pos.day, complete: !!pos.complete }, stepsDone: (progress.data || []).length, tasks: tasks.data || [], checkins: checkins.data || [], goals: goals.data || [] })
+    return res.json({ member: m, position: { week: pos.week, day: pos.day, complete: !!pos.complete }, stepsDone: (progress.data || []).length, tasks: tasks.data || [], checkins: checkins.data || [], goals: goals.data || [], privacy })
   }
   if (req.method === 'GET') {
     const { data, error } = await supabase.from('newpage_members')
-      .select('id, email, name, status, source, quadrant, plan_started_at, last_login_at, session_booked, access_until, sessions_included')
+      .select('id, email, name, status, source, quadrant, plan_started_at, last_login_at, session_booked, access_until, sessions_included, privacy, memory_state')
       .order('created_at', { ascending: false }).limit(200)
     if (error) return res.status(500).json({ error: error.message })
     const { data: used } = await supabase.from('bookings').select('newpage_member_id, status').not('newpage_member_id', 'is', null).neq('status', 'cancelled')
@@ -59,7 +107,7 @@ export default async function handler(req, res) {
     for (const b of used || []) count[b.newpage_member_id] = (count[b.newpage_member_id] || 0) + 1
     const { data: briefs } = await supabase.from('newpage_docs').select('member_id').eq('kind', 'brief')
     const hasBrief = new Set((briefs || []).map(b => b.member_id))
-    return res.json({ members: data.map(m => ({ ...m, sessions_used: count[m.id] || 0, has_brief: hasBrief.has(m.id) })) })
+    return res.json({ encryption: cryptoReady(), members: data.map(m => ({ ...m, sessions_used: count[m.id] || 0, has_brief: hasBrief.has(m.id) })) })
   }
   if (req.method !== 'POST') return res.status(405).end()
   const b = req.body || {}
@@ -96,9 +144,17 @@ export default async function handler(req, res) {
   if (b.id) {
     if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown member.' })
     const patch = {}
+    const RESTORE = { access_ended_at: null, memory_reminder: 0, memory_state: 'active', memory_trashed_at: null }
+    if (b.eraseMemory === true) {
+      await eraseMemory(b.id, { state: 'purged' })
+      return res.json({ ok: true })
+    }
     if (b.status !== undefined) {
       if (!STATUSES.includes(b.status)) return res.status(400).json({ error: 'Unknown status.' })
       patch.status = b.status
+      // Ending someone starts the clock on their memory; bringing them back stops it.
+      if (b.status === 'ended') Object.assign(patch, { access_ended_at: new Date().toISOString(), memory_reminder: 0 })
+      if (b.status === 'active') Object.assign(patch, RESTORE)
     }
     if (b.renew) {
       const { data: m } = await supabase.from('newpage_members').select('access_until, sessions_included').eq('id', b.id).maybeSingle()
@@ -106,6 +162,7 @@ export default async function handler(req, res) {
       patch.access_until = renewedUntil(m.access_until)
       patch.sessions_included = (m.sessions_included ?? 1) + 1
       patch.status = 'active'
+      Object.assign(patch, RESTORE)
     }
     if (b.accessUntil !== undefined) {
       if (b.accessUntil !== null && !/^\d{4}-\d{2}-\d{2}$/.test(String(b.accessUntil))) return res.status(400).json({ error: 'Use a date like 2026-12-31.' })

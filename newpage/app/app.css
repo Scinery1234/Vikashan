@@ -279,3 +279,21 @@ body.no-scroll { overflow: hidden; }
 @media (min-width: 900px) { .notes-cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; } .note-editor textarea { min-height: 420px; } }
 .field textarea, .composer textarea { font-family: var(--body); }
 .task .src.vik, .plan-task .src.vik { background: var(--hl); color: var(--ink); }
+
+/* ── Your context ── */
+.ctx-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.ctx-cols > div { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.radios { display: flex; flex-direction: column; gap: 8px; }
+.radio-card { text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); min-height: 56px; }
+.radio-card span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.radio-card.on { border: 2px solid var(--ink); background: var(--hl); } .radio-card.on span { color: var(--ink); }
+.field select { min-height: 48px; border: 1.5px solid #C9D3E3; border-radius: 12px; padding: 8px 12px; font: inherit; font-size: 16px; background: #fff; color: var(--ink); }
+@media (min-width: 900px) { .ctx-cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; } }
+.link-btn.inline { display: inline; min-height: 0; vertical-align: baseline; }
+.share-btn { align-self: flex-start; min-height: 44px; font-size: 15px; padding: 6px 16px; }
+.share-form { gap: 10px; }
+
+/* Focus icons */
+.focus-icon { flex: 0 0 auto; width: var(--size, 36px); height: var(--size, 36px); border-radius: 50%; background: var(--tint, #EEF2F9); display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); }
+.focus-icon svg { width: 58%; height: 58%; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fc-head { gap: 10px; } .fc-head h3 { flex: 1 1 auto; }
