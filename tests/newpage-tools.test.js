@@ -4,7 +4,7 @@ import { COACHES, COACH_IDS, isCoach, coachList } from '../lib/newpage-coaches.j
 import { coachSystem, askJson } from '../lib/newpage-coach.js'
 import { cleanCompass, COMPASS_TASKS } from '../lib/newpage-tools.js'
 import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../lib/newpage-resume.js'
-import { cleanCover, coverTitle, analyseJob, buildCoverPrompt, COVER_SYSTEM, analysePrompt, gapsPrompt, cleanAnalysis, cleanGaps, reviewPrompt, cleanReview } from '../lib/newpage-cover.js'
+import { cleanCover, coverTitle, analyseJob, buildCoverPrompt, COVER_SYSTEM, analysePrompt, gapsPrompt, cleanAnalysis, cleanGaps, reviewPrompt, cleanReview, revisePrompt, cleanAnswers } from '../lib/newpage-cover.js'
 import { reminderEmail } from '../lib/newpage-emails.js'
 import { buildMe } from '../lib/newpage-app.js'
 
@@ -100,6 +100,18 @@ test('cover letter review: judges the candidacy and cleans the model answer', ()
   const r = cleanReview({ score: 6.44, verdict: 'v', strengths: ['s', ''], issues: [{ paragraph: '2', problem: 'vague', fix: 'add the number' }, { problem: '' }], questions: [{ keyword: 'k', question: 'q' }, { question: '' }], extra: 1 })
   assert.deepEqual(r, { score: 6.4, verdict: 'v', strengths: ['s'], issues: [{ paragraph: 2, problem: 'vague', fix: 'add the number' }], questions: [{ keyword: 'k', question: 'q' }] })
   assert.equal(cleanReview(null).score, null)
+})
+
+test('cover letter: draft first from the resume, then revise with answers only where they add', () => {
+  const cand = { name: 'Sam', currentTitle: 'N', years: '', role: 'R', company: 'Acme', why: '', unique: '', resume: 'CV' }
+  const d = buildCoverPrompt({ candidate: cand, job: 'J', keywords: ['k'], requirements: [], draft: true })
+  assert.ok(/first draft/.test(d) && /No questions have been asked yet/.test(d) && !d.includes('<draft>'))
+  const f = buildCoverPrompt({ candidate: cand, job: 'J', keywords: ['k'], requirements: [], evidence: [{ keyword: 'k', situation: 's', result: '5%', award: '', resume: '' }], draft: ['p1', 'p2'] })
+  assert.ok(f.includes('<draft>\np1\n\np2\n</draft>') && /Never replace a stronger achievement from the draft/.test(f) && f.includes('5%'))
+  const a = cleanAnswers([{ about: 'Vague result', answer: ' Saved $40k ' }, { about: 'x', answer: '' }, null])
+  assert.deepEqual(a, [{ about: 'Vague result', answer: 'Saved $40k' }])
+  const r = revisePrompt({ letter: 'L', answers: a, note: 'Cut paragraph 3', job: 'J', resume: 'CV' })
+  assert.ok(r.includes('REVIEW POINT: Vague result\nRESPONSE: Saved $40k') && r.includes('Cut paragraph 3') && /Do not invent anything/.test(r))
 })
 
 test('saved resumes: the agreed schema is cleaned and capped, and older saves still read', () => {

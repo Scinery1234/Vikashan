@@ -231,6 +231,9 @@
 .review-head { align-items: center; justify-content: space-between; } .review .score { font-weight: 700; background: var(--hl); border-radius: 99px; padding: 2px 12px; }
 .review p { margin: 0; } .review ul { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .review .para { font-weight: 600; } .review .fix { color: var(--muted); }
+.revise { border-top: 1.5px solid var(--rule); padding-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.revise .field label { font-weight: 600; font-size: 14px; }
+.base-draft { background: #fff; border: 1.5px solid var(--rule); border-radius: 8px; padding: 18px 20px; font-size: 15px; line-height: 1.5; } .base-draft p { margin: 0 0 10px; }
 
 /* ── Sky, the AI Coach: header and the slide-in panel ── */
 .sky-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }

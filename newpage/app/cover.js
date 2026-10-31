@@ -10,7 +10,7 @@ const L = {
   step: 1, job: '', role: '', company: '', themes: [], reqs: [], ev: {}, openKw: 0, addKw: '',
   name: '', currentTitle: '', years: '', why: '', unique: '', phone: '', location: '', linkedin: '', template: 'modern',
   resume: '', resumeFile: '', savedResume: null, profileText: '', pasteOpen: false, uploading: false,
-  busy: false, analysing: '', err: '', cur: null, files: {}, docs: null, loading: false, draft: null, saving: false, note: '', review: null, reviewing: false
+  busy: false, analysing: '', err: '', cur: null, files: {}, docs: null, loading: false, draft: null, saving: false, note: '', review: null, reviewing: false, base: null, revising: false, replies: {}, revNote: ''
 }
 
 export const coverText = c => [c.greeting, '', ...c.paragraphs.flatMap(p => [p, '']), c.closing, '', c.signoff].join('\n').trim()
@@ -96,10 +96,36 @@ function reviewCard(ctx, cur) {
     r.verdict && h('p', {}, r.verdict),
     r.strengths.length > 0 && h('div', {}, h('b', {}, 'What works'), h('ul', {}, r.strengths.map(x => h('li', {}, x)))),
     r.issues.length > 0 && h('div', {}, h('b', {}, 'What weakens the case'), h('ul', {}, r.issues.map(i => h('li', {}, i.paragraph > 0 && h('span', { class: 'para' }, `Paragraph ${i.paragraph}. `), i.problem, i.fix && h('span', { class: 'fix' }, ' ' + i.fix))))),
-    r.questions.length > 0 && h('div', {}, h('b', {}, 'Questions that would strengthen it'), h('ul', {}, r.questions.map(q => h('li', {}, q.keyword && h('b', {}, q.keyword + ': '), q.question))),
-      h('p', { class: 'small muted' }, 'Answer these in step 2, then write the letter again. Or fix the words below by hand.'),
-      L.themes.length > 0 && h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.step = 2; ctx.render(); document.querySelector('.doc-form')?.scrollIntoView({ block: 'start' }) } }, 'Back to step 2')),
+    r.questions.length > 0 && h('div', {}, h('b', {}, 'Questions that would strengthen it'), h('ul', {}, r.questions.map(q => h('li', {}, q.keyword && h('b', {}, q.keyword + ': '), q.question)))),
+    reviseForm(ctx, cur, r),
     btn)
+}
+
+// Respond to the review here: new information against each point, anything else to change,
+// then the letter is revised from those responses alone.
+function reviseForm(ctx, cur, r) {
+  const points = [...r.issues.map((i, n) => ({ id: 'i' + n, label: (i.paragraph > 0 ? `Paragraph ${i.paragraph}: ` : '') + i.problem, hint: i.fix })),
+    ...r.questions.map((q, n) => ({ id: 'q' + n, label: (q.keyword ? q.keyword + ': ' : '') + q.question, hint: '' }))]
+  const revise = async () => {
+    if (L.revising) return
+    const answers = points.map(p => ({ about: p.label, answer: (L.replies[p.id] || '').trim() })).filter(a => a.answer)
+    if (!answers.length && !L.revNote.trim()) { L.err = 'Respond to at least one point first.'; ctx.render(); return }
+    L.revising = true; L.err = ''; ctx.render()
+    try {
+      const d = await ctx.call('/api/newpage/app', { action: 'cover_revise', id: cur.id, answers, note: L.revNote, job: L.job, resume: ownResume() ? L.resume : '' })
+      L.cur = d.doc; L.docs = L.docs.map(x => (x.id === d.doc.id ? d.doc : x)); L.draft = null; L.review = null; L.replies = {}; L.revNote = ''; L.note = 'Revised. Review it again to see where it stands now.'
+    } catch (e) { L.err = e.code === 'coach_off' ? 'The writer isn’t switched on yet.' : e.message }
+    L.revising = false; ctx.render()
+    document.getElementById('doc-result')?.scrollIntoView({ block: 'start' })
+  }
+  return h('div', { class: 'revise' },
+    h('b', {}, 'Respond to the review'),
+    h('p', { class: 'small muted' }, 'Add the facts, figures or examples each point asks for, or say what to change. Only what you write here goes into the revision. Leave a point blank to leave that part as it is.'),
+    points.map(p => h('div', { class: 'field' }, h('label', { for: 'rv-' + p.id }, p.label), p.hint && h('p', { class: 'small muted' }, p.hint),
+      h('textarea', { id: 'rv-' + p.id, rows: '2', maxlength: '1200', placeholder: 'New information, or what to change', oninput: e => { L.replies[p.id] = e.target.value } }, L.replies[p.id] || ''))),
+    h('div', { class: 'field' }, h('label', { for: 'rv-note' }, 'Anything else to change'), h('textarea', { id: 'rv-note', rows: '2', maxlength: '2000', oninput: e => { L.revNote = e.target.value } }, L.revNote)),
+    L.err && h('p', { class: 'error', role: 'alert' }, L.err),
+    h('button', { class: 'btn btn-primary', type: 'button', disabled: L.revising, onclick: revise }, L.revising ? 'Revising the letter…' : 'Revise the letter with this'))
 }
 
 const steps = ['Resume and job', 'Your proof', 'About you']
@@ -129,7 +155,9 @@ export function coverScreen(ctx) {
       const a = await ctx.call('/api/newpage/app', { action: 'cover_analyse', job: L.job })
       L.analysing = 'Checking your resume against it…'; ctx.render()
       const g = await ctx.call('/api/newpage/app', { action: 'cover_gaps', themes: a.themes, resume })
-      L.themes = g.themes; L.reqs = a.requirements; L.ev = {}; L.openKw = 0; L.step = 2
+      L.analysing = 'Drafting a first letter from your resume alone…'; ctx.render()
+      const d = await ctx.call('/api/newpage/app', { action: 'cover_draft', job: L.job, role: L.role, company: L.company, keywords: a.themes.map(t => t.keyword), requirements: a.requirements, resume, name: L.name, currentTitle: L.currentTitle })
+      L.base = d.draft; L.themes = g.themes; L.reqs = a.requirements; L.ev = {}; L.openKw = 0; L.step = 2; L.cur = null; L.review = null
     } catch (e) { L.err = errText(e) }
     L.analysing = ''; ctx.render()
   }
@@ -140,11 +168,11 @@ export function coverScreen(ctx) {
     try {
       const evidence = L.themes.map(t => ({ keyword: t.keyword, resume: t.resume, ...(L.ev[t.keyword] || {}) }))
       const d = await ctx.call('/api/newpage/app', {
-        action: 'doc_generate', kind: 'cover', job: L.job, role: L.role, company: L.company, keywords: L.themes.map(t => t.keyword), requirements: L.reqs, evidence,
+        action: 'doc_generate', kind: 'cover', job: L.job, role: L.role, company: L.company, keywords: L.themes.map(t => t.keyword), requirements: L.reqs, evidence, draft: L.base ? L.base.paragraphs : null,
         name: L.name, currentTitle: L.currentTitle, years: L.years, why: L.why, unique: L.unique, resume: ownResume() ? L.resume : '', template: L.template,
         contact: { phone: L.phone, location: L.location, linkedin: L.linkedin }
       })
-      L.cur = d.doc; L.docs = [d.doc, ...L.docs.filter(x => x.id !== d.doc.id)]; L.draft = null; L.review = null
+      L.cur = d.doc; L.docs = [d.doc, ...L.docs.filter(x => x.id !== d.doc.id)]; L.draft = null; L.review = null; L.note = ''
     } catch (e) { L.err = errText(e) }
     L.busy = false; ctx.render()
     if (L.cur && !L.err) document.getElementById('doc-result')?.scrollIntoView({ block: 'start' })
@@ -171,11 +199,12 @@ export function coverScreen(ctx) {
       h('div', { class: 'two' }, inp('cv-role', 'Role', 'role', { placeholder: 'e.g. Operations Coordinator' }), inp('cv-co', 'Organisation', 'company')),
       L.err && h('p', { class: 'error', role: 'alert' }, L.err),
       h('button', { class: 'btn btn-primary', type: 'button', disabled: !!L.analysing || L.uploading, onclick: analyse }, L.analysing || 'Read the ad and check my resume'),
-      L.analysing && h('p', { class: 'small muted', 'aria-live': 'polite' }, 'Two passes: the ad on its own first, then your resume against it.')
+      L.analysing && h('p', { class: 'small muted', 'aria-live': 'polite' }, 'Three passes: the ad on its own, then your resume against it, then a first draft from your resume alone.')
     ]
   } else if (L.step === 2) {
     const missing = L.themes.filter(t => t.status === 'missing').length
     body = [
+      L.base && h('p', { class: 'small muted' }, 'A first draft from your resume alone is on the right. It is built from your strongest achievements; where the resume was silent on something, the draft leaves it out. The questions below fill those gaps. An answer only goes into the final letter if it adds a figure, a scale, your own part, or covers something the resume could not.'),
       h('p', {}, 'These are the competencies the employer will assess, most important first. Where your resume touches on one, we quote it, but that is often not your best example. For each one, think about the time you demonstrated it most clearly, in any role, paid or unpaid: your part in it, not the team’s, how big it was, and what changed because of you. Answer the ones you can. Leave the rest blank, and never guess a number.'),
       missing > 0 && h('p', { class: 'small muted' }, `${missing} of ${L.themes.length} are not in your resume. Those are where an honest example matters most, or where it is fine to say nothing.`),
       L.reqs.length > 0 && h('details', { class: 'reqs' }, h('summary', {}, `What the ad asks for (${L.reqs.length})`), h('ul', {}, L.reqs.map(r => h('li', {}, r)))),
@@ -222,10 +251,11 @@ export function coverScreen(ctx) {
   const files = cur && L.files[key(cur)]
   const d = cur && (L.draft || (L.draft = { subject: cur.content.subject, greeting: cur.content.greeting, paragraphs: [...cur.content.paragraphs], closing: cur.content.closing, signoff: cur.content.signoff }))
   const fresh = cur && L.docs[0]?.id === cur.id && L.step === 1 && !L.themes.length
-  const reset = () => { L.cur = null; L.draft = null; L.review = null; L.step = 1; L.themes = []; L.reqs = []; L.ev = {}; L.job = ''; L.role = ''; L.company = ''; L.err = ''; ctx.render(); document.querySelector('.doc-form')?.scrollIntoView({ block: 'start' }) }
+  const reset = () => { L.cur = null; L.draft = null; L.review = null; L.base = null; L.replies = {}; L.revNote = ''; L.step = 1; L.themes = []; L.reqs = []; L.ev = {}; L.job = ''; L.role = ''; L.company = ''; L.err = ''; ctx.render(); document.querySelector('.doc-form')?.scrollIntoView({ block: 'start' }) }
   const result = cur && h('div', { id: 'doc-result', class: 'card doc-result' },
     h('div', { class: 'row review-head' }, h('span', { class: 'label' }, (fresh ? 'Your last letter: ' : '') + cur.title),
       h('button', { class: 'link-btn blue', type: 'button', onclick: reset }, 'Start a new letter')),
+    L.note && h('p', { class: 'small', role: 'status' }, L.note),
     fresh && h('p', { class: 'small muted' }, 'This is the letter you made last time. To write a new one, fill in the steps on the left, or start fresh.'),
     files ? pagePreview(files.html) : h('p', { class: 'loading small' }, 'Building the preview…'),
     h('div', { class: 'row doc-actions' },
@@ -242,14 +272,18 @@ export function coverScreen(ctx) {
       d.paragraphs.map((p, i) => h('div', { class: 'field' }, h('label', { for: `ed-p${i}`, class: 'sr-only' }, `Paragraph ${i + 1}`), h('textarea', { id: `ed-p${i}`, rows: '5', maxlength: '1800', oninput: e => { d.paragraphs[i] = e.target.value } }, p))),
       h('button', { class: 'btn btn-secondary', type: 'button', disabled: L.saving, onclick: async () => {
         L.saving = true; L.err = ''; ctx.render()
-        try { const r = await ctx.call('/api/newpage/app', { action: 'doc_save', id: cur.id, content: d }); L.cur = r.doc; L.docs = L.docs.map(x => (x.id === r.doc.id ? r.doc : x)); L.draft = null; L.note = 'Saved.' } catch (e) { L.err = e.message }
+        try { const r = await ctx.call('/api/newpage/app', { action: 'doc_save', id: cur.id, content: d }); L.cur = r.doc; L.docs = L.docs.map(x => (x.id === r.doc.id ? r.doc : x)); L.draft = null; L.note = 'Saved.'; } catch (e) { L.err = e.message }
         L.saving = false; ctx.render()
-      } }, L.saving ? 'Saving…' : 'Save my changes'), L.note && h('p', { class: 'small' }, L.note)))
+      } }, L.saving ? 'Saving…' : 'Save my changes')))
 
   const mine = L.docs.filter(x => x.kind === 'cover' && (!cur || x.id !== cur.id))
   const saved = mine.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Saved letters'),
-    mine.map(x => h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.cur = x; L.draft = null; L.review = null; ctx.render(); document.getElementById('doc-result')?.scrollIntoView({ block: 'start' }) } }, `${x.title} · ${new Date(x.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`),
+    mine.map(x => h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.cur = x; L.draft = null; L.review = null; L.note = ''; ctx.render(); document.getElementById('doc-result')?.scrollIntoView({ block: 'start' }) } }, `${x.title} · ${new Date(x.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`),
       h('button', { class: 'x', type: 'button', 'aria-label': `Delete ${x.title}`, onclick: async () => { try { await ctx.call('/api/newpage/app', { action: 'doc_delete', id: x.id }); L.docs = L.docs.filter(y => y.id !== x.id); if (L.cur?.id === x.id) L.cur = null } catch (e) { L.err = e.message } ctx.render() } }, '×'))))
 
-  return h('section', { class: 'screen docs' }, head, h('div', { class: 'docs-cols' }, h('div', {}, form), h('div', {}, result || h('div', { class: 'docs-empty muted small' }, 'Your letter appears here.'), saved)))
+  const base = !cur && L.base && L.step > 1 && h('div', { class: 'card doc-result' },
+    h('span', { class: 'label' }, 'First draft, from your resume alone'),
+    h('p', { class: 'small muted' }, 'Built from your strongest achievements before any question was asked. Your answers in step 2 only change it where they add something the resume could not.'),
+    h('div', { class: 'base-draft' }, L.base.subject && h('p', {}, h('b', {}, L.base.subject)), h('p', {}, L.base.greeting), L.base.paragraphs.map(p => h('p', {}, p)), h('p', {}, L.base.closing), h('p', {}, L.base.signoff)))
+  return h('section', { class: 'screen docs' }, head, h('div', { class: 'docs-cols' }, h('div', {}, form), h('div', {}, result || base || h('div', { class: 'docs-empty muted small' }, 'Your letter appears here.'), saved)))
 }

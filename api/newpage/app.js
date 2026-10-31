@@ -20,7 +20,7 @@ import {
   SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
 import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../../lib/newpage-resume.js'
-import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SYSTEM, ANALYSE_SCHEMA, cleanAnalysis, GAPS_SCHEMA, gapsPrompt, cleanGaps, REVIEW_SYSTEM, REVIEW_SCHEMA, reviewPrompt, cleanReview, coverText, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
+import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SYSTEM, ANALYSE_SCHEMA, cleanAnalysis, GAPS_SCHEMA, gapsPrompt, cleanGaps, REVIEW_SYSTEM, REVIEW_SCHEMA, reviewPrompt, cleanReview, coverText, revisePrompt, cleanAnswers, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
 const COVER_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive']
 const cleanTemplate = v => (COVER_TEMPLATES.includes(v) ? v : 'modern')
@@ -251,7 +251,8 @@ export default async function handler(req, res) {
         const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
         let out
         try {
-          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence) }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
+          const draft = Array.isArray(b.draft) ? b.draft.map(x => clipText(x, 1800)).filter(Boolean).slice(0, 8) : null
+          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence), draft: draft && draft.length ? draft : null }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
         } catch (err) {
           console.error('Cover letter failed:', err)
           return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
@@ -319,6 +320,52 @@ export default async function handler(req, res) {
         console.error('Ad analysis failed:', err)
         return res.status(502).json({ error: 'We couldn’t read that ad properly. Please try again in a minute.' })
       }
+    }
+    // The first draft, from the resume and the ad alone, before any question is asked. Not saved.
+    case 'cover_draft': {
+      const job = clipText(b.job, 12000), company = clipText(b.company, 120), role = clipText(b.role, 120)
+      if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+      const { resume, lastResume } = await memberResume(member, b.resume)
+      if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first.', code: 'no_resume' })
+      const strs = (v, n, len) => (Array.isArray(v) ? v.map(k => clip(k, len)).filter(Boolean).slice(0, n) : [])
+      const prev = lastResume ? resumeContact(lastResume) : {}
+      const candidate = { name: clip(b.name, 100) || member.name || prev.name || '', currentTitle: clip(b.currentTitle, 120), years: '', role, company, why: '', unique: '', resume }
+      try {
+        const out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: strs(b.keywords, 15, 60), requirements: strs(b.requirements, 8, 300), draft: true }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
+        const c = cleanCover(out, { name: candidate.name })
+        if (c.paragraphs.length < 2) throw new Error('Too short')
+        return res.json({ draft: { subject: c.subject, greeting: c.greeting, paragraphs: c.paragraphs, closing: c.closing, signoff: c.signoff } })
+      } catch (err) {
+        console.error('Cover draft failed:', err)
+        return res.status(502).json({ error: 'We couldn’t draft the letter just now. Please try again in a minute.' })
+      }
+    }
+    // Revise a saved letter from the member's responses to the review. Replaces the letter in place.
+    case 'cover_revise': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const answers = cleanAnswers(b.answers), note = clipText(b.note, 2000)
+      if (!answers.length && !note) return res.status(400).json({ error: 'Respond to at least one point first.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+      const [{ data: doc }, { resume }] = await Promise.all([
+        supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle(),
+        memberResume(member, b.resume)
+      ])
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
+      let content
+      try {
+        const out = await askJson({ system: COVER_SYSTEM, prompt: revisePrompt({ letter: coverText(doc.content), answers, note, job: clipText(b.job, 12000) || '(not given)', resume: clipText(resume, 12000) || '(not given)' }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
+        content = cleanCover(out, { name: doc.content.name, contact: doc.content.contact, date: doc.content.date, recipient: doc.content.recipient, template: doc.content.template })
+      } catch (err) {
+        console.error('Cover revise failed:', err)
+        return res.status(502).json({ error: 'We couldn’t revise the letter just now. Please try again in a minute.' })
+      }
+      if (content.paragraphs.length < 2) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+      if (!content.subject) content.subject = doc.content.subject
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
     }
     // A recruiter's read of a finished letter: does it make the case, and what would make it stronger.
     case 'cover_review': {
