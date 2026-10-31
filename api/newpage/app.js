@@ -244,7 +244,10 @@ export default async function handler(req, res) {
         const keep = strs(b.keywords, 15, 60).length ? strs(b.keywords, 15, 60) : simple.keywords
         const requirements = strs(b.requirements, 8, 300).length ? strs(b.requirements, 8, 300) : simple.requirements
         const prev = lastResume ? resumeContact(lastResume) : {}
-        const name = clip(b.name, 100) || member.name || prev.name || ''
+        const headName = (resume.split('\n').map(l => l.trim()).find(Boolean) || '').replace(/\s+/g, ' ')
+        const fullName = /^[A-Za-z][A-Za-z'.-]+( [A-Za-z][A-Za-z'.-]+){1,3}$/.test(headName) ? headName.replace(/\b[A-Z]+\b/g, w => w[0] + w.slice(1).toLowerCase()) : ''
+        const given = clip(b.name, 100) || member.name || prev.name || ''
+        const name = (!given.includes(' ') && fullName) ? fullName : given
         const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
         let out
         try {
