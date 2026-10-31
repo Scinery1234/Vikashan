@@ -31,7 +31,11 @@ async function call(url, body, token = session) {
     body: JSON.stringify(body)
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) { const e = new Error(data.error || 'Something went wrong. Please try again.'); e.code = data.code; e.status = res.status; throw e }
+  if (!res.ok) {
+    const slow = res.status === 504 || res.status === 408
+    const e = new Error(data.error || (slow ? 'That took too long to write. Please try again, with a shorter work history if you pasted a long one.' : 'Something went wrong. Please try again.'))
+    e.code = data.code; e.status = res.status; throw e
+  }
   return data
 }
 

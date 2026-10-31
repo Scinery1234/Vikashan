@@ -197,11 +197,12 @@ export default async function handler(req, res) {
           supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'compass').maybeSingle(),
           supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle()
         ])
+        const profile = ['linkedin', 'report', 'progress', 'brief'].includes(b.kind) ? (background || clipText(pr.data?.data?.text, 4000)) : ''
         const ctx = memberContext({
           member, compass: cp.data?.data, checkins: data.checkins, memory: data.memory, doneCount: data.progress.length,
-          taskDone: data.tasks.filter(t => t.done).length, profile: ['linkedin', 'report', 'progress', 'brief'].includes(b.kind) ? (background || clipText(pr.data?.data?.text, 4000)) : ''
+          taskDone: data.tasks.filter(t => t.done).length, profile
         })
-        const problem = SK.needs(ctx, fields)
+        const problem = SK.needs(ctx, fields, profile)
         if (problem) return res.status(400).json({ error: problem })
         let content
         try {

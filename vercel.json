@@ -17,7 +17,7 @@
   "functions": {
     "api/newpage/docx.py": { "maxDuration": 30, "includeFiles": "api/_py/**" },
     "api/newpage/resume.py": { "maxDuration": 300, "includeFiles": "api/_py/**" },
-    "api/newpage/app.js": { "maxDuration": 60 }
+    "api/newpage/app.js": { "maxDuration": 300 }
   },
   "headers": [
     {

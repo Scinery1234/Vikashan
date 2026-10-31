@@ -72,7 +72,7 @@ export function sectionsScreen(ctx, kind) {
         ? h('textarea', { id: 'sec-' + key, rows: key === 'job' ? '6' : '3', maxlength: key === 'job' ? '6000' : '800', placeholder: ph, oninput: e => { s.fields[key] = e.target.value } }, s.fields[key] || '')
         : h('input', { id: 'sec-' + key, type: 'text', maxlength: '300', placeholder: ph, value: s.fields[key] || '', oninput: e => { s.fields[key] = e.target.value } }))),
     s.err && h('p', { class: 'error', role: 'alert' }, s.err),
-    h('button', { class: 'btn btn-primary', type: 'submit', disabled: s.busy }, s.busy ? 'Writing… this takes up to a minute' : K.button),
+    h('button', { class: 'btn btn-primary', type: 'submit', disabled: s.busy }, s.busy ? 'Writing… this can take a couple of minutes' : K.button),
     h('p', { class: 'small muted' }, 'Written by an AI from what you’ve entered. It’s told never to invent anything, but please read every line.'))
 
   const cur = s.current

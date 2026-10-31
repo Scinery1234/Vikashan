@@ -145,3 +145,19 @@ test('the app payload carries goals, coaches and the reminder setting', () => {
   assert.equal(me.member.reminders, false)
   assert.equal(buildMe({ member: { ...member, email: 'a@b.co' }, progress: [], tasks: [], checkins: [], memory: [], messages: [] }).member.reminders, true)
 })
+
+test('LinkedIn writer needs a real work history and writes it in the first person', async () => {
+  const { SECTION_KINDS, memberContext } = await import('../lib/newpage-tools.js')
+  const L = SECTION_KINDS.linkedin
+  const noHistory = memberContext({ member, memory: [{ note: 'Asked about their work history' }], profile: '' })
+  assert.equal(typeof L.needs(noHistory, {}, ''), 'string')
+  assert.equal(typeof L.needs(noHistory, {}, 'Short'), 'string')
+  const history = 'Operations coordinator, Acme Logistics, 2019 to 2024. Cut dispatch errors by 30% and trained six staff.'
+  const ctx = memberContext({ member, profile: history })
+  assert.equal(L.needs(ctx, {}, history), null)
+  const prompt = L.prompt(ctx, { role: 'Operations manager', job: '' })
+  assert.match(prompt, /first person/)
+  assert.match(prompt, /five most recent roles/)
+  assert.match(prompt, /Operations manager/)
+  assert.ok(prompt.includes(history))
+})
