@@ -1,14 +1,16 @@
 // Resume writer: the four-phase Australian resume agent (api/newpage/resume.py).
 // 1. Upload or paste your resume (and the job ad, as a PDF if you like).
-// 2. Read the full draft, ask for changes, approve it.
-// 3. See the approved resume as JSON ("Phase 2, Prepare") and reply Y.
-// 4. The Python script is generated, run and checked, and the Word file is yours.
+// 2. Read the full draft, ask for changes, approve it. This is the only approval.
+// 3. The approved resume is shown as JSON ("Phase 2, Prepare"), then straight away
+// 4. the Python script is generated, run and checked, and the Word file is yours.
 // The gates live on the server; this screen shows the conversation.
-import { h, copyText, download } from './ui.js'
+import { h, copyText } from './ui.js'
 import { saveB64, DOCX_TYPE, fileToB64 } from './docfiles.js'
 
 const API = '/api/newpage/resume'
-const QUICK = { AWAITING_CONTENT_APPROVAL: 'Yes', AWAITING_EXECUTION_APPROVAL: 'Y', EXECUTION_FAILED: 'Y' }
+const QUICK = { AWAITING_CONTENT_APPROVAL: 'Yes', EXECUTION_FAILED: 'Try again' }
+// Replies that approve the content, which also builds the Word file (for the busy message only).
+const APPROVAL = /^(y|yes|yep|yeah|approved?|looks good|proceed|go ahead|content approved|perfect|lgtm|try again|retry)\b/i
 const L = { text: null, fileName: '', job: '', jobFile: '', role: '', extra: '', uploading: '', busy: '', err: '', note: '', conv: null, docs: null, docId: null, loading: false, reply: '', pasteOpen: false }
 
 async function load(ctx) {
@@ -56,10 +58,10 @@ async function start(ctx) {
 async function send(ctx, text) {
   const msg = String(text ?? L.reply).trim()
   if (!msg || L.busy || !L.conv) return
-  const generating = ['AWAITING_EXECUTION_APPROVAL', 'EXECUTION_FAILED'].includes(L.conv.state) && msg.length < 30
+  const generating = L.conv.state !== 'DRAFTING' && APPROVAL.test(msg) && msg.split(/\s+/).length <= 4
   L.conv.messages.push({ role: 'user', text: msg })
   L.reply = ''; L.err = ''
-  L.busy = generating ? 'Generating the Python script, running it and checking the Word file…' : 'Working on it…'
+  L.busy = generating ? 'Building your Word resume and checking it…' : 'Working on it…'
   ctx.render(); scrollToEnd()
   try {
     const d = await agent(ctx, { action: 'reply', session: L.conv.session, message: msg })
@@ -102,17 +104,15 @@ function message(m) {
   if (m.kind === 'questions') return h('div', { class: 'ra-msg' }, h('p', {}, m.text), h('ol', {}, m.questions.map(q => h('li', {}, q))))
   if (m.kind === 'json') {
     return h('div', { class: 'ra-msg' }, h('span', { class: 'label' }, m.heading), h('pre', { class: 'ra-json' }, m.json),
-      h('div', { class: 'row' }, h('button', { class: 'link-btn blue', type: 'button', onclick: e => copyText(m.json, e.currentTarget) }, 'Copy JSON')),
-      h('p', { class: 'ra-prompt' }, m.prompt))
+      h('div', { class: 'row' }, h('button', { class: 'link-btn blue', type: 'button', onclick: e => copyText(m.json, e.currentTarget) }, 'Copy JSON')))
   }
   if (m.kind === 'result') {
     const checks = m.validation?.checks || []
     return h('div', { class: 'ra-msg ' + (m.ok ? 'ra-ok' : 'ra-fail') },
       h('p', { class: 'ra-prompt' }, m.message),
       m.ok && h('div', { class: 'row doc-actions' },
-        h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveB64(m.filename, m.docx, DOCX_TYPE) }, 'Download Word file'),
-        h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => download('build_resume.py', m.script, 'text/x-python') }, 'Download the Python script')),
-      !m.ok && h('p', { class: 'small' }, 'Reply Y and the script will be corrected and run again.'),
+        h('button', { class: 'btn btn-primary', type: 'button', onclick: () => saveB64(m.filename, m.docx, DOCX_TYPE) }, 'Download Word file')),
+      !m.ok && h('p', { class: 'small' }, 'Reply “Try again” and the script will be corrected and run again.'),
       checks.length > 0 && h('details', {}, h('summary', {}, `Checks on the Word file: ${checks.filter(c => c.ok).length} of ${checks.length} passed`),
         h('ul', { class: 'ra-checks' }, checks.map(c => h('li', { class: c.ok ? 'ok' : 'bad' }, `${c.ok ? '✓' : '✗'} ${c.name}${!c.ok && c.detail ? ': ' + c.detail : ''}`))),
         h('p', { class: 'small muted' }, m.visual?.performed ? `Visual check: ${m.visual.pages} page(s)${m.visual.problems.length ? '. ' + m.visual.problems.join(' ') : ', no blank pages.'}` : (m.visual?.reason || ''))))
@@ -149,7 +149,7 @@ export function resumeScreen(ctx) {
       h('textarea', { id: 'res-extra', rows: '3', maxlength: '6000', placeholder: 'e.g. work rights, a licence, a project not on your old resume', oninput: e => { L.extra = e.target.value } }, L.extra)),
     L.err && h('p', { class: 'error', role: 'alert' }, L.err),
     h('button', { class: 'btn btn-primary', type: 'submit', disabled: !!L.busy || !!L.uploading }, L.busy || 'Draft my resume'),
-    h('p', { class: 'small muted' }, 'You’ll see the full draft first. The Word file is only made after you approve the content and reply Y.'))
+    h('p', { class: 'small muted' }, 'You’ll see the full draft first. Once you approve it, the Word file is made and checked straight away.'))
 
   const c = L.conv
   const conv = c && h('div', { class: 'card ra-conv' },

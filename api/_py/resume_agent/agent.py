@@ -15,7 +15,7 @@ import time
 from . import claude, lint, prompts
 from .execute import generate_document
 from .schema import from_legacy, normalise, to_json, validate
-from .workflow import (APPROVE_PROMPT, EXECUTE_PROMPT, PHASE2_HEADING, State, advance,
+from .workflow import (APPROVE_PROMPT, PHASE2_HEADING, State, advance,
                        classify_content_reply, classify_execution_reply)
 
 MAX_MATERIALS = 40000
@@ -171,7 +171,7 @@ def _revise(s, ask, amendments):
 
 
 def _prepare(s):
-    """Phase 2: the approved draft as strict JSON (wording unchanged)."""
+    """Phase 2: the approved draft as strict JSON (wording unchanged). Moves straight on to the Word file."""
     s["state"] = State.PREPARING_JSON.value
     data = normalise(s["resume"])
     problems = validate(data)
@@ -181,18 +181,20 @@ def _prepare(s):
                 {"kind": "text", "text": APPROVE_PROMPT}]
     s["resume"] = data
     s["state"] = advance(State.PREPARING_JSON, "json_ready").value
-    return [{"kind": "json", "heading": PHASE2_HEADING, "json": to_json(data), "prompt": EXECUTE_PROMPT}]
+    return [{"kind": "json", "heading": PHASE2_HEADING, "json": to_json(data)}]
 
 
 def _generate(s):
     """Phases 3 and 4: script, execute, validate (with one corrected retry inside)."""
-    s["state"] = advance(s["state"], "execute" if s["state"] == State.AWAITING_EXECUTION_APPROVAL.value else "retry").value
+    if s["state"] != State.GENERATING_SCRIPT.value:
+        # A retry after a failure, a rebuild of a finished resume, or a session saved at the old "Reply Y" gate.
+        s["state"] = advance(s["state"], "execute" if s["state"] == State.AWAITING_EXECUTION_APPROVAL.value else "retry").value
     s["state"] = advance(State.GENERATING_SCRIPT, "script_ready").value
     r = generate_document(s["resume"], s.get("target_title", ""))
     s["state"] = advance(State.EXECUTING_SCRIPT, "validated" if r["ok"] else "failed").value
     s["filename"] = r.get("filename", "")
     result = {"kind": "result", "ok": r["ok"], "filename": r.get("filename", ""), "message": r["message"],
-              "script": r.get("script", ""), "attempts": [{k: a[k] for k in ("exit_code", "stdout", "stderr", "files")} for a in r.get("attempts", [])],
+              "attempts": [{k: a[k] for k in ("exit_code", "stdout", "stderr", "files")} for a in r.get("attempts", [])],
               "validation": r.get("validation"), "visual": r.get("visual")}
     for a in result["attempts"]:
         a["files"] = [{"filename": f["filename"], "size_bytes": f["size_bytes"]} for f in a["files"]]
@@ -217,27 +219,29 @@ def reply(token, message, secret, ask=None):
     if state == State.AWAITING_CONTENT_APPROVAL:
         kind = classify_content_reply(msg)
         if kind == "approve":
+            # Approval runs phases 2 to 4 in one turn: JSON, then the script is generated, run and checked.
             s["state"] = advance(state, "approve").value
-            return _out(s, secret, _prepare(s))
+            messages = _prepare(s)
+            if s["state"] == State.GENERATING_SCRIPT.value:
+                messages += _generate(s)
+            return _out(s, secret, messages)
         if kind == "unclear":
             return _out(s, secret, [{"kind": "text", "text": APPROVE_PROMPT}])
         return _out(s, secret, _revise(s, ask, msg))
 
     if state == State.AWAITING_EXECUTION_APPROVAL:
-        kind = classify_execution_reply(msg)
-        if kind == "execute":
-            return _out(s, secret, _generate(s))
-        if kind == "unclear":
-            return _out(s, secret, [{"kind": "text", "text": EXECUTE_PROMPT}])
-        return _out(s, secret, _revise(s, ask, msg))
+        # Only sessions saved before the Y gate was removed can be here.
+        if classify_execution_reply(msg) == "amend":
+            return _out(s, secret, _revise(s, ask, msg))
+        return _out(s, secret, _generate(s))
 
-    if state == State.EXECUTION_FAILED and classify_execution_reply(msg) == "execute":
+    if state in (State.EXECUTION_FAILED, State.COMPLETED) and classify_execution_reply(msg) == "execute":
         return _out(s, secret, _generate(s))
 
     # COMPLETED or EXECUTION_FAILED: anything else is an amendment, which reopens the draft.
     if classify_content_reply(msg) != "amend":
-        done = "Your Word resume is ready above. To change anything, tell me what to amend and I’ll redraft it for your approval."
+        done = "Your Word resume is ready above. To change anything, tell me what to amend and I’ll redraft it for your approval. Reply “Try again” to build the Word file again."
         if state == State.EXECUTION_FAILED:
-            done = "Reply Y to correct the script and try again, or tell me what to amend."
+            done = "Reply \u201cTry again\u201d to correct the script and run it again, or tell me what to amend."
         return _out(s, secret, [{"kind": "text", "text": done}])
     return _out(s, secret, _revise(s, ask, msg))

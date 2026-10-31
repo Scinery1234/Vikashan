@@ -49,19 +49,20 @@ class ResumeApi(unittest.TestCase):
         self.assertEqual(api.handle({"action": "start", "token": "nope"})[0], 401)
         self.assertEqual(api.handle({"action": "start", "token": token(typ="magic")})[0], 401)
 
-    def test_four_phases_with_both_gates(self):
+    def test_four_phases_with_content_approval_gate(self):
         code, out = self.call(action="start", materials=SOURCE, job_description="Operations Manager", target_title="Operations Manager")
         self.assertEqual(code, 200)
         self.assertEqual(out["state"], "AWAITING_CONTENT_APPROVAL")
         self.assertEqual(out["messages"][0]["prompt"], "Approve content? Please reply “Yes” or provide the amendments required.")
+        # Content approval is the only gate: "Yes" shows the JSON and builds the Word file in one turn.
         code, out = self.call(action="reply", session=out["session"], message="Yes")
         self.assertEqual(out["messages"][0]["heading"], "Phase 2, Prepare")
         self.assertEqual(json.loads(out["messages"][0]["json"]), APPROVED)
-        self.assertEqual(out["messages"][0]["prompt"], "Reply Y to generate and execute the Python script and create the Word resume.")
-        code, out = self.call(action="reply", session=out["session"], message="Y")
-        res = out["messages"][0]
+        self.assertNotIn("prompt", out["messages"][0])
+        res = out["messages"][1]
         self.assertEqual(out["state"], "COMPLETED")
         self.assertTrue(res["ok"], res["message"])
+        self.assertNotIn("script", res)
         self.assertEqual(res["message"], "Jordan_Smith_Operations_Manager_Resume.docx successfully generated.")
         self.assertEqual(Document(io.BytesIO(base64.b64decode(res["docx"]))).paragraphs[0].text, "JORDAN SMITH")
 
