@@ -221,8 +221,12 @@ export function coverScreen(ctx) {
   const cur = L.cur
   const files = cur && L.files[key(cur)]
   const d = cur && (L.draft || (L.draft = { subject: cur.content.subject, greeting: cur.content.greeting, paragraphs: [...cur.content.paragraphs], closing: cur.content.closing, signoff: cur.content.signoff }))
+  const fresh = cur && L.docs[0]?.id === cur.id && L.step === 1 && !L.themes.length
+  const reset = () => { L.cur = null; L.draft = null; L.review = null; L.step = 1; L.themes = []; L.reqs = []; L.ev = {}; L.job = ''; L.role = ''; L.company = ''; L.err = ''; ctx.render(); document.querySelector('.doc-form')?.scrollIntoView({ block: 'start' }) }
   const result = cur && h('div', { id: 'doc-result', class: 'card doc-result' },
-    h('span', { class: 'label' }, cur.title),
+    h('div', { class: 'row review-head' }, h('span', { class: 'label' }, (fresh ? 'Your last letter: ' : '') + cur.title),
+      h('button', { class: 'link-btn blue', type: 'button', onclick: reset }, 'Start a new letter')),
+    fresh && h('p', { class: 'small muted' }, 'This is the letter you made last time. To write a new one, fill in the steps on the left, or start fresh.'),
     files ? pagePreview(files.html) : h('p', { class: 'loading small' }, 'Building the preview…'),
     h('div', { class: 'row doc-actions' },
       h('button', { class: 'btn btn-primary', type: 'button', disabled: !files, onclick: () => saveB64(`${safeName(cur.title)}.docx`, files.docx, DOCX_TYPE) }, 'Download Word file'),
