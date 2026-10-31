@@ -176,7 +176,7 @@ export function coverScreen(ctx) {
   } else if (L.step === 2) {
     const missing = L.themes.filter(t => t.status === 'missing').length
     body = [
-      h('p', {}, 'These are the competencies the employer will assess, most important first. For each one, think about a specific time you actually did it: your part in it, not the team’s, how big it was, and what changed because of you. Answer the ones you can. Leave the rest blank, and never guess a number.'),
+      h('p', {}, 'These are the competencies the employer will assess, most important first. Where your resume touches on one, we quote it, but that is often not your best example. For each one, think about the time you demonstrated it most clearly, in any role, paid or unpaid: your part in it, not the team’s, how big it was, and what changed because of you. Answer the ones you can. Leave the rest blank, and never guess a number.'),
       missing > 0 && h('p', { class: 'small muted' }, `${missing} of ${L.themes.length} are not in your resume. Those are where an honest example matters most, or where it is fine to say nothing.`),
       L.reqs.length > 0 && h('details', { class: 'reqs' }, h('summary', {}, `What the ad asks for (${L.reqs.length})`), h('ul', {}, L.reqs.map(r => h('li', {}, r)))),
       h('div', { class: 'kw-list' }, L.themes.map((t, i) => {
@@ -186,9 +186,9 @@ export function coverScreen(ctx) {
         return h('details', { class: 'kw', open: i === L.openKw ? '' : null },
           h('summary', {}, h('b', {}, t.keyword), h('span', { class: 'st ' + cls }, label)),
           t.wants && h('p', { class: 'small muted' }, h('b', {}, 'What they want: '), t.wants),
-          h('p', { class: 'small' }, h('b', {}, 'Your resume: '), t.resume || 'Nothing on this yet.'),
+          h('p', { class: 'small' }, h('b', {}, t.resume ? 'One example in your resume: ' : 'Your resume: '), t.resume || 'Nothing on this yet.'),
           t.question && h('p', { class: 'ask' }, t.question),
-          h('div', { class: 'field' }, h('label', { for: `ev-s-${i}` }, 'Your example: when, where, and what you did'), h('textarea', { id: `ev-s-${i}`, rows: '3', maxlength: '600', oninput: ev => { e.situation = ev.target.value; const s = ev.target.closest('details').querySelector('summary .st'); s.textContent = 'Added'; s.className = 'st ok' } }, e.situation)),
+          h('div', { class: 'field' }, h('label', { for: `ev-s-${i}` }, t.resume ? 'Your best example of this, from any role: that one or a stronger one' : 'Your example: when, where, and what you did'), h('textarea', { id: `ev-s-${i}`, rows: '3', maxlength: '600', oninput: ev => { e.situation = ev.target.value; const s = ev.target.closest('details').querySelector('summary .st'); s.textContent = 'Added'; s.className = 'st ok' } }, e.situation)),
           h('div', { class: 'field' }, h('label', { for: `ev-r-${i}` }, 'The result (a number, %, $, time saved)'), h('input', { id: `ev-r-${i}`, type: 'text', maxlength: '400', value: e.result, oninput: ev => { e.result = ev.target.value } })),
           h('div', { class: 'field' }, h('label', { for: `ev-a-${i}` }, 'Praise, award or promotion (optional)'), h('input', { id: `ev-a-${i}`, type: 'text', maxlength: '300', value: e.award, oninput: ev => { e.award = ev.target.value } })),
           h('button', { class: 'link-btn kw-drop', type: 'button', onclick: () => { L.themes = L.themes.filter(x => x !== t); delete L.ev[t.keyword]; ctx.render() } }, 'Not relevant to this letter'))

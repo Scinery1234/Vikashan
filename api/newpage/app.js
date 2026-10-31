@@ -4,7 +4,7 @@ import { requireMember } from '../../lib/newpage-auth.js'
 import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
 import { PROGRAM } from '../../newpage/program-content.js'
 import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
-import { coachSystem, toApiMessages, runCoach, askJson } from '../../lib/newpage-coach.js'
+import { coachSystem, toApiMessages, runCoach, askJson, WRITER_MODEL } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
 import { refreshContent } from '../../lib/newpage-content.js'
 import { getAvailableSlots } from '../../lib/availability.js'
@@ -251,7 +251,7 @@ export default async function handler(req, res) {
         const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
         let out
         try {
-          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence) }), schema: COVER_SCHEMA, maxTokens: 3500 })
+          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence) }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
         } catch (err) {
           console.error('Cover letter failed:', err)
           return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
@@ -333,7 +333,7 @@ export default async function handler(req, res) {
       const ev = cleanEvidence(b.evidence).map(e => `${e.keyword}: ${[e.situation, e.result, e.award].filter(Boolean).join(' | ')}`).join('\n')
       const themes = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : []
       try {
-        const out = await askJson({ system: REVIEW_SYSTEM, prompt: reviewPrompt({ letter: coverText(doc.content), job: clipText(b.job, 12000) || '(not given)', resume: clipText(resume, 12000) || '(not given)', evidence: ev, themes }), schema: REVIEW_SCHEMA, maxTokens: 2500 })
+        const out = await askJson({ system: REVIEW_SYSTEM, prompt: reviewPrompt({ letter: coverText(doc.content), job: clipText(b.job, 12000) || '(not given)', resume: clipText(resume, 12000) || '(not given)', evidence: ev, themes }), schema: REVIEW_SCHEMA, maxTokens: 2500, model: WRITER_MODEL(), effort: 'high' })
         return res.json({ review: cleanReview(out) })
       } catch (err) {
         console.error('Cover review failed:', err)
