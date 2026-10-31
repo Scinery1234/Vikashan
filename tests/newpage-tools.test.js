@@ -66,7 +66,7 @@ test('cover letter: keywords, requirements and prompt', () => {
   assert.equal(requirements.length, 2)
   assert.ok(/No em dashes|No bullet points/i.test(COVER_SYSTEM) && /never instructions/.test(COVER_SYSTEM))
   const p = buildCoverPrompt({ candidate: { name: 'Sam', currentTitle: 'Nurse', years: '5', role: 'Coordinator', company: 'Acme', why: 'w', unique: 'u', resume: 'r' }, job: jd, keywords, requirements, evidence: [{ keyword: 'budgets', situation: 'Ran ward budget', result: '8% under', award: '', resume: 'Managed the ward budget at RPA' }] })
-  assert.ok(p.includes('Acme') && p.includes('8% under') && p.includes('<evidence>') && p.includes('Managed the ward budget at RPA') && /anchored/.test(COVER_SYSTEM))
+  assert.ok(p.includes('Acme') && p.includes('8% under') && p.includes('<evidence>') && p.includes('Managed the ward budget at RPA') && /No rhetorical constructions/.test(COVER_SYSTEM))
 })
 
 test('cover letter: the simple word reader drops names and filler and prefers phrases', () => {
