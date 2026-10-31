@@ -279,3 +279,21 @@ body.no-scroll { overflow: hidden; }
 @media (min-width: 900px) { .notes-cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; } .note-editor textarea { min-height: 420px; } }
 .field textarea, .composer textarea { font-family: var(--body); }
 .task .src.vik, .plan-task .src.vik { background: var(--hl); color: var(--ink); }
+
+/* ── Resume writer conversation ── */
+.ra-conv { display: flex; flex-direction: column; gap: 14px; }
+.ra-conv > .row:first-child { justify-content: space-between; align-items: center; }
+.ra-msg { background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 14px 16px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.ra-msg p { margin: 0; overflow-wrap: anywhere; }
+.ra-user { align-self: flex-end; max-width: 85%; background: var(--hl); border-color: var(--ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ra-ok { border-color: #12b76a; } .ra-fail { border-color: #d92d20; }
+.ra-draft, .ra-json { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--paper-2, #f7f8fb); border-radius: 8px; padding: 12px; max-height: 70vh; overflow: auto; font-size: 14px; line-height: 1.45; }
+.ra-draft { font-family: Calibri, Carlito, var(--font, system-ui), sans-serif; }
+.ra-json { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; }
+.ra-notes { background: #fffaeb; border: 1px solid #fedf89; border-radius: 8px; padding: 10px 12px; font-size: 14px; }
+.ra-notes ul { margin: 4px 0 0; padding-left: 18px; }
+.ra-prompt { font-weight: 700; }
+.ra-checks { list-style: none; padding: 0; margin: 6px 0; font-size: 14px; }
+.ra-checks .ok { color: #067647; } .ra-checks .bad { color: #b42318; }
+.ra-reply { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; position: sticky; bottom: calc(68px + env(safe-area-inset-bottom, 0px)); background: #fff; padding: 8px 0; }
+.ra-reply textarea { flex: 1 1 220px; min-width: 0; }

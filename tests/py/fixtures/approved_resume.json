@@ -1,0 +1,18 @@
+{
+  "candidate": {"full_name": "Jordan Smith", "generic_job_title": "Operations Manager", "location": "Parramatta, NSW", "phone": "0412 345 678", "email": "jordan.smith@example.com", "linkedin": "linkedin.com/in/jordansmith"},
+  "professional_summary": "Operations manager with more than 12 years of experience leading logistics, warehousing and customer service teams across retail and third-party logistics environments. Demonstrated capability in standardising processes, strengthening safety performance and building accountable, high-performing teams. Recognised for translating business priorities into practical operating plans and maintaining service continuity through periods of growth and change.",
+  "key_skills": ["Operations Management", "Team Leadership", "Process Improvement", "Work Health and Safety", "Stakeholder Engagement", "Inventory Control", "Budget Management"],
+  "professional_experience": [
+    {"job_title": "Operations Manager", "employer": "Coastline Logistics", "location": "Eastern Creek, NSW", "start_date": "March 2019", "end_date": "Present", "scope_statement": "Lead a 45-person distribution centre servicing major retail clients across New South Wales and the ACT.", "achievements": ["Reduced order picking errors by 30 per cent by introducing barcode verification and structured team leader coaching.", "Led the transition to a new warehouse management system, coordinating vendors, IT and floor teams to go live without service disruption.", "Strengthened safety performance by standardising pre-start meetings, incident reporting and contractor inductions.", "Partnered with key retail clients to redesign peak-season staffing plans and escalation pathways."]},
+    {"job_title": "Warehouse Supervisor", "employer": "Harbour Retail Group", "location": "Sydney, NSW", "start_date": "June 2014", "end_date": "February 2019", "scope_statement": "", "achievements": ["Supervised inbound and outbound teams of up to 20 staff across two shifts.", "Introduced cycle counting procedures that improved stock accuracy and reduced end-of-year stocktake effort.", "Trained new team leaders in rostering, performance conversations and safe work procedures."]},
+    {"job_title": "Customer Service Team Leader", "employer": "Harbour Retail Group", "location": "Sydney, NSW", "start_date": "January 2011", "end_date": "May 2014", "scope_statement": "", "achievements": ["Led a customer service team handling delivery enquiries and complaints for metropolitan stores."]}
+  ],
+  "education_and_training": [
+    {"qualification": "Diploma of Leadership and Management", "institution": "TAFE NSW", "location": "", "completion_date": "2016", "details": ""},
+    {"qualification": "Certificate IV in Work Health and Safety", "institution": "TAFE NSW", "location": "", "completion_date": "2018", "details": ""}
+  ],
+  "awards": [{"award_name": "Site Leader of the Year", "issuing_organisation": "Coastline Logistics", "year": "2022", "details": "Recognised for safety and service results during network expansion."}],
+  "certifications": [{"certification_name": "Forklift Licence (LF)", "issuing_body": "SafeWork NSW", "year_obtained": "2012", "expiry_date": "2027"}],
+  "technical_skills": [{"category": "Systems", "skills": ["Manhattan WMS", "SAP", "Microsoft 365"]}],
+  "additional_information": [{"category": "Licence", "details": "Full NSW driver licence"}, {"category": "Work rights", "details": "Australian citizen"}]
+}

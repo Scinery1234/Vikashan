@@ -19,9 +19,11 @@ import {
   clipText,
   SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
-import { SYSTEM_PROMPT_GENERATE, SYSTEM_PROMPT_EDIT, RESUME_SCHEMA, buildGeneratePrompt, buildEditPrompt, cleanResume, cleanTemplate, resumeTitle, resumeText } from '../../lib/newpage-resume.js'
+import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../../lib/newpage-resume.js'
 import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SCHEMA, cleanAnalysis, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
+const COVER_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive']
+const cleanTemplate = v => (COVER_TEMPLATES.includes(v) ? v : 'modern')
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const ID_RE = /^[0-9a-f-]{36}$/i
@@ -213,26 +215,14 @@ export default async function handler(req, res) {
         const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: b.kind, title, content }).select('id, kind, title, content, created_at').single()
         return res.json({ doc: saved || { kind: b.kind, title, content } })
       }
-      const kind = b.kind === 'cover' ? 'cover' : b.kind === 'resume' ? 'resume' : null
-      if (!kind) return res.status(400).json({ error: 'Choose a resume or a cover letter.' })
+      if (b.kind === 'resume') return res.status(400).json({ error: 'Resumes are written in the Resume writer.' })
+      if (b.kind !== 'cover') return res.status(400).json({ error: 'Choose a document type.' })
+      const kind = 'cover'
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
       const job = clipText(b.job, 8000), company = clipText(b.company, 120), role = clipText(b.role, 120)
       const template = cleanTemplate(b.template)
       let content, title
-      if (kind === 'resume') {
-        const background = clipText(b.background, 20000)
-        if (background.length < 80) return res.status(400).json({ error: 'Add your current resume first: upload it, or paste your roles, dates and what you achieved.' })
-        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-        await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background.slice(0, 12000) }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
-        try {
-          content = cleanResume(await askJson({ system: SYSTEM_PROMPT_GENERATE, prompt: buildGeneratePrompt({ documentsText: background, job, additional: clipText(b.additional, 3000) }), schema: RESUME_SCHEMA, maxTokens: 6000 }), template)
-        } catch (err) {
-          console.error('Resume failed:', err)
-          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
-        }
-        if (!content.name && !content.experience.length) return res.status(502).json({ error: 'We couldn’t find a resume in what you gave us. Check it has your roles and dates, then try again.' })
-        title = resumeTitle(content, role)
-      } else {
+      {
         if (job.length < 60) return res.status(400).json({ error: 'Paste the job ad first.' })
         if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
         const [pr, last] = await Promise.all([
@@ -244,7 +234,8 @@ export default async function handler(req, res) {
         if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Write or upload it in the Resume writer, then come back.' })
         const { keywords, requirements } = analyseJob(job)
         const keep = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : keywords
-        const name = clip(b.name, 100) || member.name || lastResume?.name || ''
+        const prev = lastResume ? resumeContact(lastResume) : {}
+        const name = clip(b.name, 100) || member.name || prev.name || ''
         const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
         let out
         try {
@@ -254,7 +245,6 @@ export default async function handler(req, res) {
           return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
         }
         const k = (b.contact && typeof b.contact === 'object') ? b.contact : {}
-        const prev = lastResume?.contact || {}
         content = cleanCover(out, {
           name, template,
           contact: { phone: clip(k.phone, 40) || prev.phone, email: clip(k.email, 120) || prev.email || member.email, location: clip(k.location, 100) || prev.location, linkedin: clip(k.linkedin, 200) || prev.linkedin },
@@ -268,29 +258,23 @@ export default async function handler(req, res) {
       return res.json({ doc: saved || { kind, title, content } })
     }
 
-    // Plain-words edit of a saved resume ("make the summary shorter"), using Resume-Generator's edit rules.
-    case 'doc_edit': {
-      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
-      const instruction = clipText(b.instruction, 1000)
-      if (instruction.length < 4) return res.status(400).json({ error: 'Say what you’d like changed.' })
-      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
-      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-docedit-${member.id}` })) return
-      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
-      if (!doc || doc.kind !== 'resume') return res.status(404).json({ error: 'Unknown document.' })
-      let content
-      try {
-        content = cleanResume(await askJson({ system: SYSTEM_PROMPT_EDIT, prompt: buildEditPrompt({ resume: doc.content, instruction }), schema: RESUME_SCHEMA, maxTokens: 6000 }), doc.content.template)
-      } catch (err) {
-        console.error('Resume edit failed:', err)
-        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+    // The resume writer (api/newpage/resume.py) finished and validated a Word file: keep the approved resume.
+    case 'resume_save': {
+      const content = cleanStoredResume(b)
+      if (!content.resume.candidate.full_name) return res.status(400).json({ error: 'That resume has no name on it.' })
+      const title = resumeTitle(content)
+      if (b.id) {
+        if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+        const { data } = await supabase.from('newpage_docs').update({ title, content }).eq('id', b.id).eq('member_id', member.id).eq('kind', 'resume').select('id, kind, title, content, created_at').maybeSingle()
+        if (data) return res.json({ doc: data })
       }
-      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
-      return res.json({ doc: { ...doc, content } })
+      const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: 'resume', title, content }).select('id, kind, title, content, created_at').single()
+      return res.json({ doc: saved || { kind: 'resume', title, content } })
     }
     case 'doc_template': {
       if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
       const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
-      if (!doc || !['resume', 'cover'].includes(doc.kind)) return res.status(404).json({ error: 'Unknown document.' })
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
       const content = { ...doc.content, template: cleanTemplate(b.template) }
       await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
       return res.json({ doc: { ...doc, content } })
