@@ -20,7 +20,7 @@ import {
   SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
 import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../../lib/newpage-resume.js'
-import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SYSTEM, ANALYSE_SCHEMA, cleanAnalysis, GAPS_SCHEMA, gapsPrompt, cleanGaps, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
+import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SYSTEM, ANALYSE_SCHEMA, cleanAnalysis, GAPS_SCHEMA, gapsPrompt, cleanGaps, REVIEW_SYSTEM, REVIEW_SCHEMA, reviewPrompt, cleanReview, coverText, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
 const COVER_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive']
 const cleanTemplate = v => (COVER_TEMPLATES.includes(v) ? v : 'modern')
@@ -231,7 +231,7 @@ export default async function handler(req, res) {
       if (b.kind !== 'cover') return res.status(400).json({ error: 'Choose a document type.' })
       const kind = 'cover'
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
-      const job = clipText(b.job, 8000), company = clipText(b.company, 120), role = clipText(b.role, 120)
+      const job = clipText(b.job, 12000), company = clipText(b.company, 120), role = clipText(b.role, 120)
       const template = cleanTemplate(b.template)
       let content, title
       {
@@ -306,7 +306,7 @@ export default async function handler(req, res) {
     // resume already shows, and one pointed question per theme for step 2.
     // Pass 1: read the job ad on its own and name the competencies it will assess.
     case 'cover_analyse': {
-      const job = clipText(b.job, 8000)
+      const job = clipText(b.job, 12000)
       if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
       if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
@@ -318,6 +318,26 @@ export default async function handler(req, res) {
       } catch (err) {
         console.error('Ad analysis failed:', err)
         return res.status(502).json({ error: 'We couldn’t read that ad properly. Please try again in a minute.' })
+      }
+    }
+    // A recruiter's read of a finished letter: does it make the case, and what would make it stronger.
+    case 'cover_review': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 20, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
+      const [{ data: doc }, { resume }] = await Promise.all([
+        supabase.from('newpage_docs').select('id, kind, content').eq('id', b.id).eq('member_id', member.id).maybeSingle(),
+        memberResume(member, b.resume)
+      ])
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
+      const ev = cleanEvidence(b.evidence).map(e => `${e.keyword}: ${[e.situation, e.result, e.award].filter(Boolean).join(' | ')}`).join('\n')
+      const themes = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : []
+      try {
+        const out = await askJson({ system: REVIEW_SYSTEM, prompt: reviewPrompt({ letter: coverText(doc.content), job: clipText(b.job, 12000) || '(not given)', resume: clipText(resume, 12000) || '(not given)', evidence: ev, themes }), schema: REVIEW_SCHEMA, maxTokens: 2500 })
+        return res.json({ review: cleanReview(out) })
+      } catch (err) {
+        console.error('Cover review failed:', err)
+        return res.status(502).json({ error: 'We couldn’t review the letter just now. Please try again in a minute.' })
       }
     }
     // Pass 2: check the resume against those competencies and write one question for each.

@@ -227,6 +227,10 @@
 .kw > .field, .edit-text > .field { margin-bottom: 10px; }
 .reqs ul { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
 .edit-text > button { margin-bottom: 12px; }
+.review { background: #fff; border: 1.5px solid var(--ink); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 10px; font-size: 15px; }
+.review-head { align-items: center; justify-content: space-between; } .review .score { font-weight: 700; background: var(--hl); border-radius: 99px; padding: 2px 12px; }
+.review p { margin: 0; } .review ul { margin: 4px 0 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.review .para { font-weight: 600; } .review .fix { color: var(--muted); }
 
 /* ── Sky, the AI Coach: header and the slide-in panel ── */
 .sky-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 16px; }

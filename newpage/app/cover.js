@@ -10,7 +10,7 @@ const L = {
   step: 1, job: '', role: '', company: '', themes: [], reqs: [], ev: {}, openKw: 0, addKw: '',
   name: '', currentTitle: '', years: '', why: '', unique: '', phone: '', location: '', linkedin: '', template: 'modern',
   resume: '', resumeFile: '', savedResume: null, profileText: '', pasteOpen: false, uploading: false,
-  busy: false, analysing: '', err: '', cur: null, files: {}, docs: null, loading: false, draft: null, saving: false, note: ''
+  busy: false, analysing: '', err: '', cur: null, files: {}, docs: null, loading: false, draft: null, saving: false, note: '', review: null, reviewing: false
 }
 
 export const coverText = c => [c.greeting, '', ...c.paragraphs.flatMap(p => [p, '']), c.closing, '', c.signoff].join('\n').trim()
@@ -74,6 +74,34 @@ async function ensureFiles(ctx) {
   ctx.render()
 }
 
+// A recruiter's read of the finished letter: score, what works, what weakens the case,
+// and the questions whose answers would fix it. The answers go into step 2.
+function reviewCard(ctx, cur) {
+  const r = L.review && L.review.id === cur.id ? L.review.data : null
+  const run = async () => {
+    if (L.reviewing) return
+    L.reviewing = true; L.err = ''; ctx.render()
+    try {
+      const evidence = L.themes.map(t => ({ keyword: t.keyword, ...(L.ev[t.keyword] || {}) }))
+      const d = await ctx.call('/api/newpage/app', { action: 'cover_review', id: cur.id, job: L.job, keywords: L.themes.map(t => t.keyword), evidence, resume: ownResume() ? L.resume : '' })
+      L.review = { id: cur.id, data: d.review }
+    } catch (e) { L.err = e.code === 'coach_off' ? 'The writer isn’t switched on yet.' : e.message }
+    L.reviewing = false; ctx.render()
+    document.getElementById('cv-review')?.scrollIntoView({ block: 'nearest' })
+  }
+  const btn = h('button', { class: 'btn btn-secondary', type: 'button', disabled: L.reviewing, onclick: run }, L.reviewing ? 'Reading it as a recruiter…' : r ? 'Review it again' : 'Review this letter')
+  if (!r) return h('div', { class: 'field' }, btn, h('p', { class: 'small muted' }, 'A recruiter’s read: does this letter make your case, and what would make it stronger.'))
+  return h('div', { id: 'cv-review', class: 'review' },
+    h('div', { class: 'row review-head' }, h('span', { class: 'label' }, 'Recruiter’s read'), r.score != null && h('span', { class: 'score' }, `${r.score} / 10`)),
+    r.verdict && h('p', {}, r.verdict),
+    r.strengths.length > 0 && h('div', {}, h('b', {}, 'What works'), h('ul', {}, r.strengths.map(x => h('li', {}, x)))),
+    r.issues.length > 0 && h('div', {}, h('b', {}, 'What weakens the case'), h('ul', {}, r.issues.map(i => h('li', {}, i.paragraph > 0 && h('span', { class: 'para' }, `Paragraph ${i.paragraph}. `), i.problem, i.fix && h('span', { class: 'fix' }, ' ' + i.fix))))),
+    r.questions.length > 0 && h('div', {}, h('b', {}, 'Questions that would strengthen it'), h('ul', {}, r.questions.map(q => h('li', {}, q.keyword && h('b', {}, q.keyword + ': '), q.question))),
+      h('p', { class: 'small muted' }, 'Answer these in step 2, then write the letter again. Or fix the words below by hand.'),
+      L.themes.length > 0 && h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.step = 2; ctx.render(); document.querySelector('.doc-form')?.scrollIntoView({ block: 'start' }) } }, 'Back to step 2')),
+    btn)
+}
+
 const steps = ['Resume and job', 'Your proof', 'About you']
 const stepper = () => h('ol', { class: 'stepper', 'aria-label': 'Steps' }, steps.map((s, i) => h('li', { class: i + 1 === L.step ? 'on' : i + 1 < L.step ? 'past' : '', ...(i + 1 === L.step ? { 'aria-current': 'step' } : {}) }, h('span', {}, i + 1), s)))
 
@@ -116,7 +144,7 @@ export function coverScreen(ctx) {
         name: L.name, currentTitle: L.currentTitle, years: L.years, why: L.why, unique: L.unique, resume: ownResume() ? L.resume : '', template: L.template,
         contact: { phone: L.phone, location: L.location, linkedin: L.linkedin }
       })
-      L.cur = d.doc; L.docs = [d.doc, ...L.docs.filter(x => x.id !== d.doc.id)]; L.draft = null
+      L.cur = d.doc; L.docs = [d.doc, ...L.docs.filter(x => x.id !== d.doc.id)]; L.draft = null; L.review = null
     } catch (e) { L.err = errText(e) }
     L.busy = false; ctx.render()
     if (L.cur && !L.err) document.getElementById('doc-result')?.scrollIntoView({ block: 'start' })
@@ -139,7 +167,7 @@ export function coverScreen(ctx) {
       L.pasteOpen && h('div', { class: 'field' }, h('label', { for: 'cv-res', class: 'sr-only' }, 'Your resume text'),
         h('textarea', { id: 'cv-res', rows: '8', maxlength: '20000', placeholder: 'Roles, employers, dates, what you achieved, qualifications…', oninput: e => { L.resume = e.target.value; L.resumeFile = '' } }, L.resume)),
       h('div', { class: 'doc-step' }, h('span', { class: 'num' }, '2'), h('div', {}, h('b', {}, 'The job ad'), h('p', { class: 'small muted' }, 'Paste the whole thing, including what they require.'))),
-      h('div', { class: 'field' }, h('label', { for: 'cv-job', class: 'sr-only' }, 'The job ad'), h('textarea', { id: 'cv-job', rows: '9', maxlength: '8000', oninput: e => { L.job = e.target.value } }, L.job)),
+      h('div', { class: 'field' }, h('label', { for: 'cv-job', class: 'sr-only' }, 'The job ad'), h('textarea', { id: 'cv-job', rows: '9', maxlength: '12000', oninput: e => { L.job = e.target.value } }, L.job)),
       h('div', { class: 'two' }, inp('cv-role', 'Role', 'role', { placeholder: 'e.g. Operations Coordinator' }), inp('cv-co', 'Organisation', 'company')),
       L.err && h('p', { class: 'error', role: 'alert' }, L.err),
       h('button', { class: 'btn btn-primary', type: 'button', disabled: !!L.analysing || L.uploading, onclick: analyse }, L.analysing || 'Read the ad and check my resume'),
@@ -204,6 +232,7 @@ export function coverScreen(ctx) {
         try { const r = await ctx.call('/api/newpage/app', { action: 'doc_template', id: cur.id, template: id }); L.cur = r.doc; L.docs = L.docs.map(x => (x.id === r.doc.id ? r.doc : x)); L.template = id } catch (e) { L.err = e.message }
         ctx.render()
       })),
+    reviewCard(ctx, cur),
     h('details', { class: 'edit-text' }, h('summary', {}, 'Edit the words'),
       h('div', { class: 'field' }, h('label', { for: 'ed-sub' }, 'Subject line'), h('input', { id: 'ed-sub', type: 'text', maxlength: '160', value: d.subject, oninput: e => { d.subject = e.target.value } })),
       d.paragraphs.map((p, i) => h('div', { class: 'field' }, h('label', { for: `ed-p${i}`, class: 'sr-only' }, `Paragraph ${i + 1}`), h('textarea', { id: `ed-p${i}`, rows: '5', maxlength: '1800', oninput: e => { d.paragraphs[i] = e.target.value } }, p))),
@@ -215,7 +244,7 @@ export function coverScreen(ctx) {
 
   const mine = L.docs.filter(x => x.kind === 'cover' && (!cur || x.id !== cur.id))
   const saved = mine.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Saved letters'),
-    mine.map(x => h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.cur = x; L.draft = null; ctx.render(); document.getElementById('doc-result')?.scrollIntoView({ block: 'start' }) } }, `${x.title} · ${new Date(x.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`),
+    mine.map(x => h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.cur = x; L.draft = null; L.review = null; ctx.render(); document.getElementById('doc-result')?.scrollIntoView({ block: 'start' }) } }, `${x.title} · ${new Date(x.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}`),
       h('button', { class: 'x', type: 'button', 'aria-label': `Delete ${x.title}`, onclick: async () => { try { await ctx.call('/api/newpage/app', { action: 'doc_delete', id: x.id }); L.docs = L.docs.filter(y => y.id !== x.id); if (L.cur?.id === x.id) L.cur = null } catch (e) { L.err = e.message } ctx.render() } }, '×'))))
 
   return h('section', { class: 'screen docs' }, head, h('div', { class: 'docs-cols' }, h('div', {}, form), h('div', {}, result || h('div', { class: 'docs-empty muted small' }, 'Your letter appears here.'), saved)))

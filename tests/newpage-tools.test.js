@@ -4,7 +4,7 @@ import { COACHES, COACH_IDS, isCoach, coachList } from '../lib/newpage-coaches.j
 import { coachSystem, askJson } from '../lib/newpage-coach.js'
 import { cleanCompass, COMPASS_TASKS } from '../lib/newpage-tools.js'
 import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../lib/newpage-resume.js'
-import { cleanCover, coverTitle, analyseJob, buildCoverPrompt, COVER_SYSTEM, analysePrompt, gapsPrompt, cleanAnalysis, cleanGaps } from '../lib/newpage-cover.js'
+import { cleanCover, coverTitle, analyseJob, buildCoverPrompt, COVER_SYSTEM, analysePrompt, gapsPrompt, cleanAnalysis, cleanGaps, reviewPrompt, cleanReview } from '../lib/newpage-cover.js'
 import { reminderEmail } from '../lib/newpage-emails.js'
 import { buildMe } from '../lib/newpage-app.js'
 
@@ -92,6 +92,14 @@ test('cover letter: pass 1 reads the ad alone, pass 2 checks the resume against 
   // The model can't rename or invent evidence for a theme it marks missing.
   const m = cleanGaps({ gaps: [{ keyword: 'other', status: 'missing', resume: 'made up', question: 'q' }] }, a.themes)
   assert.equal(m[0].status, 'missing'); assert.equal(m[0].resume, '')
+})
+
+test('cover letter review: judges the candidacy and cleans the model answer', () => {
+  const p = reviewPrompt({ letter: 'Dear X', job: 'JD', resume: 'CV', evidence: 'budgets: ran it | 8%', themes: ['budget management'] })
+  assert.ok(p.includes('<letter>\nDear X') && p.includes('- budget management') && /Judge the candidacy, not the prose/.test(p))
+  const r = cleanReview({ score: 6.44, verdict: 'v', strengths: ['s', ''], issues: [{ paragraph: '2', problem: 'vague', fix: 'add the number' }, { problem: '' }], questions: [{ keyword: 'k', question: 'q' }, { question: '' }], extra: 1 })
+  assert.deepEqual(r, { score: 6.4, verdict: 'v', strengths: ['s'], issues: [{ paragraph: 2, problem: 'vague', fix: 'add the number' }], questions: [{ keyword: 'k', question: 'q' }] })
+  assert.equal(cleanReview(null).score, null)
 })
 
 test('saved resumes: the agreed schema is cleaned and capped, and older saves still read', () => {
