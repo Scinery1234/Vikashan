@@ -96,6 +96,10 @@ class ResumeApi(unittest.TestCase):
         code, out = self.call(action="start", materials=SOURCE)
         self.assertEqual(code, 422)
         self.assertNotIn("didn", out["error"])
+        claude.ask_structured = lambda *a: (_ for _ in ()).throw(claude.ClaudeError("error", "404 model not found"))
+        code, out = self.call(action="start", materials=SOURCE)
+        self.assertEqual(code, 502)
+        self.assertIn("Details: 404 model not found", out["error"])
 
     def test_rate_limit(self):
         api._calls["member-1"].extend([time.time()] * api.LIMIT_PER_HOUR)

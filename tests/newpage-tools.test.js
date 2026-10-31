@@ -126,6 +126,18 @@ test('askJson uses structured outputs (never a forced tool_choice) and parses th
     await assert.rejects(askJson({ system: 's', prompt: 'p', schema }))
     globalThis.fetch = async () => new Response(JSON.stringify({ stop_reason: 'refusal', content: [] }), { status: 200 })
     await assert.rejects(askJson({ system: 's', prompt: 'p', schema }), /Declined/)
+    // An account without the fallback beta: rejected once, then sent again without it.
+    const seen = []
+    globalThis.fetch = async (url, opts) => {
+      const b = JSON.parse(opts.body); seen.push(b)
+      return b.fallbacks ? new Response('{"error":{"message":"fallbacks not available"}}', { status: 400 }) : new Response(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: '{"idea":"Chef"}' }] }), { status: 200 })
+    }
+    assert.deepEqual(await askJson({ system: 's', prompt: 'p', schema }), { idea: 'Chef' })
+    assert.equal(seen.length, 2)
+    assert.equal(seen[1].fallbacks, undefined)
+    // After a mid-answer model switch, only the last model's text is parsed.
+    globalThis.fetch = async () => new Response(JSON.stringify({ stop_reason: 'end_turn', content: [{ type: 'text', text: '{"idea":"Ha' }, { type: 'fallback' }, { type: 'text', text: '{"idea":"Baker"}' }] }), { status: 200 })
+    assert.deepEqual(await askJson({ system: 's', prompt: 'p', schema }), { idea: 'Baker' })
     globalThis.fetch = async () => new Response('{"error":{"message":"bad"}}', { status: 400 })
     await assert.rejects(askJson({ system: 's', prompt: 'p', schema }), /400/)
   } finally { globalThis.fetch = real }

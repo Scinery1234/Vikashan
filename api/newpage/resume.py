@@ -111,6 +111,9 @@ def handle(b):
     except ClaudeError as e:
         print("resume agent:", e.code, str(e)[:500], file=sys.stderr)
         status, msg = CLAUDE_ERRORS.get(e.code, CLAUDE_ERRORS["error"])
+        if e.code == "error":
+            # Say why, so a setup problem (API key, model access) can be seen without the server log.
+            msg = f"{msg} (Details: {str(e)[:400]})"
         return status, {"error": msg, "code": e.code}
 
 
