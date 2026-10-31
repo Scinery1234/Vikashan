@@ -101,6 +101,12 @@ class ResumeApi(unittest.TestCase):
         self.assertEqual(code, 502)
         self.assertIn("Details: 404 model not found", out["error"])
 
+    def test_out_of_credit_message(self):
+        claude.ask_structured = lambda *a: (_ for _ in ()).throw(claude.ClaudeError("billing", "credit balance is too low"))
+        code, out = self.call(action="start", materials=SOURCE)
+        self.assertEqual(code, 503)
+        self.assertIn("run out of credit", out["error"])
+
     def test_rate_limit(self):
         api._calls["member-1"].extend([time.time()] * api.LIMIT_PER_HOUR)
         self.assertEqual(self.call(action="start", materials=SOURCE)[0], 429)

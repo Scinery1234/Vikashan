@@ -16,7 +16,7 @@ FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
 
 class ClaudeError(Exception):
-    """`code` is one of: unavailable, refused, truncated, rate_limited, overloaded, error."""
+    """`code` is one of: unavailable, billing, refused, truncated, rate_limited, overloaded, error."""
 
     def __init__(self, code, message=""):
         super().__init__(message or code)
@@ -88,6 +88,9 @@ def ask_structured(system, prompt, schema, max_tokens=32000):
                 with client.messages.stream(**params) as s:
                     msg = s.get_final_message()
         except (anthropic.BadRequestError, anthropic.NotFoundError, anthropic.PermissionDeniedError) as e:
+            if "credit balance" in str(e.message).lower():
+                # A billing problem: no retry will help.
+                raise ClaudeError("billing", e.message) from e
             rejected.append(f"{model}{' +fallbacks' if fallbacks else ''}{'' if structured else ' (prompted JSON)'}: {e.status_code} {e.message}")
             continue
         except anthropic.AuthenticationError as e:

@@ -37,6 +37,7 @@ _calls = defaultdict(deque)
 
 CLAUDE_ERRORS = {
     "unavailable": (503, "The writer isn’t switched on yet."),
+    "billing": (503, "The resume writer is unavailable right now: the Anthropic account behind it has run out of credit. The site owner needs to add credit in the Anthropic Console (Plans & Billing)."),
     "rate_limited": (429, "The writer is busy right now. Please try again in a minute."),
     "overloaded": (503, "The writer is busy right now. Please try again in a minute."),
     "refused": (422, "The writer couldn’t work with that. Check it is your resume or career notes and try again."),
