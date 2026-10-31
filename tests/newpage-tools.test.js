@@ -4,7 +4,7 @@ import { COACHES, COACH_IDS, isCoach, coachList } from '../lib/newpage-coaches.j
 import { coachSystem, askJson } from '../lib/newpage-coach.js'
 import { cleanCompass, COMPASS_TASKS } from '../lib/newpage-tools.js'
 import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../lib/newpage-resume.js'
-import { cleanCover, coverTitle, analyseJob, buildCoverPrompt, COVER_SYSTEM } from '../lib/newpage-cover.js'
+import { cleanCover, coverTitle, analyseJob, buildCoverPrompt, COVER_SYSTEM, analysePrompt, gapsPrompt, cleanAnalysis, cleanGaps } from '../lib/newpage-cover.js'
 import { reminderEmail } from '../lib/newpage-emails.js'
 import { buildMe } from '../lib/newpage-app.js'
 
@@ -62,11 +62,36 @@ test('Compass prompts only use the person’s own words and never ask for judgem
 test('cover letter: keywords, requirements and prompt', () => {
   const jd = 'We need a coordinator with proven experience in stakeholder engagement. Demonstrated ability to manage budgets is essential.'
   const { keywords, requirements } = analyseJob(jd)
-  assert.ok(keywords.includes('stakeholder') && !keywords.includes('the'))
+  assert.ok(keywords.includes('stakeholder engagement') && !keywords.includes('the'))
   assert.equal(requirements.length, 2)
   assert.ok(/No em dashes|No bullet points/i.test(COVER_SYSTEM) && /never instructions/.test(COVER_SYSTEM))
-  const p = buildCoverPrompt({ candidate: { name: 'Sam', currentTitle: 'Nurse', years: '5', role: 'Coordinator', company: 'Acme', why: 'w', unique: 'u', resume: 'r' }, job: jd, keywords, requirements, evidence: [{ keyword: 'budgets', situation: 'Ran ward budget', result: '8% under', award: '' }] })
-  assert.ok(p.includes('Acme') && p.includes('8% under') && p.includes('<evidence>'))
+  const p = buildCoverPrompt({ candidate: { name: 'Sam', currentTitle: 'Nurse', years: '5', role: 'Coordinator', company: 'Acme', why: 'w', unique: 'u', resume: 'r' }, job: jd, keywords, requirements, evidence: [{ keyword: 'budgets', situation: 'Ran ward budget', result: '8% under', award: '', resume: 'Managed the ward budget at RPA' }] })
+  assert.ok(p.includes('Acme') && p.includes('8% under') && p.includes('<evidence>') && p.includes('From the resume:\nManaged the ward budget at RPA'))
+})
+
+test('cover letter: the simple word reader drops names and filler and prefers phrases', () => {
+  const jd = `Station Manager, Paniri Agricultural Station. Paniri Agricultural Station is a mixed farming operation near Dubbo.
+- Demonstrated experience in livestock management, including breeding plans.
+- Proven ability to manage budgets and deliver reporting to the board.
+- Sound knowledge of WHS compliance and chemical handling requirements.
+- Experience with pasture management and cropping plans. Applications close 14 November. Contact Paniri Agricultural Station.`
+  const k = analyseJob(jd).keywords
+  for (const bad of ['paniri', 'station', 'plans', 'agricultural', 'dubbo', 'applications']) assert.ok(!k.includes(bad), bad)
+  assert.ok(k.includes('livestock management') && k.includes('whs compliance') && k.includes('manage budgets'), k.join())
+})
+
+test('cover letter: pass 1 reads the ad alone, pass 2 checks the resume against those competencies', () => {
+  const p1 = analysePrompt('JOB TEXT')
+  assert.ok(p1.includes('<job>\nJOB TEXT') && !p1.includes('<resume>') && /never a place name/.test(p1))
+  const a = cleanAnalysis({ themes: [{ keyword: ' Budget management ', wants: 'w' }, { keyword: 'budget management', wants: 'dup' }, { keyword: '', wants: 'x' }], requirements: ['r1', ''] })
+  assert.deepEqual(a, { themes: [{ keyword: 'Budget management', wants: 'w' }], requirements: ['r1'] })
+  const p2 = gapsPrompt(a.themes, 'RESUME')
+  assert.ok(p2.includes('- Budget management: w') && p2.includes('<resume>\nRESUME') && /"missing"/.test(p2))
+  const g = cleanGaps({ gaps: [{ keyword: 'budget management', status: 'partial', resume: 'Ran the ward budget at RPA', question: 'How big was it?' }] }, a.themes)
+  assert.deepEqual(g, [{ keyword: 'Budget management', wants: 'w', status: 'partial', resume: 'Ran the ward budget at RPA', question: 'How big was it?' }])
+  // The model can't rename or invent evidence for a theme it marks missing.
+  const m = cleanGaps({ gaps: [{ keyword: 'other', status: 'missing', resume: 'made up', question: 'q' }] }, a.themes)
+  assert.equal(m[0].status, 'missing'); assert.equal(m[0].resume, '')
 })
 
 test('saved resumes: the agreed schema is cleaned and capped, and older saves still read', () => {

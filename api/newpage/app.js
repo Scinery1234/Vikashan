@@ -20,7 +20,7 @@ import {
   SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
 import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../../lib/newpage-resume.js'
-import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SCHEMA, cleanAnalysis, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
+import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SYSTEM, ANALYSE_SCHEMA, cleanAnalysis, GAPS_SCHEMA, gapsPrompt, cleanGaps, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
 const COVER_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive']
 const cleanTemplate = v => (COVER_TEMPLATES.includes(v) ? v : 'modern')
@@ -48,6 +48,18 @@ async function load(memberId, coach = 'career') {
     tasks: (tasks.data || []).map(t => ({ id: t.id, title: t.title, due: t.due, done: t.done, source: t.source, goalId: t.goal_id || null, start: t.block_start ? String(t.block_start).slice(0, 5) : null, mins: t.block_mins || null })), checkins: checkins.data || [], memory: memory.data || [],
     messages: (messages.data || []).reverse()
   }
+}
+
+// The resume the cover letter writer works from: what the member pasted or uploaded just
+// now, else the resume approved in the Resume writer, else the background text saved there.
+async function memberResume(member, pasted) {
+  const [pr, last] = await Promise.all([
+    supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle(),
+    supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
+  ])
+  const lastResume = last.data?.[0]?.content || null
+  const resume = clipText(pasted, 20000) || (lastResume ? resumeText(lastResume) : clipText(pr.data?.data?.text, 12000))
+  return { resume, lastResume }
 }
 
 async function me(member, coach = 'career') {
@@ -225,15 +237,12 @@ export default async function handler(req, res) {
       {
         if (job.length < 60) return res.status(400).json({ error: 'Paste the job ad first.' })
         if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-        const [pr, last] = await Promise.all([
-          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle(),
-          supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
-        ])
-        const lastResume = last.data?.[0]?.content || null
-        const resume = clipText(b.resume, 20000) || (lastResume ? resumeText(lastResume) : clipText(pr.data?.data?.text, 12000))
-        if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Write or upload it in the Resume writer, then come back.' })
-        const { keywords, requirements } = analyseJob(job)
-        const keep = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : keywords
+        const { resume, lastResume } = await memberResume(member, b.resume)
+        if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Upload or paste it in step 1, or write it in the Resume writer.' })
+        const simple = analyseJob(job)
+        const strs = (v, n, len) => (Array.isArray(v) ? v.map(k => clip(k, len)).filter(Boolean).slice(0, n) : [])
+        const keep = strs(b.keywords, 15, 60).length ? strs(b.keywords, 15, 60) : simple.keywords
+        const requirements = strs(b.requirements, 8, 300).length ? strs(b.requirements, 8, 300) : simple.requirements
         const prev = lastResume ? resumeContact(lastResume) : {}
         const name = clip(b.name, 100) || member.name || prev.name || ''
         const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
@@ -290,19 +299,38 @@ export default async function handler(req, res) {
       await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
       return res.json({ doc: { ...doc, content } })
     }
+    // Read the job ad against the member's resume: what the employer wants, what the
+    // resume already shows, and one pointed question per theme for step 2.
+    // Pass 1: read the job ad on its own and name the competencies it will assess.
     case 'cover_analyse': {
       const job = clipText(b.job, 8000)
       if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
-      const fallback = analyseJob(job)
-      if (!process.env.ANTHROPIC_API_KEY) return res.json(fallback)
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
+      // No word-counting fallback here: a list of leftover words is worse than an honest error.
+      try {
+        const r = cleanAnalysis(await askJson({ system: ANALYSE_SYSTEM, prompt: analysePrompt(job), schema: ANALYSE_SCHEMA, maxTokens: 1500 }))
+        if (r.themes.length < 3) throw new Error('Too few themes')
+        return res.json(r)
+      } catch (err) {
+        console.error('Ad analysis failed:', err)
+        return res.status(502).json({ error: 'We couldn’t read that ad properly. Please try again in a minute.' })
+      }
+    }
+    // Pass 2: check the resume against those competencies and write one question for each.
+    case 'cover_gaps': {
+      const themes = cleanAnalysis({ themes: b.themes }).themes
+      if (themes.length < 1) return res.status(400).json({ error: 'Read the ad first.' })
+      const { resume } = await memberResume(member, b.resume)
+      if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. The questions are built from it.', code: 'no_resume' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
       if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
       try {
-        const out = await askJson({ system: COVER_SYSTEM, prompt: analysePrompt(job), schema: ANALYSE_SCHEMA, maxTokens: 1200 })
-        const r = cleanAnalysis(out)
-        return res.json(r.keywords.length >= 3 ? r : fallback)
+        const out = await askJson({ system: ANALYSE_SYSTEM, prompt: gapsPrompt(themes, clipText(resume, 12000)), schema: GAPS_SCHEMA, maxTokens: 2500 })
+        return res.json({ themes: cleanGaps(out, themes) })
       } catch (err) {
-        console.error('Ad analysis failed, using the simple reader:', err)
-        return res.json(fallback)
+        console.error('Resume gap check failed:', err)
+        return res.status(502).json({ error: 'We couldn’t check your resume against the ad. Please try again in a minute.' })
       }
     }
 
