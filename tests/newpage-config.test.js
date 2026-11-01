@@ -6,6 +6,7 @@ test('long jobs (resume, cover letter, Sky) are allowed to run for a minute, not
   const v = JSON.parse(readFileSync('vercel.json', 'utf8'))
   assert.ok(v.functions['api/newpage/app.js'].maxDuration >= 60)
   assert.ok(v.functions['api/newpage/docx.py'].maxDuration >= 30)
+  assert.ok(v.functions['api/newpage/resume.py'].maxDuration >= 300)
   assert.match(v.functions['api/newpage/docx.py'].includeFiles, /api\/_py/)
   assert.ok(v.crons.some(c => c.path === '/api/newpage/retention'))
 })
@@ -16,10 +17,9 @@ test('the Python function has what it needs to install', () => {
 })
 
 test('the resume file picker has no accept filter (phones can offer only the camera), and there is one style', () => {
-  for (const f of ['newpage/app/resume.js', 'newpage/app/context.js']) {
+  for (const f of ['newpage/app/resume.js', 'newpage/app/context.js', 'newpage/app/cover.js']) {
     const s = readFileSync(f, 'utf8')
     assert.ok(!/type: 'file'[^}]*accept/.test(s), `${f}: no accept attribute on the file input`)
-    assert.ok(!/templatePicker|tmpl-opt/.test(s), `${f}: no style picker`)
   }
-  assert.ok(!/templatePicker/.test(readFileSync('newpage/app/cover.js', 'utf8')))
+  assert.ok(!/templatePicker|tmpl-opt/.test(readFileSync('newpage/app/resume.js', 'utf8')), 'the resume writer has no style picker')
 })

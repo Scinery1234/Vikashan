@@ -4,7 +4,7 @@ import { requireMember } from '../../lib/newpage-auth.js'
 import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
 import { PROGRAM } from '../../newpage/program-content.js'
 import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS, programPosition } from '../../lib/newpage-app.js'
-import { coachSystem, toApiMessages, runCoach, askJson, aiMessage } from '../../lib/newpage-coach.js'
+import { coachSystem, toApiMessages, runCoach, askJson, aiMessage, WRITER_MODEL } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
 import { refreshContent } from '../../lib/newpage-content.js'
 import { exportMemory, eraseMemory } from '../../lib/newpage-memory-store.js'
@@ -25,9 +25,11 @@ import {
   clipText,
   SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
-import { SYSTEM_PROMPT_GENERATE, SYSTEM_PROMPT_EDIT, RESUME_SCHEMA, buildGeneratePrompt, buildEditPrompt, cleanResume, cleanTemplate, resumeTitle, resumeText } from '../../lib/newpage-resume.js'
-import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SCHEMA, cleanAnalysis, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
+import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../../lib/newpage-resume.js'
+import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SYSTEM, ANALYSE_SCHEMA, cleanAnalysis, GAPS_SCHEMA, gapsPrompt, cleanGaps, REVIEW_SYSTEM, REVIEW_SCHEMA, reviewPrompt, cleanReview, coverText, revisePrompt, cleanAnswers, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
+const COVER_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive']
+const cleanTemplate = v => (COVER_TEMPLATES.includes(v) ? v : 'modern')
 const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const ID_RE = /^[0-9a-f-]{36}$/i
@@ -75,6 +77,18 @@ async function load(member, coach = 'career') {
     memory: (memory.data || []).map(m => ({ id: m.id, note: openText(vault, 'mem', m.note) })),
     messages: (messages.data || []).map(m => ({ ...m, content: openText(vault, 'msg', m.content) })).reverse()
   }
+}
+
+// The resume the cover letter writer works from: what the member pasted or uploaded just
+// now, else the resume approved in the Resume writer, else the background text saved there.
+async function memberResume(member, pasted) {
+  const [pr, last] = await Promise.all([
+    supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle(),
+    supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
+  ])
+  const lastResume = last.data?.[0]?.content || null
+  const resume = clipText(pasted, 20000) || (lastResume ? resumeText(lastResume) : clipText(pr.data?.data?.text, 12000))
+  return { resume, lastResume }
 }
 
 async function me(member, coach = 'career') {
@@ -277,48 +291,37 @@ export default async function handler(req, res) {
         const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: b.kind, title, content }).select('id, kind, title, content, created_at').single()
         return res.json({ doc: saved || { kind: b.kind, title, content } })
       }
-      const kind = b.kind === 'cover' ? 'cover' : b.kind === 'resume' ? 'resume' : null
-      if (!kind) return res.status(400).json({ error: 'Choose a resume or a cover letter.' })
+      if (b.kind === 'resume') return res.status(400).json({ error: 'Resumes are written in the Resume writer.' })
+      if (b.kind !== 'cover') return res.status(400).json({ error: 'Choose a document type.' })
+      const kind = 'cover'
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
-      const job = clipText(b.job, 8000), company = clipText(b.company, 120), role = clipText(b.role, 120)
+      const job = clipText(b.job, 12000), company = clipText(b.company, 120), role = clipText(b.role, 120)
       const template = cleanTemplate(b.template)
       let content, title
-      if (kind === 'resume') {
-        const background = clipText(b.background, 20000)
-        if (background.length < 80) return res.status(400).json({ error: 'Add your current resume first: upload it, or paste your roles, dates and what you achieved.' })
-        if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-        await setTool(member, 'profile', { text: background.slice(0, 12000) })
-        try {
-          content = cleanResume(await askJson({ system: SYSTEM_PROMPT_GENERATE, prompt: buildGeneratePrompt({ documentsText: background, job, additional: clipText(b.additional, 3000) }), schema: RESUME_SCHEMA, maxTokens: 6000 }), template)
-        } catch (err) {
-          console.error('Resume failed:', err)
-          return res.status(502).json({ error: aiMessage(err) })
-        }
-        if (!content.name && !content.experience.length) return res.status(502).json({ error: 'We couldn’t find a resume in what you gave us. Check it has your roles and dates, then try again.' })
-        title = resumeTitle(content, role)
-      } else {
+      {
         if (job.length < 60) return res.status(400).json({ error: 'Paste the job ad first.' })
         if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-        const [pr, last] = await Promise.all([
-          getTool(member, 'profile'),
-          supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
-        ])
-        const lastResume = last.data?.[0]?.content || null
-        const resume = clipText(b.resume, 20000) || (lastResume ? resumeText(lastResume) : clipText(pr?.text, 12000))
-        if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Write or upload it in the Resume writer, then come back.' })
-        const { keywords, requirements } = analyseJob(job)
-        const keep = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : keywords
-        const name = clip(b.name, 100) || member.name || lastResume?.name || ''
+        const { resume, lastResume } = await memberResume(member, b.resume)
+        if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Upload or paste it in step 1, or write it in the Resume writer.' })
+        const simple = analyseJob(job)
+        const strs = (v, n, len) => (Array.isArray(v) ? v.map(k => clip(k, len)).filter(Boolean).slice(0, n) : [])
+        const keep = strs(b.keywords, 15, 60).length ? strs(b.keywords, 15, 60) : simple.keywords
+        const requirements = strs(b.requirements, 8, 300).length ? strs(b.requirements, 8, 300) : simple.requirements
+        const prev = lastResume ? resumeContact(lastResume) : {}
+        const headName = (resume.split('\n').map(l => l.trim()).find(Boolean) || '').replace(/\s+/g, ' ')
+        const fullName = /^[A-Za-z][A-Za-z'.-]+( [A-Za-z][A-Za-z'.-]+){1,3}$/.test(headName) ? headName.replace(/\b[A-Z]+\b/g, w => w[0] + w.slice(1).toLowerCase()) : ''
+        const given = clip(b.name, 100) || member.name || prev.name || ''
+        const name = (!given.includes(' ') && fullName) ? fullName : given
         const candidate = { name, currentTitle: clip(b.currentTitle, 120), years: clip(b.years, 20), role, company, why: clipText(b.why, 2000), unique: clipText(b.unique, 2000), resume }
         let out
         try {
-          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence) }), schema: COVER_SCHEMA, maxTokens: 3500 })
+          const draft = Array.isArray(b.draft) ? b.draft.map(x => clipText(x, 1800)).filter(Boolean).slice(0, 8) : null
+          out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence), draft: draft && draft.length ? draft : null }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
         } catch (err) {
           console.error('Cover letter failed:', err)
           return res.status(502).json({ error: aiMessage(err) })
         }
         const k = (b.contact && typeof b.contact === 'object') ? b.contact : {}
-        const prev = lastResume?.contact || {}
         content = cleanCover(out, {
           name, template,
           contact: { phone: clip(k.phone, 40) || prev.phone, email: clip(k.email, 120) || prev.email || member.email, location: clip(k.location, 100) || prev.location, linkedin: clip(k.linkedin, 200) || prev.linkedin },
@@ -332,22 +335,24 @@ export default async function handler(req, res) {
       return res.json({ doc: saved || { kind, title, content } })
     }
 
-    // Plain-words edit of a saved resume ("make the summary shorter"), using Resume-Generator's edit rules.
-    case 'doc_edit': {
-      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
-      const instruction = clipText(b.instruction, 1000)
-      if (instruction.length < 4) return res.status(400).json({ error: 'Say what you’d like changed.' })
-      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
-      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-docedit-${member.id}` })) return
-      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
-      if (!doc || doc.kind !== 'resume') return res.status(404).json({ error: 'Unknown document.' })
-      let content
-      try {
-        content = cleanResume(await askJson({ system: SYSTEM_PROMPT_EDIT, prompt: buildEditPrompt({ resume: doc.content, instruction }), schema: RESUME_SCHEMA, maxTokens: 6000 }), doc.content.template)
-      } catch (err) {
-        console.error('Resume edit failed:', err)
-        return res.status(502).json({ error: aiMessage(err) })
+    // The resume writer (api/newpage/resume.py) finished and validated a Word file: keep the approved resume.
+    case 'resume_save': {
+      const content = cleanStoredResume(b)
+      if (!content.resume.candidate.full_name) return res.status(400).json({ error: 'That resume has no name on it.' })
+      const title = resumeTitle(content)
+      if (b.id) {
+        if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+        const { data } = await supabase.from('newpage_docs').update({ title, content }).eq('id', b.id).eq('member_id', member.id).eq('kind', 'resume').select('id, kind, title, content, created_at').maybeSingle()
+        if (data) return res.json({ doc: data })
       }
+      const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: 'resume', title, content }).select('id, kind, title, content, created_at').single()
+      return res.json({ doc: saved || { kind: 'resume', title, content } })
+    }
+    case 'doc_template': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const { data: doc } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle()
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
+      const content = { ...doc.content, template: cleanTemplate(b.template) }
       await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
       return res.json({ doc: { ...doc, content } })
     }
@@ -362,19 +367,104 @@ export default async function handler(req, res) {
       await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
       return res.json({ doc: { ...doc, content } })
     }
+    // Read the job ad against the member's resume: what the employer wants, what the
+    // resume already shows, and one pointed question per theme for step 2.
+    // Pass 1: read the job ad on its own and name the competencies it will assess.
     case 'cover_analyse': {
-      const job = clipText(b.job, 8000)
+      const job = clipText(b.job, 12000)
       if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
-      const fallback = analyseJob(job)
-      if (!process.env.ANTHROPIC_API_KEY) return res.json(fallback)
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
+      // No word-counting fallback here: a list of leftover words is worse than an honest error.
+      try {
+        const r = cleanAnalysis(await askJson({ system: ANALYSE_SYSTEM, prompt: analysePrompt(job), schema: ANALYSE_SCHEMA, maxTokens: 1500 }))
+        if (r.themes.length < 3) throw new Error('Too few themes')
+        return res.json(r)
+      } catch (err) {
+        console.error('Ad analysis failed:', err)
+        return res.status(502).json({ error: 'We couldn’t read that ad properly. Please try again in a minute.' })
+      }
+    }
+    // The first draft, from the resume and the ad alone, before any question is asked. Not saved.
+    case 'cover_draft': {
+      const job = clipText(b.job, 12000), company = clipText(b.company, 120), role = clipText(b.role, 120)
+      if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+      const { resume, lastResume } = await memberResume(member, b.resume)
+      if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first.', code: 'no_resume' })
+      const strs = (v, n, len) => (Array.isArray(v) ? v.map(k => clip(k, len)).filter(Boolean).slice(0, n) : [])
+      const prev = lastResume ? resumeContact(lastResume) : {}
+      const candidate = { name: clip(b.name, 100) || member.name || prev.name || '', currentTitle: clip(b.currentTitle, 120), years: '', role, company, why: '', unique: '', resume }
+      try {
+        const out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: strs(b.keywords, 15, 60), requirements: strs(b.requirements, 8, 300), draft: true }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
+        const c = cleanCover(out, { name: candidate.name })
+        if (c.paragraphs.length < 2) throw new Error('Too short')
+        return res.json({ draft: { subject: c.subject, greeting: c.greeting, paragraphs: c.paragraphs, closing: c.closing, signoff: c.signoff } })
+      } catch (err) {
+        console.error('Cover draft failed:', err)
+        return res.status(502).json({ error: 'We couldn’t draft the letter just now. Please try again in a minute.' })
+      }
+    }
+    // Revise a saved letter from the member's responses to the review. Replaces the letter in place.
+    case 'cover_revise': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const answers = cleanAnswers(b.answers), note = clipText(b.note, 2000)
+      if (!answers.length && !note) return res.status(400).json({ error: 'Respond to at least one point first.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
+      const [{ data: doc }, { resume }] = await Promise.all([
+        supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle(),
+        memberResume(member, b.resume)
+      ])
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
+      let content
+      try {
+        const out = await askJson({ system: COVER_SYSTEM, prompt: revisePrompt({ letter: coverText(doc.content), answers, note, job: clipText(b.job, 12000) || '(not given)', resume: clipText(resume, 12000) || '(not given)' }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
+        content = cleanCover(out, { name: doc.content.name, contact: doc.content.contact, date: doc.content.date, recipient: doc.content.recipient, template: doc.content.template })
+      } catch (err) {
+        console.error('Cover revise failed:', err)
+        return res.status(502).json({ error: 'We couldn’t revise the letter just now. Please try again in a minute.' })
+      }
+      if (content.paragraphs.length < 2) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+      if (!content.subject) content.subject = doc.content.subject
+      await supabase.from('newpage_docs').update({ content }).eq('id', doc.id).eq('member_id', member.id)
+      return res.json({ doc: { ...doc, content } })
+    }
+    // A recruiter's read of a finished letter: does it make the case, and what would make it stronger.
+    case 'cover_review': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 20, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
+      const [{ data: doc }, { resume }] = await Promise.all([
+        supabase.from('newpage_docs').select('id, kind, content').eq('id', b.id).eq('member_id', member.id).maybeSingle(),
+        memberResume(member, b.resume)
+      ])
+      if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
+      const ev = cleanEvidence(b.evidence).map(e => `${e.keyword}: ${[e.situation, e.result, e.award].filter(Boolean).join(' | ')}`).join('\n')
+      const themes = Array.isArray(b.keywords) ? b.keywords.map(k => clip(k, 60)).filter(Boolean).slice(0, 15) : []
+      try {
+        const out = await askJson({ system: REVIEW_SYSTEM, prompt: reviewPrompt({ letter: coverText(doc.content), job: clipText(b.job, 12000) || '(not given)', resume: clipText(resume, 12000) || '(not given)', evidence: ev, themes }), schema: REVIEW_SCHEMA, maxTokens: 2500, model: WRITER_MODEL(), effort: 'high' })
+        return res.json({ review: cleanReview(out) })
+      } catch (err) {
+        console.error('Cover review failed:', err)
+        return res.status(502).json({ error: 'We couldn’t review the letter just now. Please try again in a minute.' })
+      }
+    }
+    // Pass 2: check the resume against those competencies and write one question for each.
+    case 'cover_gaps': {
+      const themes = cleanAnalysis({ themes: b.themes }).themes
+      if (themes.length < 1) return res.status(400).json({ error: 'Read the ad first.' })
+      const { resume } = await memberResume(member, b.resume)
+      if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. The questions are built from it.', code: 'no_resume' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
       if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
       try {
-        const out = await askJson({ system: COVER_SYSTEM, prompt: analysePrompt(job), schema: ANALYSE_SCHEMA, maxTokens: 1200 })
-        const r = cleanAnalysis(out)
-        return res.json(r.keywords.length >= 3 ? r : fallback)
+        const out = await askJson({ system: ANALYSE_SYSTEM, prompt: gapsPrompt(themes, clipText(resume, 12000)), schema: GAPS_SCHEMA, maxTokens: 2500 })
+        return res.json({ themes: cleanGaps(out, themes) })
       } catch (err) {
-        console.error('Ad analysis failed, using the simple reader:', err)
-        return res.json(fallback)
+        console.error('Resume gap check failed:', err)
+        return res.status(502).json({ error: 'We couldn’t check your resume against the ad. Please try again in a minute.' })
       }
     }
 

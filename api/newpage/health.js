@@ -35,7 +35,7 @@ export default async function handler(req, res) {
       return { detail: `Answered using ${COACH_MODEL()}.` }
     }),
     check('Word-file builder (resume and cover letter)', async () => {
-      const r = await fetch(`${origin}/api/newpage/docx`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'resume', token: signSession('00000000-0000-0000-0000-000000000000'), data: { name: 'Test Person', summary: 'A test.', contact: {}, experience: [], education: [], key_skills: ['Testing'] } }) })
+      const r = await fetch(`${origin}/api/newpage/docx`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ action: 'cover', token: signSession('00000000-0000-0000-0000-000000000000'), data: { name: 'Test Person', contact: {}, paragraphs: ['A test paragraph.'], recipient: ['Hiring Manager'], date: '1 January 2027' } }) })
       const text = await r.text()
       if (!r.ok) return { ok: false, detail: `The builder answered HTTP ${r.status}: ${text.slice(0, 160).replace(/\s+/g, ' ')}. If this is a 404 or 500, check the deploy log for api/newpage/docx.py.` }
       let j; try { j = JSON.parse(text) } catch { return { ok: false, detail: `The builder answered, but not in the expected form: ${text.slice(0, 120)}` } }
