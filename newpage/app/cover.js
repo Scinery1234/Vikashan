@@ -9,7 +9,7 @@ import { templatePicker, pagePreview, saveB64, DOCX_TYPE, safeName, fileToB64, r
 const L = {
   step: 1, job: '', role: '', company: '', themes: [], reqs: [], ev: {}, openKw: 0, addKw: '',
   name: '', currentTitle: '', years: '', why: '', unique: '', phone: '', location: '', linkedin: '', template: 'modern',
-  resume: '', resumeFile: '', savedResume: null, profileText: '', pasteOpen: false, uploading: false,
+  resume: '', resumeFile: '', savedResume: null, resumeId: '', handed: false, profileText: '', pasteOpen: false, uploading: false, quick: false,
   busy: false, analysing: '', err: '', cur: null, files: {}, docs: null, loading: false, draft: null, saving: false, note: '', review: null, reviewing: false, base: null, revising: false, replies: {}, revNote: ''
 }
 
@@ -25,7 +25,14 @@ async function load(ctx) {
     const [p, d] = await Promise.all([ctx.call('/api/newpage/app', { action: 'tool_get', tool: 'profile' }), ctx.call('/api/newpage/app', { action: 'doc_list' })])
     L.docs = d.docs
     L.profileText = p.data.text || ''
-    const r = d.docs.find(x => x.kind === 'resume')
+    // Handed over from the Resume writer: the ad and the resume tailored for it.
+    let hand = null
+    try { hand = JSON.parse(sessionStorage.getItem('np-cover-handoff') || 'null'); sessionStorage.removeItem('np-cover-handoff') } catch { /* private mode */ }
+    if (hand && hand.resume_id) {
+      L.job = hand.job || L.job; L.role = hand.role || L.role; L.company = hand.company || L.company; L.resumeId = hand.resume_id; L.handed = true
+      L.step = 1; L.themes = []; L.cur = null; L.resume = ''; L.resumeFile = ''
+    }
+    const r = (L.resumeId && d.docs.find(x => x.id === L.resumeId && x.kind === 'resume')) || d.docs.find(x => x.kind === 'resume')
     L.savedResume = r || null
     if (r) {
       const c = contactOf(r)
@@ -48,6 +55,7 @@ const ownResume = () => L.resume.trim().length >= 80
 const hasResume = () => ownResume() || !!L.savedResume || L.profileText.trim().length >= 80
 function resumeSource() {
   if (ownResume()) return L.resumeFile ? `Using ${L.resumeFile}.` : 'Using the resume you pasted.'
+  if (L.savedResume && L.resumeId === L.savedResume.id && L.savedResume.content?.tailored) return `Using "${L.savedResume.title}", tailored for this job.`
   if (L.savedResume) return `Using "${L.savedResume.title}", made in the Resume writer on ${new Date(L.savedResume.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })}.`
   if (L.profileText.trim().length >= 80) return 'Using the resume text you uploaded earlier.'
   return ''
@@ -84,7 +92,7 @@ function reviewCard(ctx, cur) {
     L.reviewing = true; L.err = ''; ctx.render()
     try {
       const evidence = L.themes.map(t => ({ keyword: t.keyword, ...(L.ev[t.keyword] || {}) }))
-      const d = await ctx.call('/api/newpage/app', { action: 'cover_review', id: cur.id, job: L.job, keywords: L.themes.map(t => t.keyword), evidence, resume: ownResume() ? L.resume : '' })
+      const d = await ctx.call('/api/newpage/app', { action: 'cover_review', id: cur.id, job: L.job, keywords: L.themes.map(t => t.keyword), evidence, resume: ownResume() ? L.resume : '', resume_id: L.resumeId })
       L.review = { id: cur.id, data: d.review }
     } catch (e) { L.err = e.code === 'coach_off' ? 'The writer isn’t switched on yet.' : e.message }
     L.reviewing = false; ctx.render()
@@ -113,7 +121,7 @@ function reviseForm(ctx, cur, r) {
     if (!answers.length && !L.revNote.trim()) { L.err = 'Respond to at least one point first.'; ctx.render(); return }
     L.revising = true; L.err = ''; ctx.render()
     try {
-      const d = await ctx.call('/api/newpage/app', { action: 'cover_revise', id: cur.id, answers, note: L.revNote, job: L.job, resume: ownResume() ? L.resume : '' })
+      const d = await ctx.call('/api/newpage/app', { action: 'cover_revise', id: cur.id, answers, note: L.revNote, job: L.job, resume: ownResume() ? L.resume : '', resume_id: L.resumeId })
       L.cur = d.doc; L.docs = L.docs.map(x => (x.id === d.doc.id ? d.doc : x)); L.draft = null; L.review = null; L.replies = {}; L.revNote = ''; L.note = 'Revised. Review it again to see where it stands now.'
     } catch (e) { L.err = e.code === 'coach_off' ? 'The writer isn’t switched on yet.' : e.message }
     L.revising = false; ctx.render()
@@ -155,9 +163,9 @@ export function coverScreen(ctx) {
     try {
       const a = await ctx.call('/api/newpage/app', { action: 'cover_analyse', job: L.job })
       L.analysing = 'Checking your resume against it…'; ctx.render()
-      const g = await ctx.call('/api/newpage/app', { action: 'cover_gaps', themes: a.themes, resume })
+      const g = await ctx.call('/api/newpage/app', { action: 'cover_gaps', themes: a.themes, resume, resume_id: L.resumeId })
       L.analysing = 'Drafting a first letter from your resume alone…'; ctx.render()
-      const d = await ctx.call('/api/newpage/app', { action: 'cover_draft', job: L.job, role: L.role, company: L.company, keywords: a.themes.map(t => t.keyword), requirements: a.requirements, resume, name: L.name, currentTitle: L.currentTitle })
+      const d = await ctx.call('/api/newpage/app', { action: 'cover_draft', job: L.job, role: L.role, company: L.company, keywords: a.themes.map(t => t.keyword), requirements: a.requirements, resume, resume_id: L.resumeId, name: L.name, currentTitle: L.currentTitle })
       L.base = d.draft; L.themes = g.themes; L.reqs = a.requirements; L.ev = {}; L.openKw = 0; L.step = 2; L.cur = null; L.review = null
     } catch (e) { L.err = errText(e) }
     L.analysing = ''; ctx.render()
@@ -170,12 +178,32 @@ export function coverScreen(ctx) {
       const evidence = L.themes.map(t => ({ keyword: t.keyword, resume: t.resume, ...(L.ev[t.keyword] || {}) }))
       const d = await ctx.call('/api/newpage/app', {
         action: 'doc_generate', kind: 'cover', job: L.job, role: L.role, company: L.company, keywords: L.themes.map(t => t.keyword), requirements: L.reqs, evidence, draft: L.base ? L.base.paragraphs : null,
-        name: L.name, currentTitle: L.currentTitle, years: L.years, why: L.why, unique: L.unique, resume: ownResume() ? L.resume : '', template: L.template,
+        name: L.name, currentTitle: L.currentTitle, years: L.years, why: L.why, unique: L.unique, resume: ownResume() ? L.resume : '', resume_id: L.resumeId, template: L.template,
         contact: { phone: L.phone, location: L.location, linkedin: L.linkedin }
       })
       L.cur = d.doc; L.docs = [d.doc, ...L.docs.filter(x => x.id !== d.doc.id)]; L.draft = null; L.review = null; L.note = ''
     } catch (e) { L.err = errText(e) }
     L.busy = false; ctx.render()
+    if (L.cur && !L.err) document.getElementById('doc-result')?.scrollIntoView({ block: 'start' })
+  }
+
+  // The quick path: one pass from the resume and the ad, no questions. The three steps make a stronger letter.
+  const quick = async () => {
+    if (L.quick || L.analysing) return
+    L.err = ''
+    if (!hasResume()) { L.err = 'Add your resume first.'; ctx.render(); return }
+    if (L.job.trim().length < 60) { L.err = 'Paste the whole job ad.'; ctx.render(); return }
+    const resume = ownResume() ? L.resume : ''
+    if (resume) ctx.call('/api/newpage/app', { action: 'tool_save', tool: 'profile', data: { text: resume } }).catch(() => {})
+    L.quick = true; ctx.render()
+    try {
+      const d = await ctx.call('/api/newpage/app', {
+        action: 'doc_generate', kind: 'cover', job: L.job, role: L.role, company: L.company, keywords: [], requirements: [], evidence: [],
+        name: L.name, currentTitle: L.currentTitle, resume, resume_id: L.resumeId, template: L.template, contact: { phone: L.phone, location: L.location, linkedin: L.linkedin }
+      })
+      L.cur = d.doc; L.docs = [d.doc, ...L.docs.filter(x => x.id !== d.doc.id)]; L.draft = null; L.review = null; L.themes = []; L.note = 'A quick letter from your resume alone. Review it below to see where it stands, or go through the three steps for a stronger one.'
+    } catch (e) { L.err = errText(e) }
+    L.quick = false; ctx.render()
     if (L.cur && !L.err) document.getElementById('doc-result')?.scrollIntoView({ block: 'start' })
   }
 
@@ -199,8 +227,11 @@ export function coverScreen(ctx) {
       h('div', { class: 'field' }, h('label', { for: 'cv-job', class: 'sr-only' }, 'The job ad'), h('textarea', { id: 'cv-job', rows: '9', maxlength: '12000', oninput: e => { L.job = e.target.value } }, L.job)),
       h('div', { class: 'two' }, inp('cv-role', 'Role', 'role', { placeholder: 'e.g. Operations Coordinator' }), inp('cv-co', 'Organisation', 'company')),
       L.err && h('p', { class: 'error', role: 'alert' }, L.err),
-      h('button', { class: 'btn btn-primary', type: 'button', disabled: !!L.analysing || L.uploading, onclick: analyse }, L.analysing || 'Read the ad and check my resume'),
-      L.analysing && h('p', { class: 'small muted', 'aria-live': 'polite' }, 'Three passes: the ad on its own, then your resume against it, then a first draft from your resume alone.')
+      h('div', { class: 'row' },
+        h('button', { class: 'btn btn-primary', type: 'button', disabled: !!L.analysing || L.uploading || L.quick, onclick: analyse }, L.analysing || 'Read the ad and check my resume'),
+        h('button', { class: 'btn btn-secondary', type: 'button', disabled: !!L.analysing || L.uploading || L.quick, onclick: quick }, L.quick ? 'Writing a quick letter…' : 'Quick letter from my resume')),
+      L.analysing && h('p', { class: 'small muted', 'aria-live': 'polite' }, 'Three passes: the ad on its own, then your resume against it, then a first draft from your resume alone.'),
+      !L.analysing && h('p', { class: 'small muted' }, 'The three steps ask you for proof and make the stronger letter. The quick letter is one pass from your resume and the ad, about half a minute, for when the resume already says it all.')
     ]
   } else if (L.step === 2) {
     const missing = L.themes.filter(t => t.status === 'missing').length

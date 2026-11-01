@@ -10,6 +10,7 @@ POST JSON with a member session token:
   {action: 'start', materials, job_description, target_title, additional}
   {action: 'reply', session, message}
   {action: 'open', resume, materials, job_description, target_title}
+  {action: 'build', resume, target_title}   -> the Word file for a finished resume (no model call)
 start/reply/open -> {state, session, messages, resume}. The session string is
 signed here, so the approval gates cannot be skipped from the browser.
 Saving the finished resume to the member's documents is done by
@@ -29,6 +30,7 @@ from np_auth import derived_secret, session_claims  # noqa: E402
 from np_usage import resume_allowance, resume_spend  # noqa: E402
 from resume_agent import agent  # noqa: E402
 from resume_agent.claude import ClaudeError  # noqa: E402
+from resume_agent.execute import generate_document  # noqa: E402
 from resume_agent.extract import extract_text  # noqa: E402
 
 MAX_BODY = 4_400_000
@@ -93,6 +95,18 @@ def handle(b):
             return 422, {"error": "We couldn’t read any text in that file. If it’s a scan or a picture, paste the text instead."}
         return 200, {"text": text}
 
+    if action == "build":
+        # A tailored (or saved) resume straight to Word: phases 3 and 4 only, nothing is written by the model.
+        resume = b.get("resume") if isinstance(b.get("resume"), dict) else {}
+        if not resume.get("candidate"):
+            return 400, {"error": "That resume is empty."}
+        if limited(str(claims.get("sub"))):
+            return 429, {"error": "That’s a lot of files for one hour. Please try again a little later."}
+        r = generate_document(resume, str(b.get("target_title") or ""))
+        out = {"ok": r["ok"], "filename": r.get("filename", ""), "message": r["message"], "validation": r.get("validation"), "visual": r.get("visual")}
+        if r["ok"]:
+            out["docx"] = base64.b64encode(r["docx"]).decode()
+        return (200 if r["ok"] else 502), out
     if action not in ("start", "reply", "open"):
         return 400, {"error": "Unknown action."}
     if action != "open" and not (os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")):

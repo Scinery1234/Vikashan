@@ -114,3 +114,21 @@ class ResumeApi(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BuildAction(ResumeApi):
+    def test_build_makes_the_word_file_without_the_model(self):
+        calls = []
+        claude.ask_structured = lambda *a, **k: calls.append(a) or fake_ask(*a)
+        code, out = self.call(action="build", resume=copy.deepcopy(APPROVED), target_title="Operations Manager")
+        self.assertEqual(code, 200, out.get("message"))
+        self.assertTrue(out["ok"])
+        self.assertTrue(out["filename"].endswith(".docx"))
+        doc = Document(io.BytesIO(base64.b64decode(out["docx"])))
+        text = "\n".join(p.text for p in doc.paragraphs)
+        self.assertIn(APPROVED["candidate"]["full_name"].upper(), text)
+        self.assertEqual(calls, [], "building the file never calls the model")
+
+    def test_build_rejects_an_empty_resume(self):
+        code, out = self.call(action="build", resume={})
+        self.assertEqual(code, 400)

@@ -28,6 +28,7 @@ import {
   SECTION_SYSTEM, SECTIONS_SCHEMA, SECTION_KINDS, cleanSections, cleanFields, memberContext
 } from '../../lib/newpage-tools.js'
 import { cleanStoredResume, resumeTitle, resumeText, resumeContact } from '../../lib/newpage-resume.js'
+import { TAILOR_SYSTEM, TAILOR_SCHEMA, tailorPrompt, cleanTailor, tailoredTitle, tailorNote } from '../../lib/newpage-tailor.js'
 import { COVER_SYSTEM, COVER_SCHEMA, analyseJob, buildCoverPrompt, analysePrompt, ANALYSE_SYSTEM, ANALYSE_SCHEMA, cleanAnalysis, GAPS_SCHEMA, gapsPrompt, cleanGaps, REVIEW_SYSTEM, REVIEW_SCHEMA, reviewPrompt, cleanReview, coverText, revisePrompt, cleanAnswers, cleanCover, cleanEvidence, coverTitle, sydneyDate } from '../../lib/newpage-cover.js'
 
 const COVER_TEMPLATES = ['modern', 'classic', 'creative', 'minimal', 'executive']
@@ -83,10 +84,14 @@ async function load(member, coach = 'career') {
 
 // The resume the cover letter writer works from: what the member pasted or uploaded just
 // now, else the resume approved in the Resume writer, else the background text saved there.
-async function memberResume(member, pasted) {
+// A saved resume can be named (resumeId), for a letter written from a tailored version.
+async function memberResume(member, pasted, resumeId = '') {
+  const pick = ID_RE.test(String(resumeId || ''))
   const [pr, last] = await Promise.all([
     supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle(),
-    supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
+    pick
+      ? supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').eq('id', String(resumeId)).limit(1)
+      : supabase.from('newpage_docs').select('content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(1)
   ])
   const lastResume = last.data?.[0]?.content || null
   const resume = clipText(pasted, 20000) || (lastResume ? resumeText(lastResume) : clipText(pr.data?.data?.text, 12000))
@@ -126,7 +131,7 @@ export default async function handler(req, res) {
   // Sky and the tools ($25 a month): no 1:1 sessions or program renewals, and fair-use limits.
   if (isTools(member)) {
     if (['renew_checkout', 'hours_checkout', 'session_book'].includes(b.action)) return res.status(403).json({ error: 'That’s part of the four-week New Page program, which includes a human coach. Your membership covers Sky and the tools.', code: 'tools' })
-    const kind = b.action === 'coach' ? 'messages' : (b.action === 'cover_draft' || (b.action === 'doc_generate' && b.kind === 'cover')) ? 'covers' : null
+    const kind = b.action === 'coach' ? 'messages' : b.action === 'resume_tailor' ? 'tailored' : (b.action === 'cover_draft' || (b.action === 'doc_generate' && b.kind === 'cover')) ? 'covers' : null
     if (kind) {
       const a = await usageAllowance(member, kind)
       if (!a.ok) return res.status(429).json({ error: a.why, code: 'usage_cap', used: a.used, cap: a.cap })
@@ -271,7 +276,7 @@ export default async function handler(req, res) {
 
     // ── Resume and cover letter ──
     case 'doc_list': {
-      const { data } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(20)
+      const { data } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(80)
       return res.json({ docs: data || [] })
     }
     case 'doc_delete':
@@ -319,7 +324,7 @@ export default async function handler(req, res) {
       {
         if (job.length < 60) return res.status(400).json({ error: 'Paste the job ad first.' })
         if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-        const { resume, lastResume } = await memberResume(member, b.resume)
+        const { resume, lastResume } = await memberResume(member, b.resume, b.resume_id)
         if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. Upload or paste it in step 1, or write it in the Resume writer.' })
         const simple = analyseJob(job)
         const strs = (v, n, len) => (Array.isArray(v) ? v.map(k => clip(k, len)).filter(Boolean).slice(0, n) : [])
@@ -353,6 +358,35 @@ export default async function handler(req, res) {
       return res.json({ doc: saved || { kind, title, content } })
     }
 
+    // Tailor a saved resume for one job ad: one short call that selects, reorders and rewords
+    // what is already true, and reports what changed and how the ad is matched. Saved as its
+    // own resume under the one it came from. Counted as 'tailored' for tools members.
+    case 'resume_tailor': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Choose the resume to tailor.' })
+      const job = clipText(b.job, 20000), role = clip(b.role, 120), company = clip(b.company, 120)
+      if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
+      if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
+      if (!rateLimit(req, res, { max: 20, windowMs: 60 * 60 * 1000, key: `np-tailor-${member.id}` })) return
+      const { data: baseDoc } = await supabase.from('newpage_docs').select('id, content').eq('id', b.id).eq('member_id', member.id).eq('kind', 'resume').maybeSingle()
+      if (!baseDoc || !baseDoc.content?.resume?.candidate?.full_name) return res.status(404).json({ error: 'That resume isn’t one the Resume writer made, so it can’t be tailored. Open it in the Resume writer first.' })
+      const base = baseDoc.content.resume
+      let t
+      try {
+        const out = await askJson({ system: TAILOR_SYSTEM, prompt: tailorPrompt({ resume: JSON.stringify(base, null, 1), job, role, company }), schema: TAILOR_SCHEMA, maxTokens: 9000, model: WRITER_MODEL(), effort: 'medium' })
+        t = cleanTailor(out, base)
+      } catch (err) {
+        console.error('Resume tailor failed:', err)
+        return res.status(502).json({ error: aiMessage(err) })
+      }
+      if (t.unchanged) return res.status(502).json({ error: 'Nothing changed on that pass, which usually means the ad text didn’t come through. Check it and try again.' })
+      const content = cleanStoredResume({
+        resume: t.resume, target_title: role || t.resume.candidate.generic_job_title, job_description: job,
+        tailored: { base_id: baseDoc.content.tailored?.base_id || baseDoc.id, role, company, summary: t.summary, changes: t.changes, match: t.match }
+      })
+      const title = tailoredTitle(role, company)
+      const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: 'resume', title, content }).select('id, kind, title, content, created_at').single()
+      return res.json({ doc: saved || { kind: 'resume', title, content } })
+    }
     // The resume writer (api/newpage/resume.py) finished and validated a Word file: keep the approved resume.
     case 'resume_save': {
       const content = cleanStoredResume(b)
@@ -409,7 +443,7 @@ export default async function handler(req, res) {
       if (job.length < 60) return res.status(400).json({ error: 'Paste the whole job ad first.' })
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
       if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
-      const { resume, lastResume } = await memberResume(member, b.resume)
+      const { resume, lastResume } = await memberResume(member, b.resume, b.resume_id)
       if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first.', code: 'no_resume' })
       const strs = (v, n, len) => (Array.isArray(v) ? v.map(k => clip(k, len)).filter(Boolean).slice(0, n) : [])
       const prev = lastResume ? resumeContact(lastResume) : {}
@@ -433,7 +467,7 @@ export default async function handler(req, res) {
       if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
       const [{ data: doc }, { resume }] = await Promise.all([
         supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('id', b.id).eq('member_id', member.id).maybeSingle(),
-        memberResume(member, b.resume)
+        memberResume(member, b.resume, b.resume_id)
       ])
       if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
       let content
@@ -456,7 +490,7 @@ export default async function handler(req, res) {
       if (!rateLimit(req, res, { max: 20, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
       const [{ data: doc }, { resume }] = await Promise.all([
         supabase.from('newpage_docs').select('id, kind, content').eq('id', b.id).eq('member_id', member.id).maybeSingle(),
-        memberResume(member, b.resume)
+        memberResume(member, b.resume, b.resume_id)
       ])
       if (!doc || doc.kind !== 'cover') return res.status(404).json({ error: 'Unknown document.' })
       const ev = cleanEvidence(b.evidence).map(e => `${e.keyword}: ${[e.situation, e.result, e.award].filter(Boolean).join(' | ')}`).join('\n')
@@ -473,7 +507,7 @@ export default async function handler(req, res) {
     case 'cover_gaps': {
       const themes = cleanAnalysis({ themes: b.themes }).themes
       if (themes.length < 1) return res.status(400).json({ error: 'Read the ad first.' })
-      const { resume } = await memberResume(member, b.resume)
+      const { resume } = await memberResume(member, b.resume, b.resume_id)
       if (resume.length < 80) return res.status(400).json({ error: 'Add your resume first. The questions are built from it.', code: 'no_resume' })
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The writer isn’t switched on yet.', code: 'coach_off' })
       if (!rateLimit(req, res, { max: 30, windowMs: 60 * 60 * 1000, key: `np-cover-${member.id}` })) return
@@ -681,7 +715,8 @@ export default async function handler(req, res) {
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The coach isn’t switched on yet. Everything else in New Page works.', code: 'coach_off' })
 
       const data = await load(member, coach)
-      const [cp, aboutRaw, profile] = await Promise.all([getTool(member, 'compass'), getTool(member, 'about'), getTool(member, 'profile')])
+      const [cp, aboutRaw, profile, recent] = await Promise.all([getTool(member, 'compass'), getTool(member, 'about'), getTool(member, 'profile'),
+        supabase.from('newpage_docs').select('kind, content').eq('member_id', member.id).eq('kind', 'resume').order('created_at', { ascending: false }).limit(5)])
       // Sky keeps its own notes as it learns, unless the member has switched that off.
       const learn = member.learn !== false && !!vault
       // Sky's private self-checks: the most recent steer for this focus shapes the next replies.
@@ -689,7 +724,7 @@ export default async function handler(req, res) {
       const current = steerAll[coach] && Date.now() - new Date(steerAll[coach].at).getTime() < 3 * 24 * 60 * 60 * 1000 ? steerAll[coach] : null
       const system = coachSystem({
         member, tasks: data.tasks, memory: data.memory, compass: cp ? cleanCompass(cp) : null, coach,
-        about: cleanAbout(aboutRaw), resume: clipText(profile?.text, 3000), learn, privacy: member.privacy || null, steer: current?.steer || []
+        about: cleanAbout(aboutRaw), resume: [clipText(profile?.text, 2600), tailorNote(recent.data)].filter(Boolean).join('\n\n'), learn, privacy: member.privacy || null, steer: current?.steer || []
       })
       const tools = {
         run: async (name, input) => {
