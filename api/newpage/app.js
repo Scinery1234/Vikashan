@@ -3,13 +3,14 @@ import { rateLimit } from '../../lib/security.js'
 import { requireMember } from '../../lib/newpage-auth.js'
 import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
 import { PROGRAM } from '../../newpage/program-content.js'
-import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
+import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS, programPosition } from '../../lib/newpage-app.js'
 import { coachSystem, toApiMessages, runCoach, askJson, aiMessage } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
 import { refreshContent } from '../../lib/newpage-content.js'
 import { exportMemory, eraseMemory } from '../../lib/newpage-memory-store.js'
 import { openVault, sealText, openText, sealJson, openJson, memoryUsable } from '../../lib/newpage-vault.js'
 import { cryptoReady } from '../../lib/newpage-crypto.js'
+import { checkDue, checkPrompt, CHECK_SCHEMA, cleanCheck } from '../../lib/newpage-principles.js'
 import { PRIVACY_TEXT, cleanPrivacy, ABOUT, cleanAbout, aboutLines, cleanNote, MEMORY_LIMIT, isDuplicateNote, CHAT_SHARE_LIMIT } from '../../lib/newpage-context.js'
 import { getAvailableSlots } from '../../lib/availability.js'
 import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
@@ -30,6 +31,7 @@ const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const ID_RE = /^[0-9a-f-]{36}$/i
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+const COACH_NAME = id => ({ career: 'Career', recovery: 'Recovery', action: 'Action', exec: 'Executive function', charge: 'Reducing the charge', cbt: 'CBT', interview: 'Interview', offer: 'Offer and negotiation', clarity: 'Clarity compass' }[id] || id)
 const coachOf = v => (typeof v === 'string' && isCoach(v) ? v : 'career')
 const cleanDate = v => (typeof v === 'string' && DATE_RE.test(v) ? v : null)
 const cleanTime = v => (typeof v === 'string' && TIME_RE.test(v) ? v : null)
@@ -44,7 +46,7 @@ async function writeVault(member) {
 }
 // The Compass is program work and stays as it is. The resume and the "about you"
 // answers are part of Sky's memory, so they are encrypted with the member's key.
-const PRIVATE_TOOLS = ['profile', 'about']
+const PRIVATE_TOOLS = ['profile', 'about', 'steer']
 async function getTool(member, tool) {
   const { data } = await supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', tool).maybeSingle()
   return PRIVATE_TOOLS.includes(tool) ? openJson(await openVault(member), `tool:${tool}`, data?.data) : data?.data
@@ -559,9 +561,12 @@ export default async function handler(req, res) {
       const [cp, aboutRaw, profile] = await Promise.all([getTool(member, 'compass'), getTool(member, 'about'), getTool(member, 'profile')])
       // Sky keeps its own notes as it learns, unless the member has switched that off.
       const learn = member.learn !== false && !!vault
+      // Sky's private self-checks: the most recent steer for this focus shapes the next replies.
+      const steerAll = (await getTool(member, 'steer')) || {}
+      const current = steerAll[coach] && Date.now() - new Date(steerAll[coach].at).getTime() < 3 * 24 * 60 * 60 * 1000 ? steerAll[coach] : null
       const system = coachSystem({
         member, tasks: data.tasks, memory: data.memory, compass: cp ? cleanCompass(cp) : null, coach,
-        about: cleanAbout(aboutRaw), resume: clipText(profile?.text, 3000), learn, privacy: member.privacy || null
+        about: cleanAbout(aboutRaw), resume: clipText(profile?.text, 3000), learn, privacy: member.privacy || null, steer: current?.steer || []
       })
       const tools = {
         run: async (name, input) => {
@@ -595,7 +600,32 @@ export default async function handler(req, res) {
         return res.status(502).json({ error: err.status ? aiMessage(err) : 'Sky couldn’t answer just now. Please try again in a minute.' })
       }
       await store([{ role: 'user', content: text }, { role: 'assistant', content: reply.text }])
-      return res.json({ ...(await me(member, coach)), usedTools: reply.used.map(u => u.name) })
+
+      // Every 5th member message: check against the week's objective and the member's own aims.
+      // Every 10th: check against Purposefields' principles. Private; the result steers later replies.
+      const nUser = data.messages.filter(m => m.role === 'user').length + 1
+      const kind = checkDue(nUser)
+      let check = null
+      if (kind) {
+        try {
+          const Q = member.quadrant ? PROGRAM[member.quadrant] : null
+          const week = Q ? Q[Math.min(3, Math.max(0, programPosition(member.plan_started_at).week - 1))] : null
+          const about = cleanAbout(aboutRaw)
+          const aims = [
+            cp?.values?.length ? `Values: ${cleanCompass(cp).values.join(', ')}` : '',
+            cp?.north ? `North Star: ${cleanCompass(cp).north}` : '',
+            cp?.first ? `Direction they chose: ${cleanCompass(cp).first}` : '',
+            about.goals ? `A good year: ${about.goals}` : '', about.coachStyle ? `Wants coaching: ${about.coachStyle}` : '', about.limits ? `Limits: ${about.limits}` : '',
+            data.goals?.length ? `Goals: ${data.goals.map(g => g.title).join('; ')}` : '',
+            data.memory.length ? `Notes: ${data.memory.slice(-15).map(m => m.note).join(' | ')}` : ''
+          ].filter(Boolean).join('\n')
+          const recent = [...data.messages.slice(-(kind === 'principles' ? 20 : 10)), { role: 'user', content: text }, { role: 'assistant', content: reply.text }]
+          check = cleanCheck(await askJson({ system: 'You are a careful, fair reviewer of coaching conversations. Answer in the exact shape asked.', prompt: checkPrompt({ kind, recent, week, memberAims: aims, focus: COACH_NAME(coach) }), schema: CHECK_SCHEMA, maxTokens: 600 }))
+          const next = { ...steerAll, [coach]: { at: new Date().toISOString(), kind, n: nUser, on_track: check.on_track, summary: check.summary, steer: check.steer } }
+          await setTool(member, 'steer', next)
+        } catch (err) { console.error('Sky self-check failed (reply was still sent):', err.message) }
+      }
+      return res.json({ ...(await me(member, coach)), usedTools: reply.used.map(u => u.name), ...(check ? { selfCheck: { kind, onTrack: check.on_track } } : {}) })
     }
 
     default:
