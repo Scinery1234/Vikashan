@@ -405,3 +405,7 @@ CREATE TABLE IF NOT EXISTS newpage_usage (
   PRIMARY KEY (member_id, month, kind)
 );
 ALTER TABLE newpage_usage ENABLE ROW LEVEL SECURITY;
+
+-- ── Tailored resumes (a saved resume adjusted for one job ad), counted separately ──
+ALTER TABLE newpage_usage DROP CONSTRAINT IF EXISTS newpage_usage_kind_check;
+ALTER TABLE newpage_usage ADD CONSTRAINT newpage_usage_kind_check CHECK (kind IN ('messages','resumes','tailored','covers'));

@@ -35,7 +35,10 @@ export default async function handler(req, res) {
       // The source rule must allow 'demo', or the demo cannot start.
       const probe = await supabase.from('newpage_members').insert({ email: `health-${Date.now()}@demo.newpage.invalid`, source: 'demo', status: 'ended', access_until: new Date(0).toISOString() }).select('id').single()
       if (probe.error) return { ok: false, detail: `A demo member can't be created: ${probe.error.message}. The members table's "source" rule probably doesn't allow 'demo' yet. Run the New Page SQL in Supabase.` }
+      // The usage table's kind rule must allow 'tailored', or tailored resumes are never counted.
+      const u = await supabase.from('newpage_usage').insert({ member_id: probe.data.id, month: '1970-01', kind: 'tailored', count: 0 })
       await supabase.from('newpage_members').delete().eq('id', probe.data.id)
+      if (u.error) return { ok: false, detail: `The usage table doesn't accept tailored resumes yet: ${u.error.message}. Run the "tailored resumes" SQL block in Supabase.` }
       return { detail: 'All New Page tables and columns are there, and a demo member can be created.' }
     }),
     check('AI (Sky, writers, Compass)', async () => {

@@ -21,8 +21,8 @@ test('the tools membership is a $25 monthly Stripe subscription, priced on the s
   assert.match(p.success_url, /join\?done=1&sid=/)
 })
 
-test('fair-use limits: 300 messages, 3 resumes, 10 cover letters a month, Sydney months', () => {
-  assert.deepEqual(TOOLS_CAPS, { messages: 300, resumes: 3, covers: 10 })
+test('fair-use limits: 300 messages, 3 resumes, 150 tailored, 100 cover letters a month, Sydney months', () => {
+  assert.deepEqual(TOOLS_CAPS, { messages: 300, resumes: 3, tailored: 150, covers: 100 })
   assert.equal(monthKey(new Date('2027-03-31T14:30:00Z')), '2027-04', 'half past midnight on 1 April in Sydney is April')
   assert.equal(monthKey(new Date('2027-03-31T12:00:00Z')), '2027-03')
   assert.ok(isTools({ source: 'tools' }) && !isTools({ source: 'purchase' }) && !isTools(null))
@@ -44,6 +44,6 @@ test('the app payload marks the plan, hides buying, and the welcome email does n
   assert.equal(p.member.plan, 'program'); assert.equal(p.member.canBuy, true)
   const mail = toolsWelcomeEmail({ name: 'Ana Reyes', link: 'https://x/app?t=1' })
   assert.match(mail.subject, /Sky and the tools/)
-  assert.ok(mail.html.includes('300 messages') && mail.html.includes('3 resumes') && mail.html.includes('10 cover letters') && /human coach/.test(mail.html))
+  assert.ok(mail.html.includes('300 messages') && mail.html.includes('3 resumes') && mail.html.includes('100 cover letters') && mail.html.includes('150 resumes tailored') && /human coach/.test(mail.html))
   assert.ok(!/Vik/.test(mail.html), 'the tools welcome email does not name Vik')
 })

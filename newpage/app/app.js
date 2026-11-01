@@ -326,7 +326,7 @@ function toolsToday(me, first) {
           h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('tools', 'compass') }, 'Open the Compass'))),
       gettingStarted(me),
       u && h('div', { class: 'card' }, h('span', { class: 'label' }, 'This month'),
-        h('p', { class: 'small' }, `Sky: ${u.used.messages} of ${u.caps.messages} messages · resumes: ${u.used.resumes} of ${u.caps.resumes} · cover letters: ${u.used.covers} of ${u.caps.covers}. Everything else is unlimited. Resets on the 1st.`)),
+        h('p', { class: 'small' }, `Sky: ${u.used.messages} of ${u.caps.messages} messages · resumes: ${u.used.resumes} of ${u.caps.resumes} · tailored: ${u.used.tailored || 0} of ${u.caps.tailored} · cover letters: ${u.used.covers} of ${u.caps.covers}. Everything else is unlimited. Resets on the 1st.`)),
       h('div', { class: 'card' }, h('span', { class: 'label' }, 'Want a human coach too?'),
         h('p', { class: 'small' }, 'The four-week New Page program adds a course for your type and a 60-minute 1:1 session with a human coach.'),
         h('a', { class: 'link-btn blue', href: '/newpage/program' }, 'About the program'))))
@@ -455,7 +455,7 @@ function membershipCard(me) {
   const cancelled = !!me.member.cancelAt
   return h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your membership'),
     h('p', {}, 'Sky and the tools, $25 a month.', cancelled ? ` You’ve cancelled. Your access runs to ${until}.` : until ? ` Your next payment is around ${until}.` : ''),
-    me.usage && h('p', { class: 'small muted' }, `This month: ${me.usage.used.messages} of ${me.usage.caps.messages} Sky messages, ${me.usage.used.resumes} of ${me.usage.caps.resumes} resumes, ${me.usage.used.covers} of ${me.usage.caps.covers} cover letters.`),
+    me.usage && h('p', { class: 'small muted' }, `This month: ${me.usage.used.messages} of ${me.usage.caps.messages} Sky messages, ${me.usage.used.resumes} of ${me.usage.caps.resumes} resumes, ${me.usage.used.tailored || 0} of ${me.usage.caps.tailored} tailored resumes, ${me.usage.used.covers} of ${me.usage.caps.covers} cover letters.`),
     h('button', { class: 'btn btn-secondary', type: 'button', onclick: async () => { try { const d = await call('/api/newpage/app', { action: 'billing_portal' }); location.href = d.url } catch (e) { S.error = e.message; render() } } }, cancelled ? 'Billing details' : 'Change card or cancel'),
     h('p', { class: 'small muted' }, 'Cancelling keeps your access to the end of the month you’ve paid for. Sky’s memory is kept for 30 days after that, in case you come back.'))
 }

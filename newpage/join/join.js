@@ -34,7 +34,7 @@ function renderTools() {
   row('Today', '$25', 'total')
   text($('j-submit'), S.busy ? 'One moment…' : 'Pay $25 and start')
   $('j-submit').disabled = S.busy
-  text($('j-fine'), 'Pay by card on the next page. Renews each month at $25 until you cancel, which you can do any time from the app. You keep access to the end of the month you’ve paid for. Each month includes 300 messages to Sky, 3 resumes and 10 cover letters. Coaching, not therapy. For people 18 and over.')
+  text($('j-fine'), 'Pay by card on the next page. Renews each month at $25 until you cancel, which you can do any time from the app. You keep access to the end of the month you’ve paid for. Each month includes 300 messages to Sky, 3 resumes, 150 tailored resumes and 100 cover letters. Coaching, not therapy. For people 18 and over.')
 }
 
 async function post(body) {
