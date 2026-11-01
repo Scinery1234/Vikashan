@@ -2,11 +2,12 @@
 // Prices shown here are only for display. The server works out what you're charged.
 const $ = id => document.getElementById(id)
 const PRICE = { program: 500, hour: 250, max: 8 }
-const S = { hours: 0, code: null, codeOk: false, busy: false }
+const S = { hours: 0, code: null, codeOk: false, busy: false, plan: new URL(location.href).searchParams.get('plan') === 'tools' ? 'tools' : 'program' }
 const money = n => `$${n.toLocaleString('en-AU')}`
 const text = (el, t) => { el.textContent = t }
 
 function render() {
+  if (S.plan === 'tools') return renderTools()
   const total = S.codeOk ? 0 : PRICE.program + S.hours * PRICE.hour
   const box = $('summary'); box.replaceChildren()
   const row = (l, r, cls) => { const d = document.createElement('div'); d.className = 'sum ' + (cls || ''); const a = document.createElement('span'), b = document.createElement('span'); a.textContent = l; b.textContent = r; d.append(a, b); box.append(d) }
@@ -19,6 +20,21 @@ function render() {
   $('h-plus').disabled = S.hours >= PRICE.max || S.codeOk
   text($('j-submit'), S.busy ? 'One moment…' : S.codeOk ? 'Join with my scholarship' : `Pay ${money(total)} and start`)
   $('j-submit').disabled = S.busy
+}
+
+// The $25-a-month plan: no extra hours, no scholarship codes, renews monthly.
+function renderTools() {
+  document.querySelector('#form-screen .note').textContent = 'join'
+  document.querySelector('#form-screen h1').replaceChildren('Start ', Object.assign(document.createElement('span'), { className: 'hl', textContent: 'Sky and the tools' }))
+  document.querySelector('#form-screen .lead').textContent = 'Sky the AI Coach, the Compass, the resume and cover letter writers, your planner and notes. $25 a month, cancel any time.'
+  $('hours-field').hidden = true; $('j-code').closest('.field').hidden = true
+  const box = $('summary'); box.replaceChildren()
+  const row = (l, r, cls) => { const d = document.createElement('div'); d.className = 'sum ' + (cls || ''); const a = document.createElement('span'), b = document.createElement('span'); a.textContent = l; b.textContent = r; d.append(a, b); box.append(d) }
+  row('Sky and the tools, monthly', '$25 / month')
+  row('Today', '$25', 'total')
+  text($('j-submit'), S.busy ? 'One moment…' : 'Pay $25 and start')
+  $('j-submit').disabled = S.busy
+  text($('j-fine'), 'Pay by card on the next page. Renews each month at $25 until you cancel, which you can do any time from the app. You keep access to the end of the month you’ve paid for. Each month includes 300 messages to Sky, 3 resumes and 10 cover letters. Coaching, not therapy. For people 18 and over.')
 }
 
 async function post(body) {
@@ -52,7 +68,7 @@ $('join-form').addEventListener('submit', async e => {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { text(err, 'Add the email you want to use for New Page.'); err.hidden = false; $('j-email').focus(); return }
   S.busy = true; render()
   try {
-    const d = await post({ action: 'start', name, email, hours: S.hours, code: S.codeOk ? S.code : undefined, website: $('j-website').value })
+    const d = await post({ action: 'start', plan: S.plan, name, email, hours: S.plan === 'tools' ? 0 : S.hours, code: S.plan !== 'tools' && S.codeOk ? S.code : undefined, website: $('j-website').value })
     if (d.joined) { showDone({ scholarship: true, email, session: d.session }); return }
     if (d.url) { location.href = d.url; return }
     throw new Error('Something went wrong. Please try again.')
@@ -63,16 +79,20 @@ $('join-form').addEventListener('submit', async e => {
 function signIn(session) { try { localStorage.setItem('np_app_session', session); return true } catch { return false } }
 
 // The thank-you screen. If we can sign them in, the button takes them straight into the app.
-function showDone({ scholarship = false, email = '', session = null, checking = false, problem = '' } = {}) {
+function showDone({ scholarship = false, email = '', session = null, checking = false, problem = '', plan = S.plan } = {}) {
   $('form-screen').hidden = true; $('cancel-screen').hidden = true; $('done-screen').hidden = false
   const signedIn = session ? signIn(session) : false
-  text($('done-title'), checking ? 'Thanks. One moment…' : 'You’re in. Welcome to New Page.')
+  text($('done-title'), checking ? 'Thanks. One moment…' : plan === 'tools' ? 'You’re in. Welcome to Sky and the tools.' : 'You’re in. Welcome to New Page.')
   text($('done-text'), problem || (checking ? 'We’re confirming your payment.'
     : scholarship ? 'Your scholarship is confirmed, and you’re signed in.'
       : 'Your payment went through' + (signedIn ? ', and you’re signed in.' : '.')))
   const next = $('done-next'); next.replaceChildren()
   if (!checking && !problem) {
-    const steps = [
+    const steps = plan === 'tools' ? [
+      signedIn ? 'Tap the button below to open New Page.' : `Open the welcome email we’ve sent${email ? ' to ' + email : ''}. Its button signs you straight in.`,
+      'Do the 2-minute check-in under Me, so Sky knows where you’re starting from.',
+      'Say hello to Sky in the Coach tab, then look in Tools for the Compass and the writers.'
+    ] : [
       signedIn ? 'Tap the button below to open your New Page.' : `Open the welcome email we’ve sent${email ? ' to ' + email : ''}. Its button signs you straight in. (Check your junk folder if it’s not there in a few minutes.)`,
       'Do your 2-minute check-in, or open Today if you’ve taken the quiz. That’s your plan for the four weeks.',
       'Book your 60-minute session with Vik in week 2 or 3, under Tools.'

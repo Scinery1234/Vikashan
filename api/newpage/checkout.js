@@ -1,7 +1,7 @@
 import { supabase } from '../../lib/supabase.js'
 import { rateLimit, isBot } from '../../lib/security.js'
 import { PRICE, cleanHours, joinTotalCents, normaliseCode } from '../../lib/newpage-pricing.js'
-import { stripe, joinSessionParams } from '../../lib/newpage-stripe.js'
+import { stripe, joinSessionParams, toolsSessionParams } from '../../lib/newpage-stripe.js'
 import { grantMember } from '../../lib/newpage-grant.js'
 import { applyCheckout } from '../../lib/newpage-payments.js'
 import { signSession } from '../../lib/newpage-auth.js'
@@ -28,19 +28,21 @@ export default async function handler(req, res) {
     if (!/^cs_(test_|live_)?[A-Za-z0-9]{10,200}$/.test(sid)) return res.status(400).json({ error: 'That payment link doesn’t look right.' })
     try {
       const session = await stripe().checkout.sessions.retrieve(sid)
-      if (session.metadata?.kind !== 'newpage_join' || session.payment_status !== 'paid') return res.status(402).json({ error: 'We haven’t seen that payment come through yet. Give it a minute and refresh this page.', code: 'not_paid' })
+      if (!['newpage_join', 'newpage_tools'].includes(session.metadata?.kind) || session.payment_status !== 'paid') return res.status(402).json({ error: 'We haven’t seen that payment come through yet. Give it a minute and refresh this page.', code: 'not_paid' })
       await applyCheckout(session)
       const email = (session.metadata.email || session.customer_email || '').toLowerCase()
       const { data: member } = await supabase.from('newpage_members').select('id, status, last_login_at, created_at').eq('email', email).maybeSingle()
       const fresh = member && member.status === 'active' && !member.last_login_at && Date.now() - new Date(member.created_at).getTime() < 3 * 60 * 60 * 1000
       if (fresh) await supabase.from('newpage_members').update({ last_login_at: new Date().toISOString() }).eq('id', member.id)
-      return res.json({ ok: true, email, ...(fresh ? { session: signSession(member.id) } : {}) })
+      return res.json({ ok: true, email, plan: session.metadata.kind === 'newpage_tools' ? 'tools' : 'program', ...(fresh ? { session: signSession(member.id) } : {}) })
     } catch (err) {
       console.error('Claim failed:', err)
       return res.status(502).json({ error: 'We couldn’t check your payment just now. Your welcome email will arrive shortly with a link.' })
     }
   }
 
+  const plan = b.plan === 'tools' ? 'tools' : 'program'
+  if (plan === 'tools' && b.action === 'quote') return res.json({ plan, totalCents: PRICE.toolsCents, monthly: true })
   const hours = cleanHours(b.hours)
   if (hours === null) return res.status(400).json({ error: `Choose between 0 and ${PRICE.maxHours} extra hours.` })
 
@@ -63,6 +65,16 @@ export default async function handler(req, res) {
   const name = clip(b.name, 80)
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'Add the email you want to use for New Page.' })
   if (!name) return res.status(400).json({ error: 'Add your name.' })
+
+  if (plan === 'tools') {
+    try {
+      const session = await stripe().checkout.sessions.create(toolsSessionParams({ email, name }))
+      return res.json({ url: session.url })
+    } catch (err) {
+      console.error('Tools checkout failed:', err)
+      return res.status(502).json({ error: 'We couldn’t start the payment. Please try again in a minute.' })
+    }
+  }
 
   if (code) {
     // Claim the code first, so two people can't use it at once.

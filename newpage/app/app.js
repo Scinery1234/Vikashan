@@ -249,6 +249,7 @@ window.__npCtx = ctx
 function todayScreen() {
   const me = S.me, p = me.program, plan = me.plan
   const first = (me.member.name || '').split(' ')[0]
+  if (me.member.plan === 'tools') return toolsToday(me, first)
   if (!plan) {
     return h('section', { class: 'screen' },
       h('span', { class: 'note' }, 'welcome'),
@@ -307,6 +308,28 @@ function gettingStarted(me) {
       row(done, 'Tick off your first step below', 'See it', () => window.scrollTo({ top: 0, behavior: 'smooth' })),
       row(me.messages.length > 0 || !!S.coachUsed, 'Say hello to Sky, your AI Coach', 'Say hello', () => go('coach')),
       !me.member.demo && row(me.sessions.upcoming.length > 0, 'Book your 1:1 with Vik (best in week 2 or 3)', 'Book', () => go('tools', 'session'))))
+}
+
+// Today for Sky and the tools members: no program weeks, so it's their tasks, Sky and the tools.
+function toolsToday(me, first) {
+  const today = todayStr()
+  const due = me.tasks.filter(t => !t.done && t.due && t.due <= today)
+  const u = me.usage
+  return h('section', { class: 'screen' },
+    h('div', { class: 'today-grid' },
+      h('div', { class: 'week-card' },
+        h('div', { class: 'week-head' }, h('h2', {}, first ? `Hi ${first}.` : 'Hi.'), h('span', { class: 'pill' }, 'Sky and the tools')),
+        h('p', {}, me.plan ? `Your check-in put you in ${me.plan.name}: ${me.plan.meaning}` : 'Do the 2-minute check-in under Me, so Sky knows where you’re starting from.'),
+        due.length ? [h('span', { class: 'label' }, 'Due today'), taskList(due, 6)] : h('p', { class: 'small muted' }, 'Nothing due today. Add tasks in the planner, or ask Sky to help you plan the week.'),
+        h('div', { class: 'row' },
+          h('button', { class: 'btn btn-primary', type: 'button', onclick: () => go('coach') }, 'Talk to Sky'),
+          h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => go('tools', 'compass') }, 'Open the Compass'))),
+      gettingStarted(me),
+      u && h('div', { class: 'card' }, h('span', { class: 'label' }, 'This month'),
+        h('p', { class: 'small' }, `Sky: ${u.used.messages} of ${u.caps.messages} messages · resumes: ${u.used.resumes} of ${u.caps.resumes} · cover letters: ${u.used.covers} of ${u.caps.covers}. Everything else is unlimited. Resets on the 1st.`)),
+      h('div', { class: 'card' }, h('span', { class: 'label' }, 'Want a human coach too?'),
+        h('p', { class: 'small' }, 'The four-week New Page program adds a course for your type and a 60-minute 1:1 session with a human coach.'),
+        h('a', { class: 'link-btn blue', href: '/newpage/program' }, 'About the program'))))
 }
 
 function renewCard(me) {
@@ -427,6 +450,16 @@ function shareBlock(me) {
     h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', type: 'submit' }, 'Share it'), h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { S.shareOpen = false; render() } }, 'Cancel')))
 }
 
+function membershipCard(me) {
+  const until = me.member.accessUntil ? new Date(me.member.accessUntil).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
+  const cancelled = !!me.member.cancelAt
+  return h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your membership'),
+    h('p', {}, 'Sky and the tools, $25 a month.', cancelled ? ` You’ve cancelled. Your access runs to ${until}.` : until ? ` Your next payment is around ${until}.` : ''),
+    me.usage && h('p', { class: 'small muted' }, `This month: ${me.usage.used.messages} of ${me.usage.caps.messages} Sky messages, ${me.usage.used.resumes} of ${me.usage.caps.resumes} resumes, ${me.usage.used.covers} of ${me.usage.caps.covers} cover letters.`),
+    h('button', { class: 'btn btn-secondary', type: 'button', onclick: async () => { try { const d = await call('/api/newpage/app', { action: 'billing_portal' }); location.href = d.url } catch (e) { S.error = e.message; render() } } }, cancelled ? 'Billing details' : 'Change card or cancel'),
+    h('p', { class: 'small muted' }, 'Cancelling keeps your access to the end of the month you’ve paid for. Sky’s memory is kept for 30 days after that, in case you come back.'))
+}
+
 function scrollChat() { const m = document.getElementById('msgs'); if (m) m.lastElementChild?.scrollIntoView({ block: 'end' }) }
 
 // ── Tools ────────────────────────────────────────────────────────
@@ -466,7 +499,7 @@ function toolsScreen() {
   const status = { session: me.sessions.upcoming.length ? 'Booked' : me.sessions.remaining ? `${me.sessions.remaining} included` : '', planner: due ? `${due} due today` : open ? `${open} open` : '', compass: compassNote, resume: '', cover: '', report: '', linkedin: '', outreach: '', brief: '', progress: '' }
   return h('section', { class: 'screen' },
     h('div', {}, h('span', { class: 'note' }, 'your toolkit'), h('h2', {}, 'Tools'), h('p', { class: 'muted' }, 'These save to your account, and Sky knows about your tasks.')),
-    TOOL_GROUPS.map(([group, items]) => [h('h3', { class: 'group' }, group), h('div', { class: 'toolgrid' }, items.map(([id, name, blurb]) =>
+    TOOL_GROUPS.filter(([group]) => !(me.member.plan === 'tools' && group === 'Your 1:1 with Vik')).map(([group, items]) => [h('h3', { class: 'group' }, group), h('div', { class: 'toolgrid' }, items.map(([id, name, blurb]) =>
       h('button', { class: 'toolcard', type: 'button', onclick: () => go('tools', id) },
         h('b', {}, name), h('span', {}, blurb), status[id] && h('small', {}, status[id]))))]),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'Need to talk something through?'),
@@ -502,6 +535,7 @@ function meScreen() {
     me.checkins.length > 0 && h('div', { class: 'card' }, h('span', { class: 'label' }, 'Your check-ins'),
       h('ul', { class: 'hist', style: { margin: 0, padding: 0, 'list-style': 'none' } }, [...me.checkins].reverse().map(c =>
         h('li', {}, h('span', {}, fmtDate(c.at)), h('b', {}, QUADRANTS[c.quadrant].name), h('span', { class: 'muted' }, `clarity ${c.clarity}, capacity ${c.capacity}`))))),
+    me.member.plan === 'tools' && membershipCard(me),
     h('div', { class: 'card' }, h('span', { class: 'label' }, 'What Sky remembers'),
       me.memory.length ? [me.memory.map(m => h('div', { class: 'mem' }, h('span', {}, m.note),
         h('button', { class: 'x', type: 'button', 'aria-label': `Forget: ${m.note}`, onclick: async () => { try { await act('memory_delete', { id: m.id }) } catch (err) { S.error = err.message } render() } }, '×'))),
@@ -553,7 +587,7 @@ function renderTabs() {
   tabbar.hidden = !show
   signoutBtn.hidden = !show
   if (!show) return
-  tabbar.replaceChildren(h('div', { class: 'tabbar-in' }, TABS.map(([k, label]) => {
+  tabbar.replaceChildren(h('div', { class: 'tabbar-in' }, TABS.filter(([k]) => !(k === 'plan' && S.me.member.plan === 'tools')).map(([k, label]) => {
     const needsCheckin = k === 'me' && !S.me.plan
     const btn = h('button', { class: 'tab', type: 'button', 'aria-current': S.tab === k ? 'page' : null, onclick: () => { go(k); if (k === 'coach' && !skySeen()) setTimeout(() => openSky(ctx), 250) } }, label, needsCheckin && h('span', { class: 'dotbadge', 'aria-label': 'Check-in needed' }))
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')

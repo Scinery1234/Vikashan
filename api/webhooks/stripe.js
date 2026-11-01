@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase.js'
 import { sendConfirmation } from '../../lib/resend.js'
 import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
-import { applyCheckout } from '../../lib/newpage-payments.js'
+import { applyCheckout, applyInvoicePaid, applySubscriptionEnded, applySubscriptionUpdated } from '../../lib/newpage-payments.js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -38,6 +38,19 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('New Page payment failed:', err)
       return res.status(500).json({ error: 'Could not apply the payment' }) // Stripe will retry
+    }
+    return res.json({ received: true })
+  }
+
+  // The $25-a-month tools membership: later months, cancellations.
+  if (event.type === 'invoice.paid' || event.type === 'customer.subscription.deleted' || event.type === 'customer.subscription.updated') {
+    try {
+      if (event.type === 'invoice.paid') await applyInvoicePaid(event.data.object)
+      else if (event.type === 'customer.subscription.deleted') await applySubscriptionEnded(event.data.object)
+      else await applySubscriptionUpdated(event.data.object)
+    } catch (err) {
+      console.error('Subscription event failed:', err)
+      return res.status(500).json({ error: 'Could not apply the subscription event' })
     }
     return res.json({ received: true })
   }

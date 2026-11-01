@@ -27,6 +27,7 @@ function buyHours(ctx, me) {
 }
 
 export function sessionScreen(ctx) {
+  if (ctx.S.me.member.plan === 'tools') return h('section', { class: 'screen' }, h('button', { class: 'link-btn back', type: 'button', onclick: () => ctx.go('tools') }, '← Tools'), h('h2', {}, 'A session with a human coach'), h('p', {}, 'Your membership covers Sky and the tools. The four-week New Page program adds a 60-minute 1:1 session with a human coach.'), h('a', { class: 'btn btn-primary', href: '/newpage/program' }, 'About the program'))
   if (ctx.S.me.member.demo) return h('section', { class: 'screen' }, h('button', { class: 'link-btn back', type: 'button', onclick: () => ctx.go('tools') }, '← Tools'), h('h2', {}, '1:1 with Vik'), h('p', {}, 'Members get a 60-minute online session with Vik, a career counsellor and psychotherapist, booked from here. Booking isn’t part of the demo.'), h('a', { class: 'btn btn-primary', href: '/newpage/join' }, 'Join New Page'))
   const me = ctx.S.me, s = me.sessions
   const back = h('button', { class: 'link-btn back', type: 'button', onclick: () => { L.done = null; ctx.go('tools') } }, '← Tools')
