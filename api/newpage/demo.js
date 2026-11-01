@@ -77,7 +77,8 @@ export default async function handler(req, res) {
       return res.json({ session: made.session, hours: DEMO.hours, caps: DEMO.caps })
     } catch (err) {
       console.error('Demo start failed:', err)
-      return res.status(500).json({ error: 'The demo couldn’t start just now. Please try again in a minute.' })
+      const dbish = /column|constraint|relation|violates|does not exist/i.test(String(err.message))
+      return res.status(500).json({ error: dbish ? 'The demo isn’t set up yet on this site. Please tell Vik.' : 'The demo couldn’t start just now. Please try again in a minute.' })
     }
   }
 

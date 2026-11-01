@@ -26,7 +26,17 @@ export default async function handler(req, res) {
     check('Database', async () => {
       const missing = []
       for (const t of TABLES) { const { error } = await supabase.from(t).select('*', { head: true, count: 'exact' }).limit(1); if (error) missing.push(t) }
-      return missing.length ? { ok: false, detail: `These tables are missing or unreadable: ${missing.join(', ')}. Run the New Page SQL in Supabase.` } : { detail: 'All New Page tables are there.' }
+      if (missing.length) return { ok: false, detail: `These tables are missing or unreadable: ${missing.join(', ')}. Run the New Page SQL in Supabase.` }
+      // Newer columns the code writes. Each one that is missing means a block of the SQL has not been run.
+      const cols = ['access_until', 'sessions_included', 'coach_notes', 'data_key', 'privacy', 'learn', 'memory_state', 'program_emails', 'demo_messages', 'demo_code']
+      const gone = []
+      for (const c of cols) { const { error } = await supabase.from('newpage_members').select(c, { head: true }).limit(1); if (error) gone.push(c) }
+      if (gone.length) return { ok: false, detail: `The members table is missing these columns: ${gone.join(', ')}. Run the New Page SQL (the combined file) in Supabase, then try again. Until then members can't be created and the demo won't start.` }
+      // The source rule must allow 'demo', or the demo cannot start.
+      const probe = await supabase.from('newpage_members').insert({ email: `health-${Date.now()}@demo.newpage.invalid`, source: 'demo', status: 'ended', access_until: new Date(0).toISOString() }).select('id').single()
+      if (probe.error) return { ok: false, detail: `A demo member can't be created: ${probe.error.message}. The members table's "source" rule probably doesn't allow 'demo' yet. Run the New Page SQL in Supabase.` }
+      await supabase.from('newpage_members').delete().eq('id', probe.data.id)
+      return { detail: 'All New Page tables and columns are there, and a demo member can be created.' }
     }),
     check('AI (Sky, writers, Compass)', async () => {
       if (!process.env.ANTHROPIC_API_KEY) return { ok: false, detail: 'ANTHROPIC_API_KEY is not set in Vercel.' }
