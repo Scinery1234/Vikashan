@@ -26,6 +26,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "_py"))
 
 from np_auth import derived_secret, session_claims  # noqa: E402
+from np_usage import resume_allowance, resume_spend  # noqa: E402
 from resume_agent import agent  # noqa: E402
 from resume_agent.claude import ClaudeError  # noqa: E402
 from resume_agent.extract import extract_text  # noqa: E402
@@ -100,6 +101,10 @@ def handle(b):
         return 429, {"error": "That’s a lot of drafts for one hour. Please try again a little later."}
     try:
         if action == "start":
+            ok, why = resume_allowance(str(claims.get("sub")))
+            if not ok:
+                return 429, {"error": why, "code": "usage_cap"}
+            resume_spend(str(claims.get("sub")))
             return 200, agent.start(str(b.get("materials") or ""), secret(), job_description=str(b.get("job_description") or ""),
                                     target_title=str(b.get("target_title") or ""), additional=str(b.get("additional") or ""))
         if action == "reply":

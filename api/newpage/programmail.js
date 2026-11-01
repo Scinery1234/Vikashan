@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   await refreshContent()
 
   const { data: members, error } = await supabase.from('newpage_members')
-    .select('id, email, name, status, source, quadrant, plan_started_at, last_login_at, access_until, sessions_included, program_emails').eq('status', 'active').neq('source', 'demo')
+    .select('id, email, name, status, source, quadrant, plan_started_at, last_login_at, access_until, sessions_included, program_emails').eq('status', 'active').neq('source', 'demo').neq('source', 'tools')
   if (error) return res.status(500).json({ error: error.message })
   const { data: bookings } = await supabase.from('bookings').select('newpage_member_id, date, start_time, status').not('newpage_member_id', 'is', null)
   const { data: sentRows } = await supabase.from('newpage_member_emails').select('member_id, kind, sent_at')

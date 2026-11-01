@@ -386,3 +386,22 @@ CREATE TABLE IF NOT EXISTS newpage_demo_codes (
   created_at timestamptz DEFAULT now()
 );
 ALTER TABLE newpage_demo_codes ENABLE ROW LEVEL SECURITY;
+
+-- ── Sky and the tools: the $25-a-month membership ──
+ALTER TABLE newpage_members DROP CONSTRAINT IF EXISTS newpage_members_source_check;
+ALTER TABLE newpage_members ADD CONSTRAINT newpage_members_source_check CHECK (source IN ('purchase','scholarship','manual','demo','tools'));
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS stripe_customer_id text;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS stripe_subscription_id text;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS cancel_at timestamptz;   -- set when they cancel; access runs to this date
+ALTER TABLE newpage_payments DROP CONSTRAINT IF EXISTS newpage_payments_kind_check;
+ALTER TABLE newpage_payments ADD CONSTRAINT newpage_payments_kind_check CHECK (kind IN ('join','renew','hours','tools','tools_month'));
+
+-- Monthly use of Sky, the resume writer and the cover letter writer (fair-use limits for tools members).
+CREATE TABLE IF NOT EXISTS newpage_usage (
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  month text NOT NULL,          -- 'YYYY-MM', Sydney time
+  kind text NOT NULL CHECK (kind IN ('messages','resumes','covers')),
+  count integer NOT NULL DEFAULT 0,
+  PRIMARY KEY (member_id, month, kind)
+);
+ALTER TABLE newpage_usage ENABLE ROW LEVEL SECURITY;

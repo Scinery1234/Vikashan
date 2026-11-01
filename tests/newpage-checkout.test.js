@@ -6,7 +6,7 @@ const { PRICE, cleanHours, joinTotalCents, normaliseCode } = await import('../li
 const { joinSessionParams, renewSessionParams, hoursSessionParams } = await import('../lib/newpage-stripe.js')
 
 test('prices are fixed on the server', () => {
-  assert.deepEqual(PRICE, { programCents: 50000, hourCents: 25000, renewCents: 50000, maxHours: 8 })
+  assert.deepEqual(PRICE, { programCents: 50000, hourCents: 25000, renewCents: 50000, maxHours: 8, toolsCents: 2500 })
   assert.equal(joinTotalCents(0), 50000)
   assert.equal(joinTotalCents(3), 125000)
   assert.equal(joinTotalCents(8), 250000)

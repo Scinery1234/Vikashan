@@ -12,6 +12,8 @@ import { openVault, sealText, openText, sealJson, openJson, memoryUsable } from 
 import { cryptoReady } from '../../lib/newpage-crypto.js'
 import { checkDue, checkPrompt, CHECK_SCHEMA, cleanCheck } from '../../lib/newpage-principles.js'
 import { isDemo, demoAllowance, demoSpend } from '../../lib/newpage-demo.js'
+import { isTools, usageAllowance, usageSpend, usageFor, TOOLS_CAPS } from '../../lib/newpage-usage.js'
+import { billingPortalUrl } from '../../lib/newpage-stripe.js'
 import { PRIVACY_TEXT, cleanPrivacy, ABOUT, cleanAbout, aboutLines, cleanNote, MEMORY_LIMIT, isDuplicateNote, CHAT_SHARE_LIMIT } from '../../lib/newpage-context.js'
 import { getAvailableSlots } from '../../lib/availability.js'
 import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
@@ -93,7 +95,8 @@ async function memberResume(member, pasted) {
 
 async function me(member, coach = 'career') {
   const data = await load(member, coach)
-  return { ...buildMe({ member, ...data, sessions: sessionState(member.sessions_included, data.bookings), coachOn: !!process.env.ANTHROPIC_API_KEY }), coach }
+  const usage = isTools(member) ? { used: await usageFor(member.id), caps: TOOLS_CAPS } : null
+  return { ...buildMe({ member, ...data, sessions: sessionState(member.sessions_included, data.bookings), coachOn: !!process.env.ANTHROPIC_API_KEY }), coach, usage }
 }
 
 // Everything the Your context screen shows. Shares are listed by date and kind only.
@@ -119,6 +122,21 @@ export default async function handler(req, res) {
   if (!member) return
   await refreshContent()
   const b = req.body || {}
+
+  // Sky and the tools ($25 a month): no 1:1 sessions or program renewals, and fair-use limits.
+  if (isTools(member)) {
+    if (['renew_checkout', 'hours_checkout', 'session_book'].includes(b.action)) return res.status(403).json({ error: 'That’s part of the four-week New Page program, which includes a human coach. Your membership covers Sky and the tools.', code: 'tools' })
+    const kind = b.action === 'coach' ? 'messages' : (b.action === 'cover_draft' || (b.action === 'doc_generate' && b.kind === 'cover')) ? 'covers' : null
+    if (kind) {
+      const a = await usageAllowance(member, kind)
+      if (!a.ok) return res.status(429).json({ error: a.why, code: 'usage_cap', used: a.used, cap: a.cap })
+      await usageSpend(member, kind)
+    }
+    if (b.action === 'billing_portal') {
+      if (!member.stripe_customer_id) return res.status(400).json({ error: 'We can’t find your billing details. Reply to any email from us and we’ll sort it out.' })
+      try { return res.json({ url: await billingPortalUrl(member.stripe_customer_id) }) } catch (err) { console.error('Billing portal failed:', err); return res.status(502).json({ error: 'Billing isn’t available just now. Please try again in a minute.' }) }
+    }
+  }
 
   // The demo: no money, no bookings, no emails, and a small AI allowance.
   if (isDemo(member)) {
