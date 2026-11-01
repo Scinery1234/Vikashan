@@ -5,7 +5,7 @@
 // 4. the Python script is generated, run and checked, and the Word file is yours.
 // The gates live on the server; this screen shows the conversation.
 import { h, copyText } from './ui.js'
-import { saveB64, DOCX_TYPE, fileToB64 } from './docfiles.js'
+import { saveB64, DOCX_TYPE, fileToB64, resumeFileProblem } from './docfiles.js'
 
 const API = '/api/newpage/resume'
 const QUICK = { AWAITING_CONTENT_APPROVAL: 'Yes', EXECUTION_FAILED: 'Try again' }
@@ -29,7 +29,8 @@ const agent = (ctx, body) => ctx.call(API, { token: ctx.token(), ...body })
 
 async function upload(ctx, file, into) {
   if (!file) return
-  if (file.size > 3 * 1024 * 1024) { L.err = 'That file is over 3 MB. Try a smaller one, or paste the text.'; ctx.render(); return }
+  const problem = resumeFileProblem(file)
+  if (problem) { L.err = problem; ctx.render(); return }
   L.uploading = into; L.err = ''; ctx.render()
   try {
     const d = await agent(ctx, { action: 'extract', filename: file.name, file: await fileToB64(file) })
@@ -126,8 +127,8 @@ export function resumeScreen(ctx) {
     h('p', { class: 'muted' }, 'An Australian-standard, ATS-friendly resume from your own work history, matched to the job you want. You check and approve every word before the Word file is made. Nothing is invented.'))
   if (L.text === null) return h('section', { class: 'screen' }, head, h('p', { class: 'loading' }, 'Loading…'))
 
-  const fileInput = h('input', { type: 'file', id: 'res-file', accept: '.docx,.pdf,.txt,.md', class: 'sr-only', onchange: e => { upload(ctx, e.target.files[0], 'cv'); e.target.value = '' } })
-  const jdInput = h('input', { type: 'file', id: 'res-jd-file', accept: '.pdf,.docx,.txt,.md', class: 'sr-only', onchange: e => { upload(ctx, e.target.files[0], 'job'); e.target.value = '' } })
+  const fileInput = h('input', { type: 'file', id: 'res-file', class: 'sr-only', onchange: e => { upload(ctx, e.target.files[0], 'cv'); e.target.value = '' } })
+  const jdInput = h('input', { type: 'file', id: 'res-jd-file', class: 'sr-only', onchange: e => { upload(ctx, e.target.files[0], 'job'); e.target.value = '' } })
   const fileBtn = (input, id, label) => h('label', { for: id, class: 'btn btn-secondary', role: 'button', tabindex: '0', onkeydown: e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click() } } }, label)
 
   const form = !L.conv && h('form', { class: 'card doc-form', novalidate: true, onsubmit: e => { e.preventDefault(); start(ctx) } },

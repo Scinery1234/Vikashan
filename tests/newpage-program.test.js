@@ -134,3 +134,12 @@ test('the AI is always Sky: no content uses the old coach names or lets the AI p
     assert.ok(!/\b(Career|Recovery|Action|Interview|CBT|Executive Function) Coach\b/.test(s), `${f} still uses an old coach name`)
   }
 })
+
+test('New Page is described as being by Purposefields, not Vikashan', async () => {
+  const { readFileSync } = await import('node:fs')
+  for (const f of ['newpage/index.html', 'newpage/program/index.html', 'newpage/join/index.html', 'newpage/app/index.html', 'lib/newpage-emails.js', 'lib/newpage-coach.js', 'lib/newpage-tools.js']) {
+    const s = readFileSync(f, 'utf8')
+    assert.ok(!/by (<a[^>]*>)?Vikashan/i.test(s), `${f} still says by Vikashan`)
+  }
+  assert.ok(/by Purposefields/.test(readFileSync('newpage/program/index.html', 'utf8')))
+})

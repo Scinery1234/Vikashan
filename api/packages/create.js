@@ -3,6 +3,8 @@ import { sendConfirmation } from '../../lib/resend.js'
 import { createOutlookEvent } from '../../lib/outlook.js'
 import { createGoogleCalendarEvent } from '../../lib/google-calendar.js'
 import Stripe from 'stripe'
+import { pricingProblem, slotProblem, recurProblem } from '../../lib/booking-price.js'
+import { ensureClient, lookupClient } from '../../lib/booking-client.js'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY)
 
@@ -14,7 +16,7 @@ export default async function handler(req, res) {
     clientName, clientEmail, clientPhone,
     sessionTypeId, date, time,
     amountCentsPerSession, sessionsTotal,
-    tier, notes, mailingOptIn, recurDates
+    tier, notes, mailingOptIn, recurDates, upfrontDiscount
   } = req.body
 
   if (!clientName || !clientEmail || !date || !time || !sessionTypeId || !amountCentsPerSession || !sessionsTotal) {
@@ -30,19 +32,18 @@ export default async function handler(req, res) {
   if (!sessionType) return res.status(404).json({ error: 'Session type not found' })
   if (sessionType.members_only) return res.status(403).json({ error: 'That session is for New Page members.' })
 
+  // The browser suggests a rate; the server decides whether it is allowed, and works out the total itself.
+  const problem = pricingProblem({ sessionType, tier, amountCentsPerSession, sessionsTotal, upfront: upfrontDiscount === true, client: await lookupClient(clientEmail) })
+  if (problem) return res.status(400).json({ error: problem })
+  const slot = await slotProblem(date, time)
+  if (slot) return res.status(409).json({ error: slot })
+  const recur = recurProblem(recurDates, sessionsTotal)
+  if (recur) return res.status(400).json({ error: recur })
+
   const meetLink = process.env.ZOOM_PERSONAL_LINK
   const totalCents = amountCentsPerSession * sessionsTotal
 
-  // Upsert client
-  const { data: client, error: clientError } = await supabase
-    .from('clients')
-    .upsert(
-      { name: clientName, email: clientEmail, phone: clientPhone || null, mailing_opt_in: !!mailingOptIn, status: 'lead' },
-      { onConflict: 'email', ignoreDuplicates: false }
-    )
-    .select()
-    .single()
-
+  const { client, error: clientError } = await ensureClient({ name: clientName, email: clientEmail, phone: clientPhone, mailingOptIn })
   if (clientError) return res.status(500).json({ error: 'Failed to create client' })
 
   // Create first booking

@@ -4,7 +4,7 @@
 // competency, built from those gaps, answered with real examples. Step 3: about
 // you. The letter is written from that evidence only, in Australian format.
 import { h, copyText } from './ui.js'
-import { templatePicker, pagePreview, saveB64, DOCX_TYPE, safeName, fileToB64 } from './docfiles.js'
+import { templatePicker, pagePreview, saveB64, DOCX_TYPE, safeName, fileToB64, resumeFileProblem } from './docfiles.js'
 
 const L = {
   step: 1, job: '', role: '', company: '', themes: [], reqs: [], ev: {}, openKw: 0, addKw: '',
@@ -55,7 +55,8 @@ function resumeSource() {
 
 async function upload(ctx, file) {
   if (!file) return
-  if (file.size > 3 * 1024 * 1024) { L.err = 'That file is over 3 MB. Try a smaller one, or paste the text.'; ctx.render(); return }
+  const problem = resumeFileProblem(file)
+  if (problem) { L.err = problem; ctx.render(); return }
   L.uploading = true; L.err = ''; ctx.render()
   try {
     const d = await ctx.call('/api/newpage/docx', { token: ctx.token(), action: 'extract', filename: file.name, file: await fileToB64(file) })
@@ -183,7 +184,7 @@ export function coverScreen(ctx) {
 
   let body
   if (L.step === 1) {
-    const fileInput = h('input', { type: 'file', id: 'cv-file', accept: '.docx,.pdf,.txt,.md', class: 'sr-only', onchange: e => { upload(ctx, e.target.files[0]); e.target.value = '' } })
+    const fileInput = h('input', { type: 'file', id: 'cv-file', class: 'sr-only', onchange: e => { upload(ctx, e.target.files[0]); e.target.value = '' } })
     const src = resumeSource()
     body = [
       h('div', { class: 'doc-step' }, h('span', { class: 'num' }, '1'), h('div', {}, h('b', {}, 'Your resume'), h('p', { class: 'small muted' }, 'This comes first. We check it against the job ad, and the questions on the next step come from where it is strong, thin or silent.'))),

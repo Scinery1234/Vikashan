@@ -5,7 +5,7 @@ let token = null
 try { token = sessionStorage.getItem('np_admin_token') } catch {}
 
 const QNAME = { launch: 'Launch', unstick: 'Unstick', explore: 'Explore', recharge: 'Recharge' }
-const TABS = [['launch', 'Launch'], ['unstick', 'Unstick'], ['explore', 'Explore'], ['recharge', 'Recharge'], ['library', 'Library'], ['plan', 'Emails']]
+const TABS = [['launch', 'Launch'], ['unstick', 'Unstick'], ['explore', 'Explore'], ['recharge', 'Recharge'], ['library', 'Library'], ['plan', 'Emails'], ['sky', 'Sky']]
 const S = { items: [], tab: 'launch', q: '' }
 
 const el = (tag, text, attrs = {}, ...kids) => {
@@ -26,9 +26,9 @@ async function api(method, body) {
 function needLogin() { $('editor').hidden = true; $('need-login').hidden = false }
 
 const edited = it => it.fields.some(f => f.edited)
-const inTab = it => (S.tab === 'library' ? it.group === 'library' : S.tab === 'plan' ? it.group === 'plan' : it.group === 'program' && it.q === S.tab)
+const inTab = it => (S.tab === 'library' ? it.group === 'library' : S.tab === 'plan' ? it.group === 'plan' : S.tab === 'sky' ? it.group === 'sky' : it.group === 'program' && it.q === S.tab)
 const text = it => [it.label, it.where, ...it.fields.map(f => (Array.isArray(f.value) ? f.value.join(' ') : String(f.value)))].join(' ').toLowerCase()
-const count = tab => S.items.filter(it => edited(it) && (tab === 'library' ? it.group === 'library' : tab === 'plan' ? it.group === 'plan' : it.group === 'program' && it.q === tab)).length
+const count = tab => S.items.filter(it => edited(it) && (tab === 'library' ? it.group === 'library' : tab === 'plan' ? it.group === 'plan' : tab === 'sky' ? it.group === 'sky' : it.group === 'program' && it.q === tab)).length
 
 function renderTabs() {
   const box = $('tabs'); box.replaceChildren()
@@ -98,6 +98,10 @@ function render() {
   if (q) items = items.filter(it => text(it).includes(q))
   if (!items.length) { list.append(el('p', q ? 'Nothing matches that search.' : 'Nothing here.', { class: 'muted' })); return }
 
+  if (S.tab === 'sky') {
+    list.append(el('div', null, { class: 'ce-group' }, el('h3', 'How Sky coaches'), el('p', 'Sky reads the short version on every message, and checks itself against the full principles every 10 messages (and against the week’s objective and the member’s own goals every 5). Changes apply to the next message anyone sends.', { class: 'small muted' }), el('div', null, { class: 'ce-sub' }, items.map(card))))
+    return
+  }
   if (S.tab === 'library') {
     for (const [g, label] of [['shared', 'For everyone'], ...Object.keys(QNAME).map(k => [k, `Only for ${QNAME[k]}`])]) {
       const part = items.filter(it => it.q === g); if (!part.length) continue
@@ -124,6 +128,8 @@ function render() {
     list.append(wrap)
   }
   if (S.tab === 'plan') {
+    const prog = items.filter(it => it.q === 'program')
+    if (prog.length) list.append(el('div', null, { class: 'ce-group' }, el('h3', 'Emails during the four weeks'), emailGroup('Weekly nudges, booking, renewal and check-in emails', prog)))
     const shared = items.filter(it => it.q === 'shared').sort((a, b) => a.day - b.day)
     if (shared.length) list.append(el('div', null, { class: 'ce-group' }, el('h3', 'Follow-up emails sent to every type'), emailGroup('Days 28, 35 and 42', shared)))
   }

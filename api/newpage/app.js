@@ -3,10 +3,16 @@ import { rateLimit } from '../../lib/security.js'
 import { requireMember } from '../../lib/newpage-auth.js'
 import { QUADRANTS, score } from '../../newpage/quiz-logic.js'
 import { PROGRAM } from '../../newpage/program-content.js'
-import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS } from '../../lib/newpage-app.js'
-import { coachSystem, toApiMessages, runCoach, askJson, WRITER_MODEL } from '../../lib/newpage-coach.js'
+import { buildMe, cleanCheckin, detectCrisis, CRISIS_REPLY, PROGRAM_WEEKS, programPosition } from '../../lib/newpage-app.js'
+import { coachSystem, toApiMessages, runCoach, askJson, aiMessage, WRITER_MODEL } from '../../lib/newpage-coach.js'
 import { isCoach } from '../../lib/newpage-coaches.js'
 import { refreshContent } from '../../lib/newpage-content.js'
+import { exportMemory, eraseMemory } from '../../lib/newpage-memory-store.js'
+import { openVault, sealText, openText, sealJson, openJson, memoryUsable } from '../../lib/newpage-vault.js'
+import { cryptoReady } from '../../lib/newpage-crypto.js'
+import { checkDue, checkPrompt, CHECK_SCHEMA, cleanCheck } from '../../lib/newpage-principles.js'
+import { isDemo, demoAllowance, demoSpend } from '../../lib/newpage-demo.js'
+import { PRIVACY_TEXT, cleanPrivacy, ABOUT, cleanAbout, aboutLines, cleanNote, MEMORY_LIMIT, isDuplicateNote, CHAT_SHARE_LIMIT } from '../../lib/newpage-context.js'
 import { getAvailableSlots } from '../../lib/availability.js'
 import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
 import { sendConfirmation } from '../../lib/resend.js'
@@ -28,12 +34,34 @@ const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 const ID_RE = /^[0-9a-f-]{36}$/i
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
+const COACH_NAME = id => ({ career: 'Career', recovery: 'Recovery', action: 'Action', exec: 'Executive function', charge: 'Reducing the charge', cbt: 'CBT', interview: 'Interview', offer: 'Offer and negotiation', clarity: 'Clarity compass' }[id] || id)
 const coachOf = v => (typeof v === 'string' && isCoach(v) ? v : 'career')
 const cleanDate = v => (typeof v === 'string' && DATE_RE.test(v) ? v : null)
 const cleanTime = v => (typeof v === 'string' && TIME_RE.test(v) ? v : null)
 const cleanMins = v => (Number.isInteger(Number(v)) && Number(v) >= 5 && Number(v) <= 600 ? Number(v) : null)
 
-async function load(memberId, coach = 'career') {
+// A vault to write with. If encryption is switched on but this member's key can't be
+// opened, refuse rather than store anything unencrypted.
+async function writeVault(member) {
+  const v = await openVault(member, { create: true })
+  if (cryptoReady() && !v) throw Object.assign(new Error('Private storage isn’t available right now. Please try again later.'), { status: 503 })
+  return v
+}
+// The Compass is program work and stays as it is. The resume and the "about you"
+// answers are part of Sky's memory, so they are encrypted with the member's key.
+const PRIVATE_TOOLS = ['profile', 'about', 'steer']
+async function getTool(member, tool) {
+  const { data } = await supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', tool).maybeSingle()
+  return PRIVATE_TOOLS.includes(tool) ? openJson(await openVault(member), `tool:${tool}`, data?.data) : data?.data
+}
+async function setTool(member, tool, value) {
+  const v = PRIVATE_TOOLS.includes(tool) ? await writeVault(member) : null
+  await supabase.from('newpage_tools').upsert({ member_id: member.id, tool, data: sealJson(v, `tool:${tool}`, value), updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
+}
+
+async function load(member, coach = 'career') {
+  const memberId = member.id
+  const vault = await openVault(member)
   const [progress, tasks, checkins, memory, messages, goals, bookings] = await Promise.all([
     supabase.from('newpage_progress').select('week, step').eq('member_id', memberId),
     supabase.from('newpage_tasks').select('id, title, due, done, source, created_at, block_start, block_mins, goal_id').eq('member_id', memberId).order('created_at', { ascending: true }).limit(200),
@@ -45,8 +73,9 @@ async function load(memberId, coach = 'career') {
   ])
   return {
     progress: progress.data || [], goals: goals.data || [], bookings: bookings.data || [],
-    tasks: (tasks.data || []).map(t => ({ id: t.id, title: t.title, due: t.due, done: t.done, source: t.source, goalId: t.goal_id || null, start: t.block_start ? String(t.block_start).slice(0, 5) : null, mins: t.block_mins || null })), checkins: checkins.data || [], memory: memory.data || [],
-    messages: (messages.data || []).reverse()
+    tasks: (tasks.data || []).map(t => ({ id: t.id, title: t.title, due: t.due, done: t.done, source: t.source, goalId: t.goal_id || null, start: t.block_start ? String(t.block_start).slice(0, 5) : null, mins: t.block_mins || null })), checkins: checkins.data || [],
+    memory: (memory.data || []).map(m => ({ id: m.id, note: openText(vault, 'mem', m.note) })),
+    messages: (messages.data || []).map(m => ({ ...m, content: openText(vault, 'msg', m.content) })).reverse()
   }
 }
 
@@ -63,8 +92,23 @@ async function memberResume(member, pasted) {
 }
 
 async function me(member, coach = 'career') {
-  const data = await load(member.id, coach)
+  const data = await load(member, coach)
   return { ...buildMe({ member, ...data, sessions: sessionState(member.sessions_included, data.bookings), coachOn: !!process.env.ANTHROPIC_API_KEY }), coach }
+}
+
+// Everything the Your context screen shows. Shares are listed by date and kind only.
+async function contextOf(member, coach = 'career') {
+  const [aboutRaw, profile, shares, views, loaded] = await Promise.all([
+    getTool(member, 'about'), getTool(member, 'profile'),
+    supabase.from('newpage_shares').select('id, kind, created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(30),
+    supabase.from('newpage_access_log').select('what, created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(10),
+    load(member, coach)
+  ])
+  return {
+    ready: cryptoReady(), privacy: member.privacy || null, privacyText: PRIVACY_TEXT, learn: member.learn !== false,
+    questions: ABOUT, about: cleanAbout(aboutRaw), resume: { has: !!profile?.text, text: clipText(profile?.text, 12000) },
+    notes: loaded.memory, shares: shares.data || [], views: views.data || [], limit: MEMORY_LIMIT
+  }
 }
 
 // One endpoint for everything a signed-in member does: POST { action, ... }
@@ -75,6 +119,20 @@ export default async function handler(req, res) {
   if (!member) return
   await refreshContent()
   const b = req.body || {}
+
+  // The demo: no money, no bookings, no emails, and a small AI allowance.
+  if (isDemo(member)) {
+    if (['renew_checkout', 'hours_checkout', 'session_book', 'reminders_set', 'program_emails_set', 'share_chat', 'share_context'].includes(b.action)) {
+      return res.status(403).json({ error: 'That part isn’t in the demo. Join New Page to use it.', code: 'demo' })
+    }
+    if (b.action === 'coach' || (b.action === 'doc_generate') || b.action === 'doc_edit' || b.action === 'compass_suggest') {
+      const kind = b.action === 'coach' ? 'messages' : 'docs'
+      const a = await demoAllowance(member.id, kind)
+      if (!a.ok) return res.status(429).json({ error: a.why, code: 'demo_cap', used: a.used, cap: a.cap })
+      await demoSpend(member.id, kind) // counted when asked, so a visitor can’t run up a bill with failed calls
+      member[kind === 'docs' ? 'demo_docs' : 'demo_messages'] = (member[kind === 'docs' ? 'demo_docs' : 'demo_messages'] || 0) + 1
+    }
+  }
 
   switch (b.action) {
     case 'me':
@@ -131,6 +189,9 @@ export default async function handler(req, res) {
       } else await q.update({ done: !!b.done }).eq('id', b.id).eq('member_id', member.id)
       return res.json(await me(member, coachOf(b.coach)))
     }
+    case 'program_emails_set':
+      await supabase.from('newpage_members').update({ program_emails: !!b.on }).eq('id', member.id)
+      return res.json(await me({ ...member, program_emails: !!b.on }, coachOf(b.coach)))
     case 'reminders_set':
       await supabase.from('newpage_members').update({ reminders: !!b.on }).eq('id', member.id)
       return res.json(await me({ ...member, reminders: !!b.on }, coachOf(b.coach)))
@@ -138,13 +199,13 @@ export default async function handler(req, res) {
     // ── Saved tool state (Compass answers, resume background) ──
     case 'tool_get': {
       if (!['compass', 'profile'].includes(b.tool)) return res.status(400).json({ error: 'Unknown tool.' })
-      const { data } = await supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', b.tool).maybeSingle()
-      return res.json({ data: b.tool === 'compass' ? cleanCompass(data?.data) : { text: clipText(data?.data?.text, 12000) } })
+      const d = await getTool(member, b.tool)
+      return res.json({ data: b.tool === 'compass' ? cleanCompass(d) : { text: clipText(d?.text, 12000) } })
     }
     case 'tool_save': {
       if (!['compass', 'profile'].includes(b.tool)) return res.status(400).json({ error: 'Unknown tool.' })
       const data = b.tool === 'compass' ? cleanCompass(b.data) : { text: clipText(b.data?.text, 12000) }
-      await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: b.tool, data, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
+      await setTool(member, b.tool, data)
       return res.json({ data })
     }
 
@@ -159,28 +220,31 @@ export default async function handler(req, res) {
         return res.json({ result: task.read(out) })
       } catch (err) {
         console.error('Compass suggestion failed:', err)
-        return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+        return res.status(502).json({ error: aiMessage(err) })
       }
     }
 
     // ── Notes: a private place for the member to type and work things out ──
     case 'note_list': {
       const { data } = await supabase.from('newpage_notes').select('id, title, body, updated_at').eq('member_id', member.id).order('updated_at', { ascending: false }).limit(100)
-      return res.json({ notes: data || [] })
+      const v = await openVault(member)
+      return res.json({ notes: (data || []).map(n => ({ ...n, title: openText(v, 'note:title', n.title), body: openText(v, 'note:body', n.body) })) })
     }
     case 'note_save': {
       const title = clip(b.title, 120), body = clipText(b.body, 30000)
       const now = new Date().toISOString()
+      const v = await writeVault(member)
+      const sealN = n => ({ ...n, title: openText(v, 'note:title', n.title), body: openText(v, 'note:body', n.body) })
       if (b.id) {
         if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown note.' })
-        const { data } = await supabase.from('newpage_notes').update({ title, body, updated_at: now }).eq('id', b.id).eq('member_id', member.id).select('id, title, body, updated_at').maybeSingle()
+        const { data } = await supabase.from('newpage_notes').update({ title: sealText(v, 'note:title', title), body: sealText(v, 'note:body', body), updated_at: now }).eq('id', b.id).eq('member_id', member.id).select('id, title, body, updated_at').maybeSingle()
         if (!data) return res.status(404).json({ error: 'That note is gone.' })
-        return res.json({ note: data })
+        return res.json({ note: sealN(data) })
       }
       const { count } = await supabase.from('newpage_notes').select('id', { count: 'exact', head: true }).eq('member_id', member.id)
       if ((count || 0) >= 100) return res.status(400).json({ error: 'You have 100 notes. Delete one to make room.' })
-      const { data } = await supabase.from('newpage_notes').insert({ member_id: member.id, title, body, updated_at: now }).select('id, title, body, updated_at').single()
-      return res.json({ note: data })
+      const { data } = await supabase.from('newpage_notes').insert({ member_id: member.id, title: sealText(v, 'note:title', title), body: sealText(v, 'note:body', body), updated_at: now }).select('id, title, body, updated_at').single()
+      return res.json({ note: sealN(data) })
     }
     case 'note_delete':
       if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown note.' })
@@ -203,15 +267,15 @@ export default async function handler(req, res) {
         if (!rateLimit(req, res, { max: 12, windowMs: 60 * 60 * 1000, key: `np-doc-${member.id}` })) return
         const fields = cleanFields(b.kind, b.fields)
         const background = clipText(b.background, 12000)
-        if (b.kind === 'linkedin' && background) await supabase.from('newpage_tools').upsert({ member_id: member.id, tool: 'profile', data: { text: background }, updated_at: new Date().toISOString() }, { onConflict: 'member_id,tool' })
+        if (b.kind === 'linkedin' && background) await setTool(member, 'profile', { text: background })
         const [data, cp, pr] = await Promise.all([
-          load(member.id),
-          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'compass').maybeSingle(),
-          supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'profile').maybeSingle()
+          load(member),
+          getTool(member, 'compass'),
+          getTool(member, 'profile')
         ])
         const ctx = memberContext({
-          member, compass: cp.data?.data, checkins: data.checkins, memory: data.memory, doneCount: data.progress.length,
-          taskDone: data.tasks.filter(t => t.done).length, profile: ['linkedin', 'report', 'progress', 'brief'].includes(b.kind) ? (background || clipText(pr.data?.data?.text, 4000)) : ''
+          member, compass: cp, checkins: data.checkins, memory: data.memory, doneCount: data.progress.length,
+          taskDone: data.tasks.filter(t => t.done).length, profile: ['linkedin', 'report', 'progress', 'brief'].includes(b.kind) ? (background || clipText(pr?.text, 4000)) : ''
         })
         const problem = SK.needs(ctx, fields)
         if (problem) return res.status(400).json({ error: problem })
@@ -220,7 +284,7 @@ export default async function handler(req, res) {
           content = cleanSections(await askJson({ system: SECTION_SYSTEM, prompt: SK.prompt(ctx, fields), schema: SECTIONS_SCHEMA, maxTokens: 4500 }))
         } catch (err) {
           console.error('Document failed:', err)
-          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+          return res.status(502).json({ error: aiMessage(err) })
         }
         if (!content.sections.length) return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
         const title = (content.title || SK.label).slice(0, 160)
@@ -255,7 +319,7 @@ export default async function handler(req, res) {
           out = await askJson({ system: COVER_SYSTEM, prompt: buildCoverPrompt({ candidate, job, keywords: keep, requirements, evidence: cleanEvidence(b.evidence), draft: draft && draft.length ? draft : null }), schema: COVER_SCHEMA, maxTokens: 3500, model: WRITER_MODEL(), effort: 'high' })
         } catch (err) {
           console.error('Cover letter failed:', err)
-          return res.status(502).json({ error: 'That didn’t work. Please try again in a minute.' })
+          return res.status(502).json({ error: aiMessage(err) })
         }
         const k = (b.contact && typeof b.contact === 'object') ? b.contact : {}
         content = cleanCover(out, {
@@ -425,7 +489,7 @@ export default async function handler(req, res) {
       const date = String(b.date || ''), hour = Number(b.hour)
       const problem = bookingProblem(date, hour)
       if (problem) return res.status(400).json({ error: problem })
-      const state = sessionState(member.sessions_included, (await load(member.id)).bookings)
+      const state = sessionState(member.sessions_included, (await load(member)).bookings)
       if (state.remaining < 1) return res.status(403).json({ error: 'You’ve used the session included in New Page. Reply to any email from Vik to add more hours.', code: 'no_sessions' })
       const { slots } = await getAvailableSlots(date)
       if (!slots.some(sl => sl.hour === hour)) return res.status(409).json({ error: 'Sorry, that time was just taken. Please choose another.', code: 'taken' })
@@ -491,10 +555,89 @@ export default async function handler(req, res) {
       return res.json({ ...(await me(updated, coachOf(b.coach))), result: { quadrant: r.quadrant, clarity: r.clarity, capacity: r.capacity, struggling: answers.feel === 5, lowMood: answers.feel === 4 } })
     }
 
+    // ── Sky's memory: what it knows, who can see it, and the member's controls ──
+    case 'context_get':
+      return res.json(await contextOf(member, coachOf(b.coach)))
+
+    case 'privacy_set': {
+      const level = cleanPrivacy(b.level)
+      if (!level) return res.status(400).json({ error: 'Choose one of the three options.' })
+      await supabase.from('newpage_members').update({ privacy: level }).eq('id', member.id)
+      return res.json(await contextOf({ ...member, privacy: level }, coachOf(b.coach)))
+    }
+    case 'learn_set':
+      await supabase.from('newpage_members').update({ learn: !!b.on }).eq('id', member.id)
+      return res.json(await contextOf({ ...member, learn: !!b.on }, coachOf(b.coach)))
+
+    case 'about_save': {
+      if (!cryptoReady()) return res.status(503).json({ error: 'Private storage isn’t set up yet, so this can’t be saved. Please try again later.' })
+      await setTool(member, 'about', cleanAbout(b.about))
+      return res.json(await contextOf(member, coachOf(b.coach)))
+    }
+    case 'resume_delete':
+      await supabase.from('newpage_tools').delete().eq('member_id', member.id).eq('tool', 'profile')
+      return res.json(await contextOf(member, coachOf(b.coach)))
+
+    case 'memory_add': {
+      if (!cryptoReady()) return res.status(503).json({ error: 'Private storage isn’t set up yet, so this can’t be saved. Please try again later.' })
+      const note = cleanNote(b.note)
+      if (!note) return res.status(400).json({ error: 'Write the note first.' })
+      const { memory } = await load(member)
+      if (isDuplicateNote(note, memory.map(m => m.note))) return res.status(400).json({ error: 'Sky already has that.' })
+      if (memory.length >= MEMORY_LIMIT) return res.status(400).json({ error: `Sky keeps up to ${MEMORY_LIMIT} notes. Delete one to make room.` })
+      const v = await writeVault(member)
+      await supabase.from('newpage_memory').insert({ member_id: member.id, note: sealText(v, 'mem', note) })
+      return res.json(await contextOf(member, coachOf(b.coach)))
+    }
+    case 'memory_edit': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown note.' })
+      const note = cleanNote(b.note)
+      if (!note) return res.status(400).json({ error: 'A note can’t be empty. Delete it instead.' })
+      const v = await writeVault(member)
+      await supabase.from('newpage_memory').update({ note: sealText(v, 'mem', note) }).eq('id', b.id).eq('member_id', member.id)
+      return res.json(await contextOf(member, coachOf(b.coach)))
+    }
     case 'memory_delete': {
       if (b.all) await supabase.from('newpage_memory').delete().eq('member_id', member.id)
       else if (ID_RE.test(String(b.id))) await supabase.from('newpage_memory').delete().eq('id', b.id).eq('member_id', member.id)
       return res.json(await me(member, coachOf(b.coach)))
+    }
+
+    // "Share with Vik": a copy of a chat, or of the member's context, that Vik can read.
+    case 'share_chat':
+    case 'share_context': {
+      if (!['share', 'all'].includes(member.privacy)) return res.status(400).json({ error: 'First choose “Only what I share” in Your context, so you stay in control of what Vik sees.' })
+      const v = await writeVault(member)
+      if (!v) return res.status(503).json({ error: 'Private storage isn’t set up yet, so nothing can be shared. Please try again later.' })
+      const note = clip(b.note, 300)
+      let kind, content
+      if (b.action === 'share_chat') {
+        const coach = coachOf(b.coach)
+        const { messages } = await load(member, coach)
+        if (!messages.length) return res.status(400).json({ error: 'There’s no chat to share yet.' })
+        kind = 'chat'
+        content = { coach, note, messages: messages.slice(-CHAT_SHARE_LIMIT).map(m => ({ role: m.role, content: m.content, at: m.created_at })) }
+      } else {
+        const [about, profile] = await Promise.all([getTool(member, 'about'), getTool(member, 'profile')])
+        const { memory } = await load(member)
+        kind = 'context'
+        content = { note, about: cleanAbout(about), resume: clipText(profile?.text, 12000), notes: memory.map(m => m.note) }
+      }
+      await supabase.from('newpage_shares').insert({ member_id: member.id, kind, content: v.text('share', JSON.stringify(content)) })
+      return res.json(await contextOf(member, coachOf(b.coach)))
+    }
+    case 'share_delete':
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown share.' })
+      await supabase.from('newpage_shares').delete().eq('id', b.id).eq('member_id', member.id)
+      return res.json(await contextOf(member, coachOf(b.coach)))
+
+    // Everything Sky holds about them, as a file; and erasing it.
+    case 'data_export':
+      return res.json({ export: await exportMemory(member) })
+    case 'data_delete': {
+      if (b.confirm !== true) return res.status(400).json({ error: 'Please confirm.' })
+      await eraseMemory(member.id, { state: 'active' })
+      return res.json(await contextOf({ ...member, data_key: null, _vault: null }, coachOf(b.coach)))
     }
 
     case 'coach_clear': {
@@ -508,24 +651,40 @@ export default async function handler(req, res) {
       if (!rateLimit(req, res, { max: 40, windowMs: 60 * 60 * 1000, key: `np-coach-${member.id}` })) return
       const text = clip(b.message, 2000)
       if (!text) return res.status(400).json({ error: 'Type a message first.' })
+      let vault
+      try { vault = await writeVault(member) } catch (err) { return res.status(err.status || 500).json({ error: err.message }) }
+      const store = rows => supabase.from('newpage_messages').insert(rows.map(r => ({ member_id: member.id, coach, role: r.role, content: sealText(vault, 'msg', r.content) })))
 
       // Safety first: this runs on every message, whatever the model would say.
       if (detectCrisis(text)) {
-        await supabase.from('newpage_messages').insert([{ member_id: member.id, coach, role: 'user', content: text }, { member_id: member.id, coach, role: 'assistant', content: CRISIS_REPLY }])
+        await store([{ role: 'user', content: text }, { role: 'assistant', content: CRISIS_REPLY }])
         return res.json({ ...(await me(member, coach)), crisis: true })
       }
       if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'The coach isn’t switched on yet. Everything else in New Page works.', code: 'coach_off' })
 
-      const data = await load(member.id, coach)
-      const { data: cp } = await supabase.from('newpage_tools').select('data').eq('member_id', member.id).eq('tool', 'compass').maybeSingle()
-      const system = coachSystem({ member, tasks: data.tasks, memory: data.memory, compass: cp?.data ? cleanCompass(cp.data) : null, coach })
+      const data = await load(member, coach)
+      const [cp, aboutRaw, profile] = await Promise.all([getTool(member, 'compass'), getTool(member, 'about'), getTool(member, 'profile')])
+      // Sky keeps its own notes as it learns, unless the member has switched that off.
+      const learn = member.learn !== false && !!vault
+      // Sky's private self-checks: the most recent steer for this focus shapes the next replies.
+      const steerAll = (await getTool(member, 'steer')) || {}
+      const current = steerAll[coach] && Date.now() - new Date(steerAll[coach].at).getTime() < 3 * 24 * 60 * 60 * 1000 ? steerAll[coach] : null
+      const system = coachSystem({
+        member, tasks: data.tasks, memory: data.memory, compass: cp ? cleanCompass(cp) : null, coach,
+        about: cleanAbout(aboutRaw), resume: clipText(profile?.text, 3000), learn, privacy: member.privacy || null, steer: current?.steer || []
+      })
       const tools = {
         run: async (name, input) => {
           if (name === 'save_memory') {
-            const note = clip(input.note, 300)
-            if (!note) return 'No note given.'
-            if (data.memory.length >= 40) return 'Memory is full. Ask the member to clear some notes.'
-            await supabase.from('newpage_memory').insert({ member_id: member.id, note })
+            const note = cleanNote(input.note)
+            if (!note || !learn) return 'Noted.'
+            if (isDuplicateNote(note, data.memory.map(m => m.note))) return 'Already known.'
+            if (data.memory.length >= MEMORY_LIMIT) {
+              const oldest = data.memory.shift()
+              if (oldest) await supabase.from('newpage_memory').delete().eq('id', oldest.id).eq('member_id', member.id)
+            }
+            await supabase.from('newpage_memory').insert({ member_id: member.id, note: sealText(vault, 'mem', note) })
+            data.memory.push({ note })
             return 'Saved.'
           }
           if (name === 'add_task') {
@@ -540,13 +699,38 @@ export default async function handler(req, res) {
       }
       let reply
       try {
-        reply = await runCoach({ system, messages: toApiMessages(data.messages, text), tools })
+        reply = await runCoach({ system, messages: toApiMessages(data.messages, text), tools, learn })
       } catch (err) {
         console.error('Coach failed:', err)
-        return res.status(502).json({ error: 'The coach couldn’t answer just now. Please try again in a minute.' })
+        return res.status(502).json({ error: err.status ? aiMessage(err) : 'Sky couldn’t answer just now. Please try again in a minute.' })
       }
-      await supabase.from('newpage_messages').insert([{ member_id: member.id, coach, role: 'user', content: text }, { member_id: member.id, coach, role: 'assistant', content: reply.text }])
-      return res.json({ ...(await me(member, coach)), usedTools: reply.used.map(u => u.name) })
+      await store([{ role: 'user', content: text }, { role: 'assistant', content: reply.text }])
+
+      // Every 5th member message: check against the week's objective and the member's own aims.
+      // Every 10th: check against Purposefields' principles. Private; the result steers later replies.
+      const nUser = data.messages.filter(m => m.role === 'user').length + 1
+      const kind = checkDue(nUser)
+      let check = null
+      if (kind) {
+        try {
+          const Q = member.quadrant ? PROGRAM[member.quadrant] : null
+          const week = Q ? Q[Math.min(3, Math.max(0, programPosition(member.plan_started_at).week - 1))] : null
+          const about = cleanAbout(aboutRaw)
+          const aims = [
+            cp?.values?.length ? `Values: ${cleanCompass(cp).values.join(', ')}` : '',
+            cp?.north ? `North Star: ${cleanCompass(cp).north}` : '',
+            cp?.first ? `Direction they chose: ${cleanCompass(cp).first}` : '',
+            about.goals ? `A good year: ${about.goals}` : '', about.coachStyle ? `Wants coaching: ${about.coachStyle}` : '', about.limits ? `Limits: ${about.limits}` : '',
+            data.goals?.length ? `Goals: ${data.goals.map(g => g.title).join('; ')}` : '',
+            data.memory.length ? `Notes: ${data.memory.slice(-15).map(m => m.note).join(' | ')}` : ''
+          ].filter(Boolean).join('\n')
+          const recent = [...data.messages.slice(-(kind === 'principles' ? 20 : 10)), { role: 'user', content: text }, { role: 'assistant', content: reply.text }]
+          check = cleanCheck(await askJson({ system: 'You are a careful, fair reviewer of coaching conversations. Answer in the exact shape asked.', prompt: checkPrompt({ kind, recent, week, memberAims: aims, focus: COACH_NAME(coach) }), schema: CHECK_SCHEMA, maxTokens: 600 }))
+          const next = { ...steerAll, [coach]: { at: new Date().toISOString(), kind, n: nUser, on_track: check.on_track, summary: check.summary, steer: check.steer } }
+          await setTool(member, 'steer', next)
+        } catch (err) { console.error('Sky self-check failed (reply was still sent):', err.message) }
+      }
+      return res.json({ ...(await me(member, coach)), usedTools: reply.used.map(u => u.name), ...(check ? { selfCheck: { kind, onTrack: check.on_track } } : {}) })
     }
 
     default:

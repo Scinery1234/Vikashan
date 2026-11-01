@@ -58,3 +58,14 @@ export function templatePicker(current, onPick) {
     TEMPLATES.map(t => h('button', { type: 'button', role: 'radio', 'aria-checked': String(t.id === current), class: 'tmpl-opt' + (t.id === current ? ' on' : ''), onclick: () => onPick(t.id) },
       h('b', {}, t.name), h('small', {}, t.note))))
 }
+
+// Word, PDF or text only. There is deliberately no `accept` filter on the file inputs: phones
+// can mistake extension lists for "photos only" and offer just the camera.
+export function resumeFileProblem(file) {
+  if (!file) return 'Choose a file first.'
+  const name = (file.name || '').toLowerCase()
+  if (/\.(docx|pdf|txt|md)$/.test(name)) return file.size > 3 * 1024 * 1024 ? 'That file is over 3 MB. Try a smaller one, or paste the text.' : ''
+  if (/\.doc$/.test(name)) return 'Older .doc files can’t be read. Save it as .docx or PDF first, or paste the text.'
+  if (/\.(jpe?g|png|heic|gif|webp)$/.test(name) || /^image\//.test(file.type || '')) return 'That looks like a photo. Upload a Word or PDF file, or paste the text.'
+  return 'Upload a Word (.docx), PDF or text file, or paste the text.'
+}

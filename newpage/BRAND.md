@@ -1,6 +1,6 @@
 # New Page brand guide
 
-Use this guide to design, write or build anything for **New Page**, the 4-week career program by **Vikashan**. Follow it exactly unless you're told otherwise. The live reference is the quiz at `vikashan.com.au/newpage` and the program page at `vikashan.com.au/newpage/program`. The code is in `newpage/styles.css`.
+Use this guide to design, write or build anything for **New Page**, the 4-week career program by **Purposefields**. Follow it exactly unless you're told otherwise. The live reference is the quiz at `vikashan.com.au/newpage` and the program page at `vikashan.com.au/newpage/program`. The code is in `newpage/styles.css`.
 
 ---
 
@@ -26,10 +26,10 @@ Things New Page is not:
 
 | Name | Use |
 |---|---|
-| **Vikashan** | The coaching practice, and the brand New Page sits under. Always "by Vikashan" or "a career program by Vikashan". |
+| **Purposefields** | The organisation New Page is by. Always "by Purposefields" or "a career program by Purposefields". The web address stays a subdomain of vikashan.org, and that is fine. |
 | **New Page** | The program. Title case in sentences ("Join New Page"). The logo wordmark is always lowercase: **new page**. |
 | **Vik** | The coach (Vikashan). Use "Vik" in friendly copy and emails, which are signed "Vik". |
-| **Purposefields** | Vikashan's not-for-profit arm. Mention it only for scholarships ("supported by Purposefields"). |
+| **Vikashan** | Vik's coaching practice and the home of the website address. Don't use it as New Page's publisher name. |
 | **Sky** | The AI Coach inside New Page. Always "Sky" or "Sky, your AI Coach", never "Vik" and never "the Career Coach". Sky has nine focus areas (Career, Recovery, Action, Executive function, Reducing the charge, CBT, Interview, Offer and negotiation, Clarity compass). Say plainly that Sky is an AI. |
 | Tools | Keep their own names: The Compass, Planner, Notes, Resume writer, Cover letter writer. |
 | Quadrants | **Recharge, Explore, Unstick, Launch.** Only reveal these after someone finishes the quiz. Don't name them, or say there are four, on the quiz start screen or in ads. |

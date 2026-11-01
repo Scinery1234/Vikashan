@@ -106,7 +106,11 @@ export function plannerScreen(ctx) {
       h('label', { class: 'check' },
         h('input', { type: 'checkbox', checked: me.member.reminders, onchange: e => run('reminders_set', { on: e.target.checked }) }),
         h('span', {}, 'Email me each morning when I have something due')),
-      h('p', { class: 'small muted' }, 'Around 7am Sydney time, only on days with something due.')))))
+      h('p', { class: 'small muted' }, 'Around 7am Sydney time, only on days with something due.'),
+      h('label', { class: 'check' },
+        h('input', { type: 'checkbox', checked: me.member.programEmails, onchange: e => run('program_emails_set', { on: e.target.checked }) }),
+        h('span', {}, 'Email me Vik’s nudges during the four weeks')),
+      h('p', { class: 'small muted' }, 'A note at the start of weeks 2 to 4, a reminder to book your session, and a check-in if you go quiet. Receipts and booking emails always come.')))))
 }
 
 function minsSelect(value, on) {

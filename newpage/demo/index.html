@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Try New Page · a 24-hour demo</title>
+<meta name="description" content="Try the New Page career program for 24 hours as a sample member. No sign-up. Tell us what you think.">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/newpage/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@600;700&family=Figtree:wght@400;500;600;700&family=Caveat:wght@600&display=swap">
+<link rel="stylesheet" href="/newpage/styles.css">
+<style>
+.demo-grid{display:grid;grid-template-columns:1fr;gap:12px;margin:8px 0 4px}
+.demo-grid .card{gap:4px}.demo-grid b{font-family:var(--display);font-size:18px}
+.demo-grid span{font-size:15px;color:var(--muted)}
+.fine{font-size:14px;color:var(--muted);line-height:1.5}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+@media(min-width:700px){.demo-grid{grid-template-columns:1fr 1fr}}
+</style>
+<script type="module" src="/newpage/demo/demo.js"></script>
+</head>
+<body>
+<div class="paper">
+  <div class="margin-line" aria-hidden="true"></div>
+  <header class="top"><div class="top-in">
+    <a class="brand" href="/newpage/program" aria-label="New Page"><span>new page</span></a>
+    <a class="top-link" href="/newpage/program" style="border-bottom-color:transparent;color:var(--muted)">About the program</a>
+  </div></header>
+  <main class="col" id="main">
+    <section class="screen" id="start-screen">
+      <span class="note">try it</span>
+      <h1>Try <span class="hl">New Page</span> for a day</h1>
+      <p class="lead">Walk through the real app as “Sam”, a sample member two days into the Launch program. Chat with Sky, try the Compass and the writers, and tell us what you think.</p>
+      <div class="demo-grid">
+        <div class="card"><b>No sign-up</b><span>One tap and you’re in. It lasts 24 hours on this browser.</span></div>
+        <div class="card"><b>Real tools</b><span>Sky the AI Coach, the Compass, the resume and cover letter writers. Sky allows 10 messages and 2 documents in the demo.</span></div>
+        <div class="card"><b>Nothing kept</b><span>Everything you type is wiped after 24 hours. Only the feedback you send us stays.</span></div>
+        <div class="card"><b>Not the whole thing</b><span>No payment, no booking with Vik, no emails. Those are for members.</span></div>
+      </div>
+      <form id="start-form" class="card" novalidate>
+        <div class="field" id="code-field" hidden><label for="d-code">Invite code</label><input id="d-code" type="text" autocomplete="off" autocapitalize="characters" maxlength="40" placeholder="From Vik"><p class="small muted">The demo is by invitation at the moment.</p></div>
+        <div class="hp" aria-hidden="true"><label for="d-website">Leave this empty</label><input id="d-website" type="text" tabindex="-1" autocomplete="off"></div>
+        <p class="error" id="d-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit" id="d-start">Start the demo</button>
+        <p class="fine">Sky is an AI. It’s coaching, not therapy, and the sample member isn’t a real person. For people 18 and over. In crisis? Lifeline 13 11 14.</p>
+      </form>
+      <p class="small muted" id="resume-note" hidden>You already have a demo running on this browser. <a href="/newpage/app" id="resume-link">Go back to it</a>, or start a fresh one above.</p>
+    </section>
+  </main>
+  <footer class="foot col"><p>New Page is a career program by <a href="/">Purposefields</a>. <a href="/privacy">Privacy</a></p></footer>
+</div>
+</body>
+</html>

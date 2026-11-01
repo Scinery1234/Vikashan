@@ -205,10 +205,6 @@
 .doc-step { display: flex; gap: 12px; align-items: flex-start; margin-top: 6px; }
 .doc-step .num { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%; background: var(--hl); border: 2px solid var(--ink); display: flex; align-items: center; justify-content: center; font-weight: 700; }
 .doc-step p { margin: 2px 0 0; }
-.tmpl-pick { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
-.tmpl-opt { text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 8px 12px; cursor: pointer; font: inherit; color: var(--ink); display: flex; flex-direction: column; min-height: 52px; }
-.tmpl-opt small { color: var(--muted); font-size: 12px; }
-.tmpl-opt.on { border: 2px solid var(--ink); background: var(--hl); }
 .page-preview { border: 1.5px solid var(--rule); border-radius: 8px; overflow: hidden; background: #fff; }
 .stepper { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; flex-wrap: wrap; }
 .stepper li { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
@@ -290,6 +286,37 @@ body.no-scroll { overflow: hidden; }
 .field textarea, .composer textarea { font-family: var(--body); }
 .task .src.vik, .plan-task .src.vik { background: var(--hl); color: var(--ink); }
 
+/* ── Your context ── */
+.ctx-cols { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.ctx-cols > div { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.radios { display: flex; flex-direction: column; gap: 8px; }
+.radio-card { text-align: left; background: #fff; border: 1.5px solid var(--rule); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; font: inherit; color: var(--ink); min-height: 56px; }
+.radio-card span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.radio-card.on { border: 2px solid var(--ink); background: var(--hl); } .radio-card.on span { color: var(--ink); }
+.field select { min-height: 48px; border: 1.5px solid #C9D3E3; border-radius: 12px; padding: 8px 12px; font: inherit; font-size: 16px; background: #fff; color: var(--ink); }
+@media (min-width: 900px) { .ctx-cols { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); gap: 24px; } }
+.link-btn.inline { display: inline; min-height: 0; vertical-align: baseline; }
+.share-btn { align-self: flex-start; min-height: 44px; font-size: 15px; padding: 6px 16px; }
+.share-form { gap: 10px; }
+
+/* Focus icons */
+.focus-icon { flex: 0 0 auto; width: var(--size, 36px); height: var(--size, 36px); border-radius: 50%; background: var(--tint, #EEF2F9); display: inline-flex; align-items: center; justify-content: center; border: 1.5px solid var(--ink); }
+.focus-icon svg { width: 58%; height: 58%; stroke: var(--ink); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fc-head { gap: 10px; } .fc-head h3 { flex: 1 1 auto; }
+
+/* The hidden file input stays focusable; show focus on its button-label */
+input.sr-only:focus-visible + label.btn { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+/* ── Demo bar ── */
+.demobar { position: sticky; top: 0; z-index: 40; background: var(--ink); color: #fff; padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; font-size: 14px; }
+.demobar-actions { display: flex; gap: 8px; }
+.demobar-btn { border: 1.5px solid #fff; background: none; color: #fff; border-radius: 99px; padding: 5px 12px; font: inherit; font-weight: 600; cursor: pointer; min-height: 32px; text-decoration: none; display: inline-flex; align-items: center; }
+.demobar-btn.solid { background: var(--hl); color: var(--ink); border-color: var(--hl); }
+.fb-form { flex: 1 1 100%; background: #fff; color: var(--ink); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.fb-form textarea, .fb-form input { width: 100%; border: 1.5px solid #C9D3E3; border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 15px; box-sizing: border-box; }
+.fb-stars { display: flex; gap: 2px; }
+.fb-star { border: 0; background: none; font-size: 26px; color: #C9D3E3; cursor: pointer; padding: 0 2px; line-height: 1; min-width: 36px; min-height: 36px; }
+.fb-star.on { color: #E0A800; }
 /* ── Resume writer conversation ── */
 .ra-conv { display: flex; flex-direction: column; gap: 14px; }
 .ra-conv > .row:first-child { justify-content: space-between; align-items: center; }

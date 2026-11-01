@@ -304,3 +304,85 @@ CREATE TABLE IF NOT EXISTS newpage_content (
   updated_at timestamptz DEFAULT now()
 );
 ALTER TABLE newpage_content ENABLE ROW LEVEL SECURITY;
+
+-- ── Sky's memory: privacy, encryption, retention ──
+-- Chats, notes Sky keeps, resume, "about me" answers, private notes and shares are
+-- stored encrypted (see lib/newpage-crypto.js). data_key is each member's own key,
+-- itself encrypted with a master key that lives in Vercel, never here. Deleting it
+-- makes that member's encrypted data permanently unreadable.
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS data_key text;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS privacy text;           -- null until they choose
+ALTER TABLE newpage_members DROP CONSTRAINT IF EXISTS newpage_members_privacy_check;
+ALTER TABLE newpage_members ADD CONSTRAINT newpage_members_privacy_check CHECK (privacy IS NULL OR privacy IN ('private','share','all'));
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS learn boolean DEFAULT true;  -- lets Sky keep notes between chats
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS access_ended_at timestamptz;  -- when membership ceased
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS memory_state text DEFAULT 'active';
+ALTER TABLE newpage_members DROP CONSTRAINT IF EXISTS newpage_members_memory_state_check;
+ALTER TABLE newpage_members ADD CONSTRAINT newpage_members_memory_state_check CHECK (memory_state IN ('active','trash','purged'));
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS memory_trashed_at timestamptz;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS memory_purged_at timestamptz;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS memory_reminder integer DEFAULT 0;  -- last reminder sent: 0, 7, 14 or 30
+
+-- What a member chose to share with Vik (content is encrypted).
+CREATE TABLE IF NOT EXISTS newpage_shares (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  kind text NOT NULL CHECK (kind IN ('chat','context')),
+  content text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_shares_member_idx ON newpage_shares (member_id, created_at DESC);
+ALTER TABLE newpage_shares ENABLE ROW LEVEL SECURITY;
+
+-- Every time Vik opens something a member has let him see.
+CREATE TABLE IF NOT EXISTS newpage_access_log (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  what text NOT NULL,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newpage_access_log_member_idx ON newpage_access_log (member_id, created_at DESC);
+ALTER TABLE newpage_access_log ENABLE ROW LEVEL SECURITY;
+
+-- ── Program emails: which ones each member has been sent, and whether they want them ──
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS program_emails boolean DEFAULT true;
+CREATE TABLE IF NOT EXISTS newpage_member_emails (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  member_id uuid REFERENCES newpage_members(id) ON DELETE CASCADE,
+  kind text NOT NULL,
+  sent_at timestamptz DEFAULT now(),
+  UNIQUE (member_id, kind)
+);
+ALTER TABLE newpage_member_emails ENABLE ROW LEVEL SECURITY;
+
+-- ── The public demo: throwaway members for 24 hours, and the feedback they leave ──
+ALTER TABLE newpage_members DROP CONSTRAINT IF EXISTS newpage_members_source_check;
+ALTER TABLE newpage_members ADD CONSTRAINT newpage_members_source_check CHECK (source IN ('purchase','scholarship','manual','demo'));
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS demo_messages integer DEFAULT 0;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS demo_docs integer DEFAULT 0;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS demo_code text;
+CREATE INDEX IF NOT EXISTS newpage_members_demo_idx ON newpage_members (source, access_until) WHERE source = 'demo';
+
+-- Feedback from demo visitors. The only thing kept after a demo member is swept away.
+CREATE TABLE IF NOT EXISTS newpage_feedback (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  demo_id text,              -- the demo member's id, as text, so it survives the member's deletion
+  screen text,
+  rating integer CHECK (rating BETWEEN 1 AND 5),
+  comment text NOT NULL,
+  email text,                -- only if they offer it
+  code text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE newpage_feedback ENABLE ROW LEVEL SECURITY;
+
+-- Optional invite codes for the demo. If this table has any active code, the demo asks for one.
+CREATE TABLE IF NOT EXISTS newpage_demo_codes (
+  code text PRIMARY KEY,
+  label text,
+  uses integer DEFAULT 0,
+  max_uses integer,
+  active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE newpage_demo_codes ENABLE ROW LEVEL SECURITY;

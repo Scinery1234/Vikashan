@@ -199,3 +199,8 @@ DROP POLICY IF EXISTS "Public read availability" ON availability;
 CREATE POLICY "Public read availability" ON availability FOR SELECT TO anon USING (true);
 DROP POLICY IF EXISTS "Public read session_types" ON session_types;
 CREATE POLICY "Public read session_types" ON session_types FOR SELECT TO anon USING (is_active = true);
+
+
+-- Blocked times can come from the admin page ('manual') or from calendar sync
+-- ('google', 'outlook'). The code reads and writes this column.
+ALTER TABLE blocked_times ADD COLUMN IF NOT EXISTS source text DEFAULT 'manual';
