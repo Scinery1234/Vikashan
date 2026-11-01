@@ -371,3 +371,15 @@ input.sr-only:focus-visible + label.btn { outline: 3px solid var(--ink); outline
 .mem-group { display: flex; flex-direction: column; }
 .mem.sub { padding-left: 18px; }
 .mem .link-btn.small { font-size: 14px; flex: 0 0 auto; }
+.rn-form { padding: 6px 0 8px; } .rn-form input { flex: 1 1 200px; min-height: 44px; border: 1.5px solid #C9D3E3; border-radius: 10px; padding: 8px 10px; font-size: 16px; }
+.ra-stack { display: flex; flex-direction: column; gap: 16px; }
+
+/* ── Wide screens: the tabs move to a rail on the left, so nothing sits over the bottom of the page ── */
+@media (min-width: 900px) {
+  .tabbar { top: 0; bottom: auto; right: auto; left: 0; width: 92px; height: 100vh; height: 100dvh; border-top: 0; border-right: 1.5px solid var(--rule); justify-content: flex-start; padding: 84px 0 0; }
+  .tabbar-in, .paper.wide .tabbar-in { flex-direction: column; max-width: none; width: 100%; }
+  .tab { flex: 0 0 auto; min-height: 72px; }
+  .tab[aria-current="page"]::before { top: 16%; bottom: 16%; left: 0; right: auto; width: 4px; height: auto; border-radius: 0 4px 4px 0; }
+  .paper.app { padding-bottom: 32px; padding-left: 92px; }
+  .composer, .cp-footer, .ra-reply { bottom: 0; }
+}

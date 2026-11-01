@@ -17,7 +17,8 @@ const QUICK = { AWAITING_CONTENT_APPROVAL: 'Yes', EXECUTION_FAILED: 'Try again' 
 const APPROVAL = /^(y|yes|yep|yeah|approved?|looks good|proceed|go ahead|content approved|perfect|lgtm|try again|retry)\b/i
 const L = {
   text: null, fileName: '', job: '', jobFile: '', role: '', extra: '', uploading: '', busy: '', err: '', note: '', conv: null, docs: null, docId: null, loading: false, reply: '', pasteOpen: false,
-  mode: null, baseId: '', tailJob: '', tailJobFile: '', tailRole: '', tailCo: '', tail: null, files: {}, showAll: false
+  mode: null, baseId: '', tailJob: '', tailJobFile: '', tailRole: '', tailCo: '', tail: null, files: {}, showAll: false,
+  renaming: '', newName: ''
 }
 
 const SECTION_NAMES = { professional_summary: 'Summary', key_skills: 'Key skills', professional_experience: 'Experience', education_and_training: 'Education and training', certifications: 'Certifications', technical_skills: 'Technical skills', additional_information: 'Additional information', awards: 'Awards', candidate: 'Title line' }
@@ -156,6 +157,29 @@ function toCover(ctx, doc) {
   ctx.go('tools', 'cover')
 }
 
+// The member names a saved resume: the app's own titles repeat once there are a few.
+async function rename(ctx, doc) {
+  const title = L.newName.trim()
+  if (title.length < 2) { L.err = 'Give it a name of at least two characters.'; ctx.render(); return }
+  try {
+    const r = await ctx.call('/api/newpage/app', { action: 'doc_rename', id: doc.id, title })
+    L.docs = L.docs.map(x => (x.id === r.doc.id ? r.doc : x))
+    if (L.tail?.id === r.doc.id) L.tail = r.doc
+    L.renaming = ''; L.newName = ''; L.err = ''
+  } catch (e) { L.err = e.message }
+  ctx.render()
+}
+const startRename = (ctx, doc) => { L.renaming = doc.id; L.newName = doc.title; L.err = ''; ctx.render(); requestAnimationFrame(() => document.getElementById('rn-' + doc.id)?.select()) }
+function renameForm(ctx, doc) {
+  if (L.renaming !== doc.id) return null
+  return h('form', { class: 'row rn-form', onsubmit: e => { e.preventDefault(); rename(ctx, doc) } },
+    h('label', { for: 'rn-' + doc.id, class: 'sr-only' }, 'Name for this resume'),
+    h('input', { id: 'rn-' + doc.id, type: 'text', maxlength: '80', value: L.newName, oninput: e => { L.newName = e.target.value } }),
+    h('button', { class: 'btn btn-secondary', type: 'submit' }, 'Save name'),
+    h('button', { class: 'link-btn', type: 'button', onclick: () => { L.renaming = ''; L.err = ''; ctx.render() } }, 'Cancel'))
+}
+const renameLink = (ctx, doc) => h('button', { class: 'link-btn blue small', type: 'button', onclick: () => startRename(ctx, doc) }, 'Rename')
+
 // Plain text of the resume JSON, for "see the whole thing" and for copying.
 function plain(r) {
   const c = r.candidate || {}
@@ -185,7 +209,8 @@ function tailorView(ctx, doc) {
   return h('div', { class: 'card tl-result', id: 'tl-result' },
     h('div', { class: 'row review-head' }, h('span', { class: 'label' }, doc.title),
       h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.tail = null; L.mode = 'tailor'; L.tailJob = ''; L.tailJobFile = ''; L.tailRole = ''; L.tailCo = ''; L.err = ''; ctx.render() } }, 'Tailor for another job')),
-    h('p', { class: 'small muted' }, `Saved${base ? `, under “${base.title}”` : ''}. Your original resume is untouched.`),
+    h('p', { class: 'small muted' }, `Saved${base ? `, under “${base.title}”` : ''}. Your original resume is untouched. `, renameLink(ctx, doc)),
+    renameForm(ctx, doc),
     t.summary && h('p', { class: 'tl-sum' }, t.summary),
 
     h('div', { class: 'row doc-actions' },
@@ -316,12 +341,13 @@ function savedList(ctx) {
     try { await ctx.call('/api/newpage/app', { action: 'doc_delete', id: d.id }); L.docs = L.docs.filter(x => x.id !== d.id); if (L.docId === d.id) L.docId = null; if (L.tail?.id === d.id) L.tail = null; if (L.baseId === d.id) L.baseId = bases()[0]?.id || '' } catch (e) { L.err = e.message }
     ctx.render()
   } }, '×')
-  const tailRow = t => h('div', { class: 'mem sub' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.tail = t; L.conv = null; L.showAll = false; L.err = ''; ctx.render(); scrollTop() } }, `${t.title} · ${when(t.created_at)}`), del(t))
+  const tailRow = t => h('div', { class: 'mem-group' }, h('div', { class: 'mem sub' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.tail = t; L.conv = null; L.showAll = false; L.err = ''; ctx.render(); scrollTop() } }, `${t.title} · ${when(t.created_at)}`), renameLink(ctx, t), del(t)), renameForm(ctx, t))
   return h('div', { class: 'card' }, h('span', { class: 'label' }, 'Saved resumes'),
     h('p', { class: 'small muted' }, 'Open one to change it or make the Word file again. Tailored versions sit under the resume they came from.'),
     roots.map(r => h('div', { class: 'mem-group' },
       h('div', { class: 'mem' }, h('button', { class: 'link-btn blue', type: 'button', onclick: () => openSaved(ctx, r) }, `${r.title} · ${when(r.created_at)}`),
-        isBuilt(r) && h('button', { class: 'link-btn blue small', type: 'button', onclick: () => { L.baseId = r.id; L.mode = 'tailor'; L.tail = null; L.conv = null; L.err = ''; ctx.render(); scrollTop(); document.getElementById('tl-job')?.focus() } }, 'Tailor for a job'), del(r)),
+        isBuilt(r) && h('button', { class: 'link-btn blue small', type: 'button', onclick: () => { L.baseId = r.id; L.mode = 'tailor'; L.tail = null; L.conv = null; L.err = ''; ctx.render(); scrollTop(); document.getElementById('tl-job')?.focus() } }, 'Tailor for a job'), renameLink(ctx, r), del(r)),
+      renameForm(ctx, r),
       tailored.filter(t => t.content.tailored.base_id === r.id).map(tailRow))),
     orphans.length > 0 && h('div', { class: 'mem-group' }, h('span', { class: 'small muted' }, 'Tailored versions'), orphans.map(tailRow)))
 }
@@ -333,8 +359,11 @@ export function resumeScreen(ctx) {
   if (L.text === null) return h('section', { class: 'screen' }, head, h('p', { class: 'loading' }, 'Loading…'))
 
   const c = L.conv
+  const cur = c && (L.docs || []).find(x => x.id === L.docId)
   const conv = c && h('div', { class: 'card ra-conv' },
-    h('div', { class: 'row' }, h('span', { class: 'label' }, 'Your resume'), h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.conv = null; L.err = ''; ctx.render() } }, c.state === 'DRAFTING' ? 'Start again' : 'Back to the writer')),
+    h('div', { class: 'row' }, h('span', { class: 'label' }, cur ? cur.title : 'Your resume'), cur && renameLink(ctx, cur), h('button', { class: 'link-btn blue', type: 'button', onclick: () => { L.conv = null; L.err = ''; ctx.render() } }, c.state === 'DRAFTING' ? 'Start again' : 'Back to the writer')),
+    cur && renameForm(ctx, cur),
+    cur && L.renaming !== cur.id && c.messages.some(m => m.kind === 'result' && m.ok) && h('p', { class: 'small muted' }, `Saved as “${cur.title}”. Rename it so you can tell your resumes apart.`),
     c.messages.map(message),
     L.busy && h('p', { class: 'loading small', 'aria-live': 'polite' }, L.busy),
     L.err && h('p', { class: 'error', role: 'alert' }, L.err),
@@ -346,7 +375,7 @@ export function resumeScreen(ctx) {
     h('div', { id: 'ra-end' }))
 
   const saved = savedList(ctx)
-  if (c) return h('section', { class: 'screen docs' }, head, h('div', {}, conv, saved))
+  if (c) return h('section', { class: 'screen docs' }, head, h('div', { class: 'ra-stack' }, conv, saved))
   if (L.tail) return h('section', { class: 'screen docs' }, head, h('div', { class: 'docs-cols' }, h('div', {}, tailorView(ctx, L.tail)), h('div', {}, saved)))
   const canTailor = bases().length > 0
   const form = h('div', {}, canTailor && pathPicker(ctx), L.mode === 'tailor' && canTailor ? tailorForm(ctx) : newForm(ctx))
