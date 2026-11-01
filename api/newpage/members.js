@@ -101,7 +101,7 @@ export default async function handler(req, res) {
   if (req.method === 'GET') {
     const { data, error } = await supabase.from('newpage_members')
       .select('id, email, name, status, source, quadrant, plan_started_at, last_login_at, session_booked, access_until, sessions_included, privacy, memory_state')
-      .order('created_at', { ascending: false }).limit(200)
+      .neq('source', 'demo').order('created_at', { ascending: false }).limit(200)
     if (error) return res.status(500).json({ error: error.message })
     const { data: used } = await supabase.from('bookings').select('newpage_member_id, status').not('newpage_member_id', 'is', null).neq('status', 'cancelled')
     const count = {}

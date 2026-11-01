@@ -46,7 +46,7 @@ async function act(action, body = {}, raw = false) {
     return data
   } catch (e) {
     if (e.code === 'signed_out') return signOut()
-    if (e.code === 'paused' || e.code === 'ended' || e.code === 'expired') { S.screen = 'noaccess'; S.error = e.message; render(); return null }
+    if (e.code === 'paused' || e.code === 'ended' || e.code === 'expired' || e.code === 'demo_over') { S.screen = 'noaccess'; S.error = e.message; S.demoOver = e.code === 'demo_over'; render(); return null }
     throw e
   }
 }
@@ -98,7 +98,9 @@ function noAccessScreen() {
   return h('section', { class: 'screen' },
     h('h2', {}, 'No access right now'),
     h('p', {}, S.error || 'This email doesn’t have access to New Page.'),
-    h('p', { class: 'muted' }, 'If you think that’s a mistake, reply to any email from Vik and it will be sorted out.'),
+    S.demoOver
+      ? h('div', { class: 'row' }, h('a', { class: 'btn btn-primary', href: '/newpage/demo' }, 'Start a fresh demo'), h('a', { class: 'btn btn-secondary', href: '/newpage/program' }, 'About New Page'))
+      : h('p', { class: 'muted' }, 'If you think that’s a mistake, reply to any email from Vik and it will be sorted out.'),
     h('button', { class: 'link-btn', type: 'button', onclick: signOut }, 'Sign out'))
 }
 
@@ -304,7 +306,7 @@ function gettingStarted(me) {
       row(!!me.plan, 'Do your 2-minute check-in', 'Start', () => go('me')),
       row(done, 'Tick off your first step below', 'See it', () => window.scrollTo({ top: 0, behavior: 'smooth' })),
       row(me.messages.length > 0 || !!S.coachUsed, 'Say hello to Sky, your AI Coach', 'Say hello', () => go('coach')),
-      row(me.sessions.upcoming.length > 0, 'Book your 1:1 with Vik (best in week 2 or 3)', 'Book', () => go('tools', 'session'))))
+      !me.member.demo && row(me.sessions.upcoming.length > 0, 'Book your 1:1 with Vik (best in week 2 or 3)', 'Book', () => go('tools', 'session'))))
 }
 
 function renewCard(me) {
@@ -375,7 +377,7 @@ function coachScreen() {
     } catch (err) {
       me.messages = me.messages.slice(0, -1)
       S.coachDraft = text
-      S.coachError = err.message
+      S.coachError = err.code === 'demo_cap' ? err.message + ' ' : err.message
     }
     S.coachSending = false
     render(); scrollChat()
@@ -573,9 +575,41 @@ function render() {
   else if (S.lessonId) node = lessonScreen()
   else node = ({ today: todayScreen, plan: planScreen, coach: coachScreen, tools: toolsScreen, me: meScreen }[S.tab] || todayScreen)()
   app.replaceChildren(node)
+  renderDemoBar()
   document.querySelector('.paper')?.classList.toggle('wide', S.screen === 'app' && ((S.tab === 'tools' && !!S.tool) || S.tab === 'today' || S.tab === 'plan'))
   renderTabs()
   if (active) { const el = document.getElementById(active); if (el) { el.focus(); if (sel != null && el.setSelectionRange) try { el.setSelectionRange(sel, sel) } catch {} } }
+}
+
+// ── Demo bar: shows only for demo visitors ──────────────────────────
+let demoBar = null
+const screenName = () => (S.lessonId ? 'lesson' : S.tab === 'tools' && S.tool ? `tools/${S.tool}` : S.tab)
+function renderDemoBar() {
+  const d = S.me?.member?.demo
+  if (!d || S.screen !== 'app') { demoBar?.remove(); demoBar = null; document.body.classList.remove('has-demobar'); return }
+  if (!demoBar) { demoBar = h('div', { class: 'demobar', role: 'region', 'aria-label': 'Demo' }); document.body.prepend(demoBar); document.body.classList.add('has-demobar') }
+  const left = Math.max(0, Math.round((new Date(d.until) - Date.now()) / 3600e3))
+  demoBar.replaceChildren(
+    h('span', {}, h('b', {}, 'Demo'), ` · sample member “Sam”, Launch program · ${left}h left · Sky: ${Math.max(0, d.caps.messages - d.messagesUsed)} of ${d.caps.messages} messages left`),
+    h('span', { class: 'demobar-actions' },
+      h('button', { class: 'demobar-btn', type: 'button', onclick: () => { S.feedbackOpen = !S.feedbackOpen; S.feedbackSent = false; render() } }, 'Give feedback'),
+      h('a', { class: 'demobar-btn solid', href: '/newpage/join' }, 'Join New Page')))
+  if (S.feedbackOpen) demoBar.append(feedbackForm())
+}
+function feedbackForm() {
+  if (S.feedbackSent) return h('form', { class: 'fb-form' }, h('p', {}, 'Thanks. That’s gone to Vik.'), h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { S.feedbackOpen = false; render() } }, 'Close'))
+  return h('form', { class: 'fb-form', onsubmit: async e => {
+    e.preventDefault()
+    const comment = (S.fbText || '').trim(); if (comment.length < 2) { S.fbErr = 'Write a few words first.'; render(); return }
+    try { await call('/api/newpage/demo', { action: 'feedback', token: session, screen: screenName(), rating: S.fbRating || null, comment, email: S.fbEmail || '' }, null); S.feedbackSent = true; S.fbText = ''; S.fbErr = '' } catch (er) { S.fbErr = er.message }
+    render()
+  } },
+    h('p', { class: 'small' }, `What do you think of this screen (${screenName()})? Anything confusing, missing or good.`),
+    h('div', { class: 'fb-stars', role: 'radiogroup', 'aria-label': 'Rating' }, [1, 2, 3, 4, 5].map(n => h('button', { type: 'button', role: 'radio', 'aria-checked': String(S.fbRating === n), class: 'fb-star' + (S.fbRating >= n ? ' on' : ''), 'aria-label': `${n} out of 5`, onclick: () => { S.fbRating = n; render() } }, '★'))),
+    h('textarea', { rows: '3', maxlength: '2000', 'aria-label': 'Your feedback', placeholder: 'Your thoughts…', oninput: e => { S.fbText = e.target.value } }, S.fbText || ''),
+    h('input', { type: 'email', maxlength: '200', 'aria-label': 'Your email (optional)', placeholder: 'Your email (optional, if you’d like a reply)', value: S.fbEmail || '', oninput: e => { S.fbEmail = e.target.value } }),
+    S.fbErr && h('p', { class: 'error', role: 'alert' }, S.fbErr),
+    h('div', { class: 'row' }, h('button', { class: 'btn btn-primary', type: 'submit' }, 'Send feedback'), h('button', { class: 'btn btn-secondary', type: 'button', onclick: () => { S.feedbackOpen = false; render() } }, 'Cancel')))
 }
 
 // ── Start ────────────────────────────────────────────────────────

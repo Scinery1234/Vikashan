@@ -21,6 +21,7 @@ function signOut() {
   try { sessionStorage.removeItem('np_admin_token') } catch {}
   $('members').hidden = true
   $('health').hidden = true
+  $('demo').hidden = true
   $('codes').hidden = true
   $('launch').hidden = true
   $('login').hidden = false
@@ -31,6 +32,8 @@ async function showLaunch() {
   $('launch').hidden = false
   $('members').hidden = false
   $('health').hidden = false
+  $('demo').hidden = false
+  loadDemo()
   $('codes').hidden = false
   loadMembers()
   loadCodes()
@@ -330,4 +333,27 @@ $('health-btn').addEventListener('click', async () => {
     }
   } catch (e) { out.replaceChildren(el('p', e.message, { class: 'error' })) }
   b.disabled = false
+})
+
+
+// ── Demo and feedback ──
+async function loadDemo() {
+  try {
+    const d = await api('GET', null, '/api/newpage/demo')
+    $('demo-stats').textContent = `Last 30 days: ${d.stats.visitors30d} demo visitors, ${d.stats.messages30d} Sky messages, ${d.stats.docs30d} documents. ${d.stats.feedbackTotal} pieces of feedback in total. Limits per visitor: ${d.caps.messages} messages, ${d.caps.docs} documents; across everyone per day: ${d.dailyCap.messages} messages, ${d.dailyCap.docs} documents.`
+    const cb = $('demo-codes'); cb.replaceChildren()
+    const active = d.codes.filter(c => c.active)
+    cb.append(el('p', active.length ? `Invitation-only. Codes: ${active.map(c => `${c.code} (${c.uses}${c.max_uses ? ' of ' + c.max_uses : ''} used)`).join(', ')}. Share as /newpage/demo?code=THECODE.` : 'Open to anyone with the link.', { class: 'small' }))
+    for (const c of active) { const b = btn(`Stop ${c.code}`); b.addEventListener('click', async () => { await api('POST', { action: 'code_off', code: c.code }, '/api/newpage/demo'); loadDemo() }); cb.append(b) }
+    const fb = $('demo-feedback'); fb.replaceChildren()
+    if (!d.feedback.length) fb.append(el('p', 'None yet.', { class: 'small muted' }))
+    for (const f of d.feedback) {
+      const row = el('div', null, { class: 'mp-task' })
+      row.append(el('span', `${f.rating ? '★'.repeat(f.rating) + ' ' : ''}${f.comment}`), el('small', [fmtD(f.created_at), f.screen ? 'on ' + f.screen : '', f.email || '', f.code ? 'code ' + f.code : ''].filter(Boolean).join(' · '), { class: 'muted' }))
+      fb.append(row)
+    }
+  } catch (e) { $('demo-feedback').replaceChildren(el('p', e.message, { class: 'error' })) }
+}
+$('dc-add').addEventListener('click', async () => {
+  try { await api('POST', { action: 'code', code: $('dc-code').value, maxUses: $('dc-max').value || null }, '/api/newpage/demo'); $('dc-code').value = ''; $('dc-max').value = ''; loadDemo() } catch (e) { alert(e.message) }
 })

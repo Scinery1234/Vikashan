@@ -354,3 +354,35 @@ CREATE TABLE IF NOT EXISTS newpage_member_emails (
   UNIQUE (member_id, kind)
 );
 ALTER TABLE newpage_member_emails ENABLE ROW LEVEL SECURITY;
+
+-- ── The public demo: throwaway members for 24 hours, and the feedback they leave ──
+ALTER TABLE newpage_members DROP CONSTRAINT IF EXISTS newpage_members_source_check;
+ALTER TABLE newpage_members ADD CONSTRAINT newpage_members_source_check CHECK (source IN ('purchase','scholarship','manual','demo'));
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS demo_messages integer DEFAULT 0;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS demo_docs integer DEFAULT 0;
+ALTER TABLE newpage_members ADD COLUMN IF NOT EXISTS demo_code text;
+CREATE INDEX IF NOT EXISTS newpage_members_demo_idx ON newpage_members (source, access_until) WHERE source = 'demo';
+
+-- Feedback from demo visitors. The only thing kept after a demo member is swept away.
+CREATE TABLE IF NOT EXISTS newpage_feedback (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  demo_id text,              -- the demo member's id, as text, so it survives the member's deletion
+  screen text,
+  rating integer CHECK (rating BETWEEN 1 AND 5),
+  comment text NOT NULL,
+  email text,                -- only if they offer it
+  code text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE newpage_feedback ENABLE ROW LEVEL SECURITY;
+
+-- Optional invite codes for the demo. If this table has any active code, the demo asks for one.
+CREATE TABLE IF NOT EXISTS newpage_demo_codes (
+  code text PRIMARY KEY,
+  label text,
+  uses integer DEFAULT 0,
+  max_uses integer,
+  active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE newpage_demo_codes ENABLE ROW LEVEL SECURITY;

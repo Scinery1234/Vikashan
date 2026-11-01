@@ -11,6 +11,7 @@ import { exportMemory, eraseMemory } from '../../lib/newpage-memory-store.js'
 import { openVault, sealText, openText, sealJson, openJson, memoryUsable } from '../../lib/newpage-vault.js'
 import { cryptoReady } from '../../lib/newpage-crypto.js'
 import { checkDue, checkPrompt, CHECK_SCHEMA, cleanCheck } from '../../lib/newpage-principles.js'
+import { isDemo, demoAllowance, demoSpend } from '../../lib/newpage-demo.js'
 import { PRIVACY_TEXT, cleanPrivacy, ABOUT, cleanAbout, aboutLines, cleanNote, MEMORY_LIMIT, isDuplicateNote, CHAT_SHARE_LIMIT } from '../../lib/newpage-context.js'
 import { getAvailableSlots } from '../../lib/availability.js'
 import { sessionState, bookingProblem } from '../../lib/newpage-members.js'
@@ -104,6 +105,20 @@ export default async function handler(req, res) {
   if (!member) return
   await refreshContent()
   const b = req.body || {}
+
+  // The demo: no money, no bookings, no emails, and a small AI allowance.
+  if (isDemo(member)) {
+    if (['renew_checkout', 'hours_checkout', 'session_book', 'reminders_set', 'program_emails_set', 'share_chat', 'share_context'].includes(b.action)) {
+      return res.status(403).json({ error: 'That part isn’t in the demo. Join New Page to use it.', code: 'demo' })
+    }
+    if (b.action === 'coach' || (b.action === 'doc_generate') || b.action === 'doc_edit' || b.action === 'compass_suggest') {
+      const kind = b.action === 'coach' ? 'messages' : 'docs'
+      const a = await demoAllowance(member.id, kind)
+      if (!a.ok) return res.status(429).json({ error: a.why, code: 'demo_cap', used: a.used, cap: a.cap })
+      await demoSpend(member.id, kind) // counted when asked, so a visitor can’t run up a bill with failed calls
+      member[kind === 'docs' ? 'demo_docs' : 'demo_messages'] = (member[kind === 'docs' ? 'demo_docs' : 'demo_messages'] || 0) + 1
+    }
+  }
 
   switch (b.action) {
     case 'me':

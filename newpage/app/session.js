@@ -27,6 +27,7 @@ function buyHours(ctx, me) {
 }
 
 export function sessionScreen(ctx) {
+  if (ctx.S.me.member.demo) return h('section', { class: 'screen' }, h('button', { class: 'link-btn back', type: 'button', onclick: () => ctx.go('tools') }, '← Tools'), h('h2', {}, '1:1 with Vik'), h('p', {}, 'Members get a 60-minute online session with Vik, a career counsellor and psychotherapist, booked from here. Booking isn’t part of the demo.'), h('a', { class: 'btn btn-primary', href: '/newpage/join' }, 'Join New Page'))
   const me = ctx.S.me, s = me.sessions
   const back = h('button', { class: 'link-btn back', type: 'button', onclick: () => { L.done = null; ctx.go('tools') } }, '← Tools')
   const head = h('div', {}, back, h('h2', {}, '1:1 with Vik'), h('p', { class: 'muted' }, 'A 60-minute online session with Vik, a career counsellor and psychotherapist. He sees your plan and progress beforehand, so you start where you are.'))

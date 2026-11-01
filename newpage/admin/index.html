@@ -63,6 +63,15 @@
       <div class="card"><span class="label">Everyone with access</span><div id="member-list"><p class="muted small">Loading…</p></div></div>
     </section>
 
+    <section class="screen" id="demo" hidden>
+      <h2>Demo and feedback</h2>
+      <p>Anyone with the link <b>/newpage/demo</b> can try New Page for 24 hours as a sample Launch member. Add an invite code below to make it invitation-only; remove all codes to open it again.</p>
+      <div class="card"><div id="demo-stats" class="small muted">Loading…</div>
+        <div class="row" style="margin-top:8px"><input id="dc-code" type="text" placeholder="New invite code, e.g. FRIENDS" maxlength="40" style="min-height:44px;border:1.5px solid #C9D3E3;border-radius:10px;padding:6px 10px;font:inherit;font-size:15px"><input id="dc-max" type="number" min="1" placeholder="Max uses (optional)" style="min-height:44px;border:1.5px solid #C9D3E3;border-radius:10px;padding:6px 10px;font:inherit;font-size:15px;width:170px"><button class="btn btn-secondary" type="button" id="dc-add" style="min-height:44px;font-size:14px;padding:6px 12px">Add code</button></div>
+        <div id="demo-codes"></div></div>
+      <div class="card"><span class="label">Feedback</span><div id="demo-feedback"><p class="muted small">Loading…</p></div></div>
+    </section>
+
     <section class="screen" id="codes" hidden>
       <h2>Scholarship codes</h2>
       <p>Give one code to each person you accept. A code works once and covers the four weeks and their session with Vik. They enter it at <b>/newpage/join</b>, or you can send them <b>/newpage/join?code=THE-CODE</b>.</p>

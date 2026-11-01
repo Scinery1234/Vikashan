@@ -23,8 +23,8 @@ export default async function handler(req, res) {
 
   const sent = { total: 0, skipped: 0, failed: 0 }
   for (const [memberId, items] of byMember) {
-    const { data: m } = await supabase.from('newpage_members').select('id, email, name, status, reminders, last_reminder_on').eq('id', memberId).maybeSingle()
-    if (!m || m.status !== 'active' || m.reminders === false || m.last_reminder_on === today) { sent.skipped++; continue }
+    const { data: m } = await supabase.from('newpage_members').select('id, email, name, status, source, reminders, last_reminder_on').eq('id', memberId).maybeSingle()
+    if (!m || m.status !== 'active' || m.source === 'demo' || m.reminders === false || m.last_reminder_on === today) { sent.skipped++; continue }
     items.sort((a, b) => Number(a.overdue) - Number(b.overdue) || (a.start || '99').localeCompare(b.start || '99'))
     const mail = reminderEmail({ name: m.name, items: items.slice(0, 8) })
     try {

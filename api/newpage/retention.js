@@ -4,6 +4,7 @@ import { memoryEmail } from '../../lib/newpage-emails.js'
 import { signMemory } from '../../lib/newpage-auth.js'
 import { retentionStep, trashOn, RETENTION } from '../../lib/newpage-retention.js'
 import { eraseMemory, restoreMemoryAccess } from '../../lib/newpage-memory-store.js'
+import { sweepDemos } from '../../lib/newpage-demo.js'
 
 const BASE = () => process.env.NEXT_PUBLIC_URL || 'https://vikashan.org'
 
@@ -14,7 +15,7 @@ export default async function handler(req, res) {
   if (req.headers.authorization !== `Bearer ${process.env.CRON_SECRET}`) return res.status(401).json({ error: 'Unauthorized' })
 
   const { data: members, error } = await supabase.from('newpage_members')
-    .select('id, email, name, status, access_until, access_ended_at, memory_state, memory_trashed_at, memory_reminder').neq('memory_state', 'purged')
+    .select('id, email, name, status, access_until, access_ended_at, memory_state, memory_trashed_at, memory_reminder').neq('memory_state', 'purged').neq('source', 'demo')
   if (error) return res.status(500).json({ error: error.message })
 
   const out = { restored: 0, marked: 0, reminded: 0, trashed: 0, purged: 0, failed: 0 }
@@ -48,5 +49,6 @@ export default async function handler(req, res) {
       out.failed++
     }
   }
+  out.demosRemoved = await sweepDemos().catch(() => 0)
   res.json({ ok: true, ...out, rules: RETENTION })
 }
