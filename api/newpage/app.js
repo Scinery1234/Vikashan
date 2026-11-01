@@ -279,6 +279,15 @@ export default async function handler(req, res) {
       const { data } = await supabase.from('newpage_docs').select('id, kind, title, content, created_at').eq('member_id', member.id).order('created_at', { ascending: false }).limit(80)
       return res.json({ docs: data || [] })
     }
+    // The member names a saved resume or letter themselves (the app's own titles repeat).
+    case 'doc_rename': {
+      if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
+      const title = clip(b.title, 80).replace(/\s+/g, ' ')
+      if (title.length < 2) return res.status(400).json({ error: 'Give it a name of at least two characters.' })
+      const { data } = await supabase.from('newpage_docs').update({ title }).eq('id', b.id).eq('member_id', member.id).select('id, kind, title, content, created_at').maybeSingle()
+      if (!data) return res.status(404).json({ error: 'Unknown document.' })
+      return res.json({ doc: data })
+    }
     case 'doc_delete':
       if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
       await supabase.from('newpage_docs').delete().eq('id', b.id).eq('member_id', member.id)
@@ -391,10 +400,11 @@ export default async function handler(req, res) {
     case 'resume_save': {
       const content = cleanStoredResume(b)
       if (!content.resume.candidate.full_name) return res.status(400).json({ error: 'That resume has no name on it.' })
-      const title = resumeTitle(content)
+      const title = clip(b.title, 80).replace(/\s+/g, ' ').length >= 2 ? clip(b.title, 80).replace(/\s+/g, ' ') : resumeTitle(content)
       if (b.id) {
         if (!ID_RE.test(String(b.id))) return res.status(400).json({ error: 'Unknown document.' })
-        const { data } = await supabase.from('newpage_docs').update({ title, content }).eq('id', b.id).eq('member_id', member.id).eq('kind', 'resume').select('id, kind, title, content, created_at').maybeSingle()
+        // A rebuilt resume keeps the name the member gave it.
+        const { data } = await supabase.from('newpage_docs').update({ content, ...(b.title ? { title } : {}) }).eq('id', b.id).eq('member_id', member.id).eq('kind', 'resume').select('id, kind, title, content, created_at').maybeSingle()
         if (data) return res.json({ doc: data })
       }
       const { data: saved } = await supabase.from('newpage_docs').insert({ member_id: member.id, kind: 'resume', title, content }).select('id, kind, title, content, created_at').single()
